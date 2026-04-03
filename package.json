@@ -1,0 +1,23 @@
+{
+  "name": "mathflow-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w @mathflow/api\" \"npm run dev -w @mathflow/web\"",
+    "build": "npm run build -w @mathflow/web && npm run build -w @mathflow/api",
+    "check": "npm run check -w @mathflow/web",
+    "lint": "npm run lint -w @mathflow/web",
+    "test": "npm run test -w @mathflow/api && npm run test -w @mathflow/web",
+    "deploy:web": "python deploy/deploy_web_site.py",
+    "deploy:web:skip-build": "python deploy/deploy_web_site.py --skip-build",
+    "start:web": "npm run preview -w @mathflow/web",
+    "start:api": "npm run start -w @mathflow/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

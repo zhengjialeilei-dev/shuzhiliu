@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跨学科数学：扇形统计图实验室</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 字体与基础设置 */
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            overflow: hidden; /* 防止页面级滚动 */
+            transition: background-color 0.5s ease;
+        }
+
+        /* 模式特定背景 */
+        body.mode-challenge {
+            background-color: #f1f5f9;
+        }
+
+        /* --- SVG 交互样式 --- */
+        svg { 
+            overflow: visible; 
+            /* 关键：让 SVG 自适应容器 */
+            width: 100%;
+            height: 100%;
+            max-width: 600px; /* 限制最大尺寸 */
+            max-height: 600px;
+        }
+        
+        path.sector {
+            transition: opacity 0.3s, filter 0.3s;
+            cursor: pointer;
+            stroke: #fff;
+            stroke-width: 2px;
+            stroke-linejoin: round;
+        }
+        path.sector:hover {
+            filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.15));
+            opacity: 1;
+            z-index: 10;
+        }
+
+        /* 幽灵目标图表样式 */
+        path.ghost-sector {
+            fill: #cbd5e1; /* 稍微加深一点灰色，使其在浅色背景更清晰 */
+            stroke: #fff;
+            stroke-width: 2px;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+        
+        /* 幽灵图表的目标标签 */
+        text.ghost-label {
+            font-size: 12px;
+            font-weight: 800;
+            fill: #475569; /* Slate-600 */
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+            text-shadow: 0px 1px 0px rgba(255,255,255,0.9);
+        }
+
+        /* 主图表标签文字 */
+        text.label {
+            font-size: 14px;
+            font-weight: bold;
+            fill: white;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+            text-shadow: 0px 1px 2px rgba(0,0,0,0.3);
+            transition: opacity 0.2s;
+        }
+
+        /* --- UI 组件样式 --- */
+        
+        /* 开关控件 */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #6366f1;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #6366f1;
+        }
+        
+        /* 胜利弹窗动画 */
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal-content {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* 礼花 Canvas */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        /* 自定义 Select 下拉箭头 */
+        .custom-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        /* 隐藏数字输入框自带的箭头 */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; margin: 0; 
+        }
+
+        /* 滚动条美化 */
+        aside::-webkit-scrollbar {
+            width: 6px;
+        }
+        aside::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 3px;
+        }
+        aside::-webkit-scrollbar-track {
+            background-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-[#f5f7fa] text-slate-700 h-screen flex flex-col md:flex-row transition-colors duration-500">
+
+    <!-- 礼花层 -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- 胜利弹窗 -->
+    <div id="win-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm px-4">
+        <div class="modal-content bg-white rounded-2xl p-8 w-full max-w-sm text-center shadow-2xl">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">挑战成功！</h2>
+            <p class="text-slate-500 mb-6">你破解了数据的秘密！</p>
+            <button onclick="nextLevel()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl shadow-lg transform transition hover:scale-105 active:scale-95">
+                下一关
+            </button>
+        </div>
+    </div>
+
+    <!-- 左侧：控制台 (Sidebar) -->
+    <aside class="sidebar w-full md:w-80 flex-shrink-0 bg-white shadow-xl z-20 flex flex-col h-[40vh] md:h-full border-r border-transparent transition-colors duration-500">
+        
+        <!-- Sidebar Header -->
+        <header class="p-5 pb-2 flex flex-col gap-3 flex-shrink-0 bg-white/95 backdrop-blur z-10 sticky top-0">
+            <!-- 场景选择器 -->
+            <div class="relative">
+                <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">加载生活场景</label>
+                <select id="scenario-select" onchange="changeScenario(this.value)" 
+                        class="custom-select w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 cursor-pointer hover:bg-slate-100 transition-colors">
+                    <option value="class">📊 六(1)班运动调查 (4项)</option>
+                    <option value="earth">🌍 地球空气成分 (3项)</option>
+                    <option value="diet">🍽️ 健康饮食餐盘 (3项)</option>
+                    <option value="body">💧 人体成分揭秘 (4项)</option>
+                </select>
+            </div>
+
+            <div class="h-px bg-slate-100 w-full"></div>
+
+            <div class="flex items-center justify-between">
+                <h1 id="chart-title" class="text-lg font-bold text-slate-800 truncate pr-2">📊 六(1)班运动调查</h1>
+                
+                <!-- 模式切换开关 -->
+                <div class="flex items-center gap-1.5 text-xs font-bold flex-shrink-0">
+                    <span id="label-free" class="text-indigo-600">探索</span>
+                    <div class="relative inline-block w-10 align-middle select-none">
+                        <input type="checkbox" name="toggle" id="mode-toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 top-0 border-slate-300" onclick="toggleMode()"/>
+                        <label for="mode-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer transition-colors duration-300"></label>
+                    </div>
+                    <span id="label-challenge" class="text-slate-400">挑战</span>
+                </div>
+            </div>
+            
+            <!-- 动态提示文案 -->
+            <div id="instruction-box" class="bg-blue-50 text-blue-700 text-xs p-2.5 rounded-lg border border-blue-100 transition-all duration-300">
+                试着调整数字，观察饼图变化。
+            </div>
+        </header>
+
+        <!-- 数据控制区 -->
+        <div id="controls-container" class="flex-1 overflow-y-auto px-5 py-2 space-y-3">
+            <!-- JS 动态生成卡片列表 -->
+        </div>
+
+        <!-- 底部统计板 -->
+        <div class="p-5 pt-2 bg-white flex-shrink-0 border-t border-slate-100">
+            <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 transition-opacity duration-300" id="stats-panel">
+                <div class="flex justify-between items-end mb-3">
+                    <span class="text-slate-500 font-medium text-xs uppercase tracking-wide">当前总量</span>
+                    <span id="total-display" class="text-2xl font-bold text-slate-800 leading-none">0</span>
+                </div>
+                <div class="h-2 w-full bg-gray-200 rounded-full overflow-hidden flex" id="progress-bar">
+                    <!-- JS 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 右侧：图表区 -->
+    <main class="flex-1 min-w-0 relative flex flex-col items-center justify-center bg-[#f5f7fa] p-4 md:p-10 transition-colors duration-500" id="main-area">
+        
+        <!-- 装饰背景 -->
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+             <div class="w-[120%] h-[120%] max-w-[800px] max-h-[800px] border border-slate-300/40 rounded-full opacity-50"></div>
+             <div class="absolute w-[80%] h-[80%] max-w-[500px] max-h-[500px] border border-slate-300/30 rounded-full opacity-30 border-dashed"></div>
+        </div>
+
+        <!-- SVG 画布容器 -->
+        <svg id="pie-chart" viewBox="-300 -300 600 600" preserveAspectRatio="xMidYMid meet">
+            <!-- 1. 幽灵目标图层 -->
+            <g id="ghost-layer" class="opacity-0 transition-opacity duration-500"></g>
+            
+            <!-- 2. 用户图表图层 -->
+            <g id="chart-paths" class="chart-group"></g>
+            
+            <!-- 3. 文字标签图层 -->
+            <g id="chart-labels"></g>
+        </svg>
+
+        <!-- 教学提示 -->
+        <div class="absolute bottom-4 right-4 md:bottom-8 md:right-8 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 text-xs text-slate-500">
+            💡 灰色圆环 = 目标比例
+        </div>
+    </main>
+
+    <script>
+        // --- 1. 跨学科场景数据配置 ---
+        
+        const SCENARIOS = {
+            'class': {
+                title: "📊 六(1)班运动调查",
+                data: [
+                    { name: '🏀 篮球', val: 15, color: '#FF8080' },
+                    { name: '⚽ 足球', val: 10, color: '#87CEFA' },
+                    { name: '🏓 乒乓', val: 8, color: '#76E0AD' },
+                    { name: '🪁 其他', val: 5, color: '#FCD34D' }
+                ]
+            },
+            'earth': {
+                title: "🌍 地球空气成分分析",
+                data: [
+                    { name: '🌫️ 氮气', val: 78, color: '#93C5FD' },
+                    { name: '💨 氧气', val: 21, color: '#2563EB' },
+                    { name: '✨ 其他', val: 1, color: '#94A3B8' },
+                    { name: '∅ 无', val: 0, color: '#F1F5F9' } // 占位符，不参与生成
+                ]
+            },
+            'diet': {
+                title: "🍽️ 健康饮食餐盘",
+                data: [
+                    { name: '🥬 蔬果', val: 50, color: '#86EFAC' },
+                    { name: '🌾 谷薯', val: 30, color: '#FDE047' },
+                    { name: '🥩 蛋白', val: 20, color: '#FCA5A5' },
+                    { name: '∅ 无', val: 0, color: '#F1F5F9' }
+                ]
+            },
+            'body': {
+                title: "💧 人体成分揭秘",
+                data: [
+                    { name: '💧 水分', val: 60, color: '#38BDF8' },
+                    { name: '💪 蛋白', val: 18, color: '#F87171' },
+                    { name: '🥓 脂肪', val: 16, color: '#FDBA74' },
+                    { name: '🦴 盐类', val: 6, color: '#CBD5E1' }
+                ]
+            }
+        };
+
+        // --- 2. 核心状态 ---
+        
+        let currentStateKey = 'class';
+        let state = []; 
+        let gameMode = 'free'; 
+        let isWin = false;
+        let challengeTarget = []; 
+
+        // --- 3. 场景与模式控制 ---
+
+        function initApp() {
+            changeScenario('class', true);
+            animateLoop();
+        }
+
+        function changeScenario(key, isFirstLoad = false) {
+            currentStateKey = key;
+            const scenario = SCENARIOS[key];
+            
+            state = scenario.data.map((item, index) => ({
+                id: `item-${index}`,
+                name: item.name,
+                color: item.color,
+                targetVal: item.val,
+                currentVal: isFirstLoad ? item.val : 0
+            }));
+
+            document.getElementById('chart-title').textContent = scenario.title;
+
+            // 如果处于挑战模式切换场景，强制切回探索模式
+            if (!isFirstLoad && gameMode === 'challenge') {
+                document.getElementById('mode-toggle').checked = false;
+                toggleMode();
+            }
+
+            updateUIForMode();
+            triggerAnimation();
+        }
+
+        function toggleMode() {
+            const checkbox = document.getElementById('mode-toggle');
+            gameMode = checkbox.checked ? 'challenge' : 'free';
+            
+            const body = document.body;
+            const instruction = document.getElementById('instruction-box');
+            const ghostLayer = document.getElementById('ghost-layer');
+            const freeLabel = document.getElementById('label-free');
+            const challengeLabel = document.getElementById('label-challenge');
+            const select = document.getElementById('scenario-select');
+
+            if (gameMode === 'challenge') {
+                body.classList.add('mode-challenge');
+                instruction.innerHTML = '<strong>数据侦探：</strong> 匹配灰色圆环上的 <span class="bg-slate-200 px-1 rounded font-bold text-slate-600">目标 %</span>';
+                instruction.className = "bg-indigo-100 text-indigo-800 text-xs p-2.5 rounded-lg border border-indigo-200 shadow-inner";
+                ghostLayer.classList.remove('opacity-0');
+                
+                freeLabel.className = "text-slate-400 transition-colors";
+                challengeLabel.className = "text-indigo-600 font-bold transition-colors";
+                select.disabled = true;
+                select.parentElement.classList.add('opacity-50', 'pointer-events-none');
+
+                nextLevel(); // 生成新关卡
+
+            } else {
+                body.classList.remove('mode-challenge');
+                instruction.innerHTML = '试着调整数字，观察饼图变化。';
+                instruction.className = "bg-blue-50 text-blue-700 text-xs p-2.5 rounded-lg border border-blue-100";
+                ghostLayer.classList.add('opacity-0');
+                
+                freeLabel.className = "text-indigo-600 font-bold transition-colors";
+                challengeLabel.className = "text-slate-400 transition-colors";
+                select.disabled = false;
+                select.parentElement.classList.remove('opacity-50', 'pointer-events-none');
+
+                changeScenario(currentStateKey);
+            }
+        }
+
+        // --- 核心修复：动态生成目标逻辑 ---
+        function nextLevel() {
+            isWin = false;
+            document.getElementById('win-modal').classList.add('hidden');
+            
+            // 1. 获取有效分类 (排除 "无" 占位符)
+            const activeItems = state.filter(s => s.name !== '∅ 无');
+            const n = activeItems.length; // 有效分类数量 (3 或 4)
+
+            // 2. 动态生成整齐的随机比例 (5% 的倍数)
+            // 原理：将 100% 视为 20 个 5% 的筹码
+            // 算法：n 个数之和为 20，且每个数 >= 1 (确保不出现 0% 的目标)
+            
+            if (n === 0) return;
+
+            let slots = new Array(n).fill(1); // 给每个分类先分 1 个筹码 (5%)
+            let remainingChips = 20 - n; // 剩余筹码数
+
+            // 随机分配剩余筹码
+            for (let i = 0; i < remainingChips; i++) {
+                const randomIndex = Math.floor(Math.random() * n);
+                slots[randomIndex]++;
+            }
+
+            // 将筹码转换为比率 (0.05, 0.25 ...)
+            const ratios = slots.map(chips => chips * 0.05);
+
+            // 3. 将生成的比率分配给 Challenge Target
+            // 需要维护一个 ratio 索引，跳过 "无" 占位符
+            let ratioIndex = 0;
+            challengeTarget = state.map(item => {
+                if (item.name === '∅ 无') {
+                    return { id: item.id, ratio: 0 };
+                } else {
+                    const r = ratios[ratioIndex++];
+                    return { id: item.id, ratio: r };
+                }
+            });
+
+            // 4. 重置用户输入为 1 (避免 0 消失难操作)
+            state.forEach(item => {
+                if (item.name !== '∅ 无') item.targetVal = 1;
+                else item.targetVal = 0;
+            });
+            
+            updateUIForMode();
+            drawGhostChart();
+            triggerAnimation();
+        }
+
+        // --- 4. UI 渲染 (卡片式布局) ---
+
+        function updateUIForMode() {
+            const container = document.getElementById('controls-container');
+            const progressBar = document.getElementById('progress-bar');
+            
+            container.innerHTML = '';
+            progressBar.innerHTML = '';
+
+            state.forEach(item => {
+                if (item.name === '∅ 无') return;
+
+                // 创建卡片
+                const card = document.createElement('div');
+                const bgTint = item.color + '20'; 
+                card.className = "rounded-xl p-3 border border-transparent transition-all duration-200 hover:shadow-md";
+                card.style.backgroundColor = bgTint; 
+
+                const percentDisplay = gameMode === 'challenge' 
+                    ? `<span class="text-2xl font-bold text-slate-300">?</span>`
+                    : `<span id="percent-${item.id}" class="text-lg font-bold" style="color: ${item.color}">0%</span>`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full shadow-sm ring-1 ring-white/50" style="background-color: ${item.color}"></div>
+                            <span class="font-bold text-slate-700 text-sm truncate max-w-[120px]" title="${item.name}">${item.name}</span>
+                        </div>
+                        ${percentDisplay}
+                    </div>
+
+                    <div class="flex items-center bg-white/60 rounded-lg p-1 shadow-sm">
+                        <button class="btn-action flex-1 h-9 rounded-md bg-white hover:bg-slate-50 text-slate-600 font-bold text-lg transition-colors shadow-sm border border-slate-100 active:scale-95" 
+                                onclick="updateValue('${item.id}', -1)">−</button>
+                        
+                        <input type="number" 
+                               id="input-${item.id}"
+                               class="w-14 text-center font-mono font-bold text-lg bg-transparent outline-none text-slate-800" 
+                               value="${item.targetVal}" 
+                               onchange="updateValue('${item.id}', this.value, true)"
+                               min="0">
+
+                        <button class="btn-action flex-1 h-9 rounded-md bg-white hover:bg-slate-50 text-slate-600 font-bold text-lg transition-colors shadow-sm border border-slate-100 active:scale-95" 
+                                onclick="updateValue('${item.id}', 1)">+</button>
+                    </div>
+                `;
+                container.appendChild(card);
+
+                // 进度条片段
+                const barSegment = document.createElement('div');
+                barSegment.id = `bar-${item.id}`;
+                barSegment.style.backgroundColor = item.color;
+                barSegment.style.width = '0%';
+                barSegment.style.height = '100%';
+                barSegment.style.transition = 'width 0.5s ease';
+                if(gameMode === 'challenge') barSegment.style.opacity = '0.5';
+                progressBar.appendChild(barSegment);
+            });
+        }
+
+        function updateValue(id, change, isDirectInput = false) {
+            if (isWin && gameMode === 'challenge') return;
+
+            const item = state.find(x => x.id === id);
+            if (!item) return;
+
+            let newValue = isDirectInput ? parseInt(change) : item.targetVal + change;
+            if (newValue < 0) newValue = 0;
+            if (isNaN(newValue)) newValue = 0;
+
+            item.targetVal = newValue;
+            const inputEl = document.getElementById(`input-${id}`);
+            if (inputEl) inputEl.value = newValue;
+            
+            triggerAnimation();
+        }
+
+        // --- 5. 动画循环 & 判定 ---
+
+        let isAnimating = false;
+        function triggerAnimation() {
+            if (!isAnimating) {
+                isAnimating = true;
+                requestAnimationFrame(animateLoop);
+            }
+        }
+
+        function animateLoop() {
+            let hasChanges = false;
+            const easeFactor = 0.15; 
+
+            state.forEach(item => {
+                const diff = item.targetVal - item.currentVal;
+                if (Math.abs(diff) < 0.01) {
+                    item.currentVal = item.targetVal;
+                } else {
+                    item.currentVal += diff * easeFactor;
+                    hasChanges = true;
+                }
+            });
+
+            renderChart();
+            updateStats();
+            
+            if (gameMode === 'challenge' && !hasChanges) {
+                checkWinCondition();
+            }
+
+            if (hasChanges) {
+                requestAnimationFrame(animateLoop);
+            } else {
+                isAnimating = false;
+            }
+        }
+
+        function checkWinCondition() {
+            if (isWin) return;
+
+            const total = state.reduce((sum, item) => sum + item.currentVal, 0);
+            if (total === 0) return;
+
+            let allMatch = true;
+            state.forEach(item => {
+                if (item.name === '∅ 无') return;
+                const userRatio = item.currentVal / total;
+                const targetObj = challengeTarget.find(t => t.id === item.id);
+                // 容差 1.5%
+                if (Math.abs(userRatio - targetObj.ratio) > 0.015) {
+                    allMatch = false;
+                }
+            });
+
+            if (allMatch) {
+                isWin = true;
+                fireConfetti();
+                setTimeout(() => {
+                    document.getElementById('win-modal').classList.remove('hidden');
+                }, 500);
+            }
+        }
+
+        function updateStats() {
+            const total = state.reduce((sum, item) => sum + item.currentVal, 0);
+            document.getElementById('total-display').textContent = Math.round(state.reduce((sum, item) => sum + item.targetVal, 0));
+
+            state.forEach(item => {
+                const percent = total === 0 ? 0 : (item.currentVal / total * 100);
+                
+                if (gameMode === 'free') {
+                    const el = document.getElementById(`percent-${item.id}`);
+                    if(el) el.textContent = Math.round(percent) + '%';
+                }
+                
+                const bar = document.getElementById(`bar-${item.id}`);
+                if(bar) bar.style.width = percent + '%';
+            });
+        }
+
+        // --- 6. 绘图逻辑 ---
+
+        function drawGhostChart() {
+            const group = document.getElementById('ghost-layer');
+            group.innerHTML = '';
+            
+            if (gameMode !== 'challenge') return;
+
+            let cumulativeAngle = 0;
+            const radius = 225; 
+
+            challengeTarget.forEach(target => {
+                if (target.ratio <= 0.01) return; 
+
+                const sliceAngle = target.ratio * 360;
+                const startAngle = cumulativeAngle;
+                const endAngle = cumulativeAngle + sliceAngle;
+                
+                const pathData = describeArc(0, 0, radius, startAngle, endAngle);
+                const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                pathEl.setAttribute("d", pathData);
+                pathEl.setAttribute("class", "ghost-sector");
+                pathEl.setAttribute("stroke", "#f8fafc"); 
+                group.appendChild(pathEl);
+
+                // 目标标签
+                const labelAngle = startAngle + sliceAngle / 2;
+                const labelPos = polarToCartesian(0, 0, radius + 30, labelAngle);
+                
+                const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                textEl.setAttribute("x", labelPos.x);
+                textEl.setAttribute("y", labelPos.y);
+                textEl.setAttribute("class", "ghost-label");
+                
+                // > 4% 才显示标签，避免重叠
+                if (target.ratio > 0.04) {
+                    textEl.textContent = "目标: " + Math.round(target.ratio * 100) + "%";
+                    group.appendChild(textEl);
+                }
+
+                cumulativeAngle += sliceAngle;
+            });
+        }
+
+        function renderChart() {
+            const pathsGroup = document.getElementById('chart-paths');
+            const labelsGroup = document.getElementById('chart-labels');
+            
+            pathsGroup.innerHTML = '';
+            labelsGroup.innerHTML = '';
+
+            const total = state.reduce((sum, item) => sum + item.currentVal, 0);
+            let cumulativeAngle = 0;
+
+            if (total === 0) {
+                pathsGroup.innerHTML = `<circle cx="0" cy="0" r="200" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="5,5"/>`;
+                if(gameMode === 'free') {
+                    pathsGroup.innerHTML += `<text x="0" y="0" text-anchor="middle" dominant-baseline="middle" fill="#94a3b8" font-size="16">暂无数据</text>`;
+                }
+                return;
+            }
+
+            state.forEach(item => {
+                if (item.currentVal <= 0.1) return;
+
+                const sliceAngle = (item.currentVal / total) * 360;
+                const startAngle = cumulativeAngle;
+                const endAngle = cumulativeAngle + sliceAngle;
+                const radius = 200;
+
+                const pathData = describeArc(0, 0, radius, startAngle, endAngle);
+                const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                pathEl.setAttribute("d", pathData);
+                pathEl.setAttribute("fill", item.color);
+                pathEl.setAttribute("class", "sector");
+
+                const midAngleRad = (startAngle + sliceAngle / 2 - 90) * Math.PI / 180;
+                const hoverDist = 15;
+                const transX = Math.cos(midAngleRad) * hoverDist;
+                const transY = Math.sin(midAngleRad) * hoverDist;
+
+                pathEl.addEventListener('mouseenter', function() {
+                    this.style.transform = `translate(${transX}px, ${transY}px)`;
+                });
+                pathEl.addEventListener('mouseleave', function() {
+                    this.style.transform = `translate(0px, 0px)`;
+                });
+
+                pathsGroup.appendChild(pathEl);
+
+                if (sliceAngle > 15) {
+                    const labelRadius = radius * 0.65;
+                    const labelAngle = startAngle + sliceAngle / 2;
+                    const labelPos = polarToCartesian(0, 0, labelRadius, labelAngle);
+
+                    const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    textEl.setAttribute("x", labelPos.x);
+                    textEl.setAttribute("y", labelPos.y);
+                    textEl.setAttribute("class", "label");
+                    
+                    const tspanName = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    tspanName.textContent = item.name.includes(' ') ? item.name.split(' ')[1] : item.name;
+                    tspanName.setAttribute("x", labelPos.x);
+                    tspanName.setAttribute("dy", gameMode === 'free' ? "-0.4em" : "0.3em");
+                    
+                    textEl.appendChild(tspanName);
+
+                    if (gameMode === 'free') {
+                        const percentText = Math.round((item.currentVal / total) * 100) + '%';
+                        const tspanPercent = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        tspanPercent.textContent = percentText;
+                        tspanPercent.setAttribute("x", labelPos.x);
+                        tspanPercent.setAttribute("dy", "1.2em");
+                        tspanPercent.setAttribute("font-size", "12px");
+                        tspanPercent.setAttribute("opacity", "0.9");
+                        textEl.appendChild(tspanPercent);
+                    }
+
+                    labelsGroup.appendChild(textEl);
+                }
+
+                cumulativeAngle += sliceAngle;
+            });
+        }
+
+        // --- 7. 数学工具 ---
+
+        function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+            const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+            return {
+                x: centerX + (radius * Math.cos(angleInRadians)),
+                y: centerY + (radius * Math.sin(angleInRadians))
+            };
+        }
+
+        function describeArc(x, y, radius, startAngle, endAngle) {
+            if (endAngle - startAngle >= 360) {
+                 return [
+                    "M", x, y - radius,
+                    "A", radius, radius, 0, 1, 1, x, y + radius,
+                    "A", radius, radius, 0, 1, 1, x, y - radius,
+                    "Z"
+                ].join(" ");
+            }
+
+            const start = polarToCartesian(x, y, radius, endAngle);
+            const end = polarToCartesian(x, y, radius, startAngle);
+            const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+            return [
+                "M", x, y,
+                "L", start.x, start.y,
+                "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y,
+                "Z"
+            ].join(" ");
+        }
+
+        // --- 8. 礼花特效 ---
+        
+        function fireConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const particleCount = 150;
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: (Math.random() - 0.5) * 15,
+                    size: Math.random() * 8 + 4,
+                    color: ['#FF8080', '#87CEFA', '#76E0AD', '#FCD34D', '#A78BFA'][Math.floor(Math.random() * 5)],
+                    life: 100,
+                    gravity: 0.2
+                });
+            }
+
+            function updateConfetti() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let active = false;
+                particles.forEach(p => {
+                    if (p.life > 0) {
+                        active = true;
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += p.gravity;
+                        p.life--;
+                        p.size *= 0.96;
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+                if (active) requestAnimationFrame(updateConfetti);
+                else ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            updateConfetti();
+        }
+
+        window.addEventListener('resize', () => {
+             const canvas = document.getElementById('confetti-canvas');
+             canvas.width = window.innerWidth;
+             canvas.height = window.innerHeight;
+        });
+
+        // 启动
+        initApp();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圆的面积公式推导演示</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f9ff;
+            user-select: none; /* 防止拖动时选中文字 */
+        }
+        canvas {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-radius: 8px;
+            background-color: white;
+            cursor: pointer;
+        }
+        .control-panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        /* 自定义滑块样式 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e2e8f0;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: background .15s ease-in-out;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- 标题区域 -->
+    <div class="text-center mb-4">
+        <h1 class="text-3xl font-bold text-gray-800">圆的面积公式推导</h1>
+        <p class="text-gray-600 mt-1 text-sm">拖动滑块，观察圆如何变形成近似的长方形</p>
+    </div>
+
+    <!-- 画布区域 -->
+    <div class="relative w-full max-w-4xl">
+        <canvas id="mathCanvas" width="800" height="400" class="w-full h-auto"></canvas>
+    </div>
+
+    <!-- 控制面板 -->
+    <div class="control-panel w-full max-w-4xl mt-6 p-6 flex flex-col md:flex-row gap-8 items-center justify-between">
+        
+        <!-- 控制器 1: 切分数量 -->
+        <div class="w-full md:w-1/2">
+            <div class="flex justify-between mb-2">
+                <label class="font-bold text-gray-700">步骤1: 切分份数 (N)</label>
+                <span id="sliceCountDisplay" class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">16 份</span>
+            </div>
+            <input type="range" id="sliceSlider" min="4" max="100" value="16" step="2">
+            <p class="text-xs text-gray-500 mt-1">份数越多，拼成的图形越接近长方形</p>
+        </div>
+
+        <!-- 控制器 2: 变形动画 -->
+        <div class="w-full md:w-1/2">
+            <div class="flex justify-between mb-2">
+                <label class="font-bold text-gray-700">步骤2: 变形动画</label>
+                <span id="animDisplay" class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded">圆</span>
+            </div>
+            <input type="range" id="animSlider" min="0" max="100" value="0" step="1">
+            <p class="text-xs text-gray-500 mt-1">向右拖动，将扇形展开拼合</p>
+        </div>
+
+    </div>
+
+<script>
+/**
+ * 核心逻辑说明：
+ * 1. 定义圆的状态（左侧）和长方形的状态（右侧）。
+ * 2. 计算每一个扇形（Sector）在两种状态下的位置（x, y）和旋转角度（rotation）。
+ * 3. 使用线性插值（Lerp）根据 `animSlider` 的值在两种状态间过渡。
+ */
+
+// --- 配置参数 ---
+const canvas = document.getElementById('mathCanvas');
+const ctx = canvas.getContext('2d');
+
+// 状态变量
+let numSlices = 16;   // 切分数量
+let progress = 0;     // 变形进度 (0 = 圆, 1 = 长方形)
+const radius = 120;   // 圆的半径
+const circleCenter = { x: 200, y: 200 }; // 左侧圆心位置
+const rectStart = { x: 420, y: 260 };    // 右侧长方形起始位置
+
+// DOM 元素引用
+const sliceSlider = document.getElementById('sliceSlider');
+const sliceDisplay = document.getElementById('sliceCountDisplay');
+const animSlider = document.getElementById('animSlider');
+const animDisplay = document.getElementById('animDisplay');
+
+// --- 辅助函数：线性插值 ---
+// 用于计算从 start 到 end 之间，进度为 t (0-1) 时的数值
+function lerp(start, end, t) {
+    return start + (end - start) * t;
+}
+
+// --- 绘图核心函数 ---
+function draw() {
+    // 1. 清空画布
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 2. 计算基础参数
+    const anglePerSlice = (Math.PI * 2) / numSlices; // 每个扇形的角度
+    const halfAngle = anglePerSlice / 2;
+    
+    // 长方形参数计算
+    // 总底边长 = 圆周长的一半 = πr
+    const totalRectWidth = Math.PI * radius; 
+    // 单个扇形在长方形排列时的水平跨度
+    const sliceWidthInRect = totalRectWidth / (numSlices / 2);
+
+    // 3. 循环绘制每一个扇形
+    for (let i = 0; i < numSlices; i++) {
+        // --- A. 计算【圆形状态】下的属性 ---
+        // 角度：第 i 个扇形的中心角度
+        const startAngle = i * anglePerSlice; 
+        // 位置：都在圆心
+        const startX = circleCenter.x;
+        const startY = circleCenter.y;
+        // 旋转：按照原本在圆中的角度旋转
+        const startRotation = startAngle;
+
+        // --- B. 计算【长方形状态】下的属性 ---
+        // 我们将扇形交错排列：偶数索引在下，奇数索引在上（或者反之）
+        // i % 2 === 0: 偶数个，尖端朝上（作为下底）
+        // i % 2 === 1: 奇数个，尖端朝下（作为上盖）
+        
+        const isBottomRow = (i % 2 === 0);
+        
+        // 水平位置：简单线性排列
+        // 我们希望第0个和第1个咬合在最左边
+        // 为了视觉美观，我们需要稍微调整一下偏移，让它们完美咬合
+        // 第 i 个扇形的水平位置大致是 i/2 * 宽度
+        const endX = rectStart.x + (i * 0.5 * sliceWidthInRect);
+        
+        let endY, endRotation;
+
+        if (isBottomRow) {
+            // 下排扇形：尖端朝上
+            endY = rectStart.y; 
+            endRotation = -Math.PI / 2; // -90度，尖端垂直向上
+        } else {
+            // 上排扇形：尖端朝下
+            // y轴位置需要减去半径（因为尖端在下，圆弧在上，实际上是倒扣）
+            // 为了咬合，高度差应该是半径长度
+            endY = rectStart.y - radius;
+            endRotation = Math.PI / 2;  // 90度，尖端垂直向下
+        }
+
+        // --- C. 混合属性 (插值) ---
+        // 使用 easing 函数让动画更自然 (Ease-in-out)
+        const easeT = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+        
+        const currentX = lerp(startX, endX, easeT);
+        const currentY = lerp(startY, endY, easeT);
+        
+        // 旋转角度处理需要小心，确保走最短路径，这里简单的 lerp 足够，因为没有跨越 PI/-PI 边界的大跳跃
+        const currentRotation = lerp(startRotation, endRotation, easeT);
+
+        // --- D. 执行绘制 ---
+        ctx.save();
+        ctx.translate(currentX, currentY);
+        ctx.rotate(currentRotation);
+
+        // 设置颜色：交替颜色方便观察拼合
+        // 红色系和蓝色系
+        if (i < numSlices / 2) {
+             // 为了展示“一半圆周”，通常把上半圆涂一个色，下半圆涂一个色更直观
+             // 但为了展示长方形的咬合，红蓝交替（奇偶）更清晰
+             // 这里采用：红/蓝交替，更符合“锯齿”拼合的视觉
+             ctx.fillStyle = (i % 2 === 0) ? '#3b82f6' : '#ef4444'; // 蓝 / 红
+        } else {
+             ctx.fillStyle = (i % 2 === 0) ? '#2563eb' : '#dc2626'; // 深蓝 / 深红 (加深一点增加层次感)
+        }
+        
+        // 绘制扇形路径
+        ctx.beginPath();
+        ctx.moveTo(0, 0); // 扇形尖端（圆心）
+        // 绘制圆弧：注意 arc 的角度是相对于当前 rotate 后的坐标系的
+        // 为了让尖端指向正前方（X轴），我们需要画 -half ~ +half
+        ctx.arc(0, 0, radius, -halfAngle, halfAngle);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    // 4. 绘制文字标注 (仅当接近长方形状态时显示)
+    if (progress > 0.8) {
+        ctx.globalAlpha = (progress - 0.8) * 5; // 淡入效果
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold 16px Arial';
+        
+        // 宽 (半径)
+        const labelX_R = rectStart.x - 20;
+        const labelY_R = rectStart.y - radius / 2;
+        
+        // 绘制括号线 (简单的垂直线)
+        ctx.beginPath();
+        ctx.moveTo(rectStart.x - 10, rectStart.y);
+        ctx.lineTo(rectStart.x - 10, rectStart.y - radius);
+        ctx.strokeStyle = 'black';
+        ctx.stroke();
+        
+        ctx.fillText('宽 = r', rectStart.x - 70, labelY_R + 5);
+
+        // 长 (πr)
+        const labelX_L = rectStart.x + totalRectWidth / 2;
+        const labelY_L = rectStart.y + 30;
+        
+        // 绘制括号线 (水平)
+        ctx.beginPath();
+        ctx.moveTo(rectStart.x, rectStart.y + 10);
+        ctx.lineTo(rectStart.x + totalRectWidth, rectStart.y + 10);
+        ctx.stroke();
+
+        ctx.fillText('长 = πr (圆周长的一半)', labelX_L - 80, labelY_L);
+        
+        // 提示
+        if(numSlices < 50) {
+            ctx.fillStyle = '#dc2626';
+            ctx.font = '14px Arial';
+            ctx.fillText('尝试增加份数，使边缘更直！', labelX_L - 90, labelY_L + 25);
+        }
+
+        ctx.globalAlpha = 1.0;
+    }
+    
+    // 5. 绘制静态标签（左侧圆）
+    if (progress < 0.2) {
+        ctx.globalAlpha = 1.0 - (progress * 5); // 淡出
+        ctx.fillStyle = 'black';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText('半径 r', circleCenter.x + 10, circleCenter.y - radius/2);
+        // 画个半径线
+        ctx.beginPath();
+        ctx.moveTo(circleCenter.x, circleCenter.y);
+        ctx.lineTo(circleCenter.x, circleCenter.y - radius);
+        ctx.strokeStyle = 'black';
+        ctx.setLineDash([5, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+// --- 事件监听 ---
+
+// 1. 份数滑块
+sliceSlider.addEventListener('input', (e) => {
+    // 确保是偶数，方便平分上下两排
+    let val = parseInt(e.target.value);
+    if (val % 2 !== 0) val += 1; 
+    
+    numSlices = val;
+    sliceDisplay.textContent = `${numSlices} 份`;
+    
+    // 重绘
+    draw();
+});
+
+// 2. 动画滑块
+animSlider.addEventListener('input', (e) => {
+    progress = parseInt(e.target.value) / 100;
+    
+    // 更新标签文字
+    if (progress === 0) animDisplay.textContent = "圆形";
+    else if (progress === 1) animDisplay.textContent = "近似长方形";
+    else animDisplay.textContent = "变形中...";
+    
+    // 重绘
+    draw();
+});
+
+// --- 初始化 ---
+// 初始绘制一次
+draw();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { config } from '../config.js';
+import { query } from '../db.js';
+
+export function normalizeResource(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    category: row.category,
+    grade: row.grade,
+    image_url: row.image_url,
+    description: row.description,
+    file_path: row.file_path,
+    route_path: row.route_path,
+    resource_type: row.resource_type,
+    created_at: row.created_at,
+  };
+}
+
+export function normalizeTeachingResource(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    zone: row.zone,
+    file_url: row.file_url,
+    file_type: row.file_type,
+    created_at: row.created_at,
+  };
+}
+
+export function inferContentType(filename, fallback = 'application/octet-stream') {
+  const ext = path.extname(filename).toLowerCase();
+  if (ext === '.html' || ext === '.htm') return 'text/html; charset=utf-8';
+  if (ext === '.pdf') return 'application/pdf';
+  if (ext === '.doc') return 'application/msword';
+  if (ext === '.docx') {
+    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  }
+  if (ext === '.ppt') return 'application/vnd.ms-powerpoint';
+  if (ext === '.pptx') {
+    return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  }
+  if (ext === '.webp') return 'image/webp';
+  if (ext === '.png') return 'image/png';
+  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+  return fallback;
+}
+
+export function buildHtmlProxyAllowlist() {
+  const hosts = new Set(config.htmlProxyAllowlist);
+
+  for (const value of [config.publicAssetBaseUrl, config.s3PublicBaseUrl]) {
+    if (!value) continue;
+    try {
+      hosts.add(new URL(value).host);
+    } catch {
+      continue;
+    }
+  }
+
+  return hosts;
+}
+
+export function isAllowedProxyUrl(rawUrl, allowHosts) {
+  try {
+    const target = new URL(rawUrl);
+
+    if (rawUrl.startsWith('/uploads/')) return true;
+    if (allowHosts.size === 0) return config.nodeEnv !== 'production';
+
+    return allowHosts.has(target.host);
+  } catch {
+    return rawUrl.startsWith('/uploads/');
+  }
+}
+
+export async function fetchHealth() {
+  const result = {
+    api: {
+      status: 'success',
+      message: 'API server is running',
+      storageDriver: config.storageDriver,
+    },
+    auth: {
+      status: config.adminPassword ? 'success' : 'error',
+      message: config.adminPassword ? 'ADMIN_PASSWORD configured' : 'ADMIN_PASSWORD missing',
+    },
+    database: {
+      status: 'loading',
+      message: 'Checking database...',
+    },
+    storage: {
+      status: 'loading',
+      message: 'Checking storage...',
+    },
+  };
+
+  try {
+    const resources = await query('SELECT COUNT(*)::int AS count FROM resources');
+    const teaching = await query('SELECT COUNT(*)::int AS count FROM teaching_resources');
+    result.database = {
+      status: 'success',
+      message: 'PostgreSQL connection is healthy',
+      resourcesCount: resources.rows[0]?.count ?? 0,
+      teachingCount: teaching.rows[0]?.count ?? 0,
+    };
+  } catch (error) {
+    result.database = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Database check failed',
+    };
+  }
+
+  try {
+    if (config.storageDriver === 'local') {
+      await fs.access(config.uploadDir);
+      result.storage = {
+        status: 'success',
+        message: `Local storage ready at ${config.uploadDir}`,
+      };
+    } else {
+      result.storage = {
+        status: 'success',
+        message: `S3 storage configured for bucket ${config.s3Bucket}`,
+      };
+    }
+  } catch (error) {
+    result.storage = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Storage check failed',
+    };
+  }
+
+  return result;
+}

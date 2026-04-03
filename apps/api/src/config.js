@@ -1,0 +1,98 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '..');
+const envFilePath = path.join(rootDir, '.env');
+
+if (fs.existsSync(envFilePath)) {
+  const dotenv = await import('dotenv');
+  dotenv.config({ path: envFilePath, override: false });
+}
+
+function required(name) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+function optionalInt(name, fallback) {
+  const value = process.env[name];
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+function optionalBoolean(name, fallback) {
+  const value = process.env[name];
+  if (!value) return fallback;
+  return value === 'true';
+}
+
+export const config = {
+  nodeEnv: process.env.NODE_ENV || 'development',
+  rootDir,
+  port: optionalInt('PORT', 3001),
+  host: process.env.HOST || '0.0.0.0',
+  apiBaseUrl: process.env.API_BASE_URL || '',
+  cookieSecure: optionalBoolean('COOKIE_SECURE', process.env.NODE_ENV === 'production'),
+  corsOrigins: (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean),
+  adminPassword: process.env.ADMIN_PASSWORD || '',
+  jwtSecret: process.env.JWT_SECRET || '',
+  databaseUrl: process.env.DATABASE_URL || '',
+  pgHost: process.env.PGHOST || '',
+  pgPort: optionalInt('PGPORT', 5432),
+  pgUser: process.env.PGUSER || '',
+  pgPassword: process.env.PGPASSWORD || '',
+  pgDatabase: process.env.PGDATABASE || '',
+  storageDriver: (process.env.STORAGE_DRIVER || 'local').toLowerCase(),
+  uploadDir: process.env.UPLOAD_DIR || path.join(rootDir, 'uploads'),
+  publicAssetBaseUrl: process.env.PUBLIC_ASSET_BASE_URL || '',
+  s3Endpoint: process.env.S3_ENDPOINT || '',
+  s3Region: process.env.S3_REGION || 'ap-guangzhou',
+  s3Bucket: process.env.S3_BUCKET || '',
+  s3PublicBaseUrl: process.env.S3_PUBLIC_BASE_URL || '',
+  s3AccessKeyId: process.env.S3_ACCESS_KEY_ID || '',
+  s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
+  s3ForcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
+  htmlProxyAllowlist: (process.env.HTML_PROXY_ALLOWLIST || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean),
+};
+
+export function validateRuntimeConfig() {
+  if (!config.adminPassword) {
+    throw new Error('Missing required environment variable: ADMIN_PASSWORD');
+  }
+
+  if (!config.jwtSecret) {
+    throw new Error('Missing required environment variable: JWT_SECRET');
+  }
+
+  if (config.nodeEnv === 'production' && config.corsOrigins.length === 0) {
+    throw new Error('Missing required environment variable: CORS_ORIGINS');
+  }
+
+  if (!config.databaseUrl && !(config.pgHost && config.pgUser && config.pgDatabase)) {
+    throw new Error(
+      'Missing PostgreSQL configuration. Set DATABASE_URL or PGHOST/PGUSER/PGPASSWORD/PGDATABASE.'
+    );
+  }
+
+  if (config.storageDriver === 's3') {
+    required('S3_BUCKET');
+    required('S3_ACCESS_KEY_ID');
+    required('S3_SECRET_ACCESS_KEY');
+    if (!config.s3Endpoint && !config.s3PublicBaseUrl) {
+      throw new Error('S3 storage requires S3_ENDPOINT or S3_PUBLIC_BASE_URL');
+    }
+  }
+}
