@@ -1,0 +1,260 @@
+[
+  {
+    "route_path": "/water",
+    "source_title": "正比例实验室（注水画图）",
+    "title": "正比例注水实验室",
+    "description": "通过注水高度和图像联动变化，帮助学生理解正比例关系。"
+  },
+  {
+    "route_path": "/change2",
+    "source_title": "找零钱大作战（高年级版）",
+    "title": "高年级找零训练场",
+    "description": "围绕买卖找零和综合运算闯关，帮助学生提升应用计算能力。"
+  },
+  {
+    "route_path": "/change1",
+    "source_title": "找零钱大作战（低年级）",
+    "title": "低年级找零训练场",
+    "description": "通过买卖找零情境互动，帮助学生练习人民币计算与口算。"
+  },
+  {
+    "route_path": "/cone",
+    "source_title": "圆锥的认识",
+    "title": "圆锥观察台",
+    "description": "围绕圆锥的结构、展开与特征观察，帮助学生建立立体图形认识。"
+  },
+  {
+    "route_path": "/invarea",
+    "source_title": "反比例实验室（面积模型）",
+    "title": "反比例面积实验室",
+    "description": "通过恒定面积模型联动变化，帮助学生理解反比例关系。"
+  },
+  {
+    "route_path": "/fracmul",
+    "source_title": "分数乘法可视化",
+    "title": "分数乘法推演台",
+    "description": "通过面积模型分步演示，帮助学生理解分数乘法算理。"
+  },
+  {
+    "route_path": "/mathfun",
+    "source_title": "全能数学消消乐",
+    "title": "数学消消乐训练场",
+    "description": "围绕多类基础题型闯关练习，帮助学生巩固计算与判断能力。"
+  },
+  {
+    "route_path": "/wheel",
+    "source_title": "为什么车轮是圆的",
+    "title": "车轮滚动观察台",
+    "description": "通过滚动轨迹与重心变化对比，帮助学生理解车轮做成圆形的原因。"
+  },
+  {
+    "route_path": "/jttl",
+    "source_title": "鸡兔同笼",
+    "title": "鸡兔同笼推理站",
+    "description": "通过数量假设与列表推演，帮助学生掌握鸡兔同笼解题思路。"
+  },
+  {
+    "route_path": "/sd",
+    "source_title": "趣味数独",
+    "title": "数独推理训练场",
+    "description": "围绕数字逻辑推理闯关练习，帮助学生提升观察与判断能力。"
+  },
+  {
+    "route_path": "/bmts",
+    "source_title": "表面涂色的正方体",
+    "title": "正方体涂色观察台",
+    "description": "通过拆分顶点、棱和面规律，帮助学生理解涂色正方体问题。"
+  },
+  {
+    "route_path": "/bfs",
+    "source_title": "百分数的意义",
+    "title": "百分数观察台",
+    "description": "通过百格图和生活模型联动，帮助学生理解百分数的意义。"
+  },
+  {
+    "route_path": "/zk",
+    "source_title": "百分数折扣成数",
+    "title": "折扣成数换算台",
+    "description": "通过折扣、成数与百分数互化，帮助学生建立统一数量关系。"
+  },
+  {
+    "route_path": "/bjss40",
+    "source_title": "班级树4.0",
+    "title": "班级成长观察器",
+    "description": "通过成长任务和可视化反馈，帮助教师开展班级激励与日常管理。"
+  },
+  {
+    "route_path": "/bd",
+    "source_title": "比的意义",
+    "title": "比的意义实验室",
+    "description": "通过配比操作与数量比较，帮助学生理解比的意义。"
+  },
+  {
+    "route_path": "/bldyy",
+    "source_title": "比例的意义",
+    "title": "比例关系实验室",
+    "description": "通过成组数量变化观察，帮助学生理解比例的意义。"
+  },
+  {
+    "route_path": "/zhihuishu",
+    "source_title": "智慧树",
+    "title": "班级智慧树",
+    "description": "通过成长任务和互动反馈展示班级表现，帮助教师开展激励管理。"
+  },
+  {
+    "route_path": "/xzt",
+    "source_title": "旋转体可视化",
+    "title": "旋转体生成观察台",
+    "description": "通过平面图形旋转成形过程，帮助学生理解旋转体的生成规律。"
+  },
+  {
+    "route_path": "/qzfs",
+    "source_title": "探索负数的世界",
+    "title": "负数世界观察台",
+    "description": "通过多维场景与数轴变化联动，帮助学生理解负数的意义。"
+  },
+  {
+    "route_path": "/dz",
+    "source_title": "打折的奥秘",
+    "title": "折扣计算训练场",
+    "description": "通过折扣与现价互动计算，帮助学生掌握折扣问题解法。"
+  },
+  {
+    "route_path": "/pxsbxdsgdzn",
+    "source_title": "平行四边形第四个点在哪",
+    "title": "平行四边形补点实验室",
+    "description": "通过补全第四个顶点的互动验证，帮助学生理解平行四边形性质。"
+  },
+  {
+    "route_path": "/yzc",
+    "source_title": "圆的周长推导",
+    "title": "圆周展开推演台",
+    "description": "通过滚动与展开联动演示，帮助学生理解圆周长公式来源。"
+  },
+  {
+    "route_path": "/yzbm",
+    "source_title": "圆柱表面积推导",
+    "title": "圆柱表面积推演台",
+    "description": "通过展开与拼接演示，帮助学生理解圆柱表面积组成。"
+  },
+  {
+    "route_path": "/yztj",
+    "source_title": "圆柱体积推导",
+    "title": "圆柱体积推演台",
+    "description": "通过转化与比较推演，帮助学生理解圆柱体积公式来源。"
+  },
+  {
+    "route_path": "/yzzk",
+    "source_title": "圆柱展开教学",
+    "title": "圆柱展开观察台",
+    "description": "通过不同切开方式对比，帮助学生认识圆柱展开图。"
+  },
+  {
+    "route_path": "/hbq",
+    "source_title": "黑白棋大师",
+    "title": "黑白棋策略训练场",
+    "description": "通过落子判断与人机对弈练习，帮助学生提升策略思维与全局观察。"
+  },
+  {
+    "route_path": "/hgzwt",
+    "source_title": "喝果汁问题",
+    "title": "果汁配比推理站",
+    "description": "通过浓度变化与数量关系推演，帮助学生理解配比问题。"
+  },
+  {
+    "route_path": "/jdg",
+    "source_title": "吃豆人角度规",
+    "title": "角度捕手训练场",
+    "description": "通过动态角度捕捉互动，帮助学生认识角的大小与变化。"
+  },
+  {
+    "route_path": "/sjs",
+    "source_title": "十进制的世界",
+    "title": "十进制位值观察台",
+    "description": "通过个十百千位值拆分，帮助学生理解十进制计数规律。"
+  },
+  {
+    "route_path": "/ll",
+    "source_title": "利率",
+    "title": "利率计算实验室",
+    "description": "通过理财情境与金额变化计算，帮助学生理解利率与利息关系。"
+  },
+  {
+    "route_path": "/jh",
+    "source_title": "几何画板",
+    "title": "几何探索工坊",
+    "description": "通过自由绘制与关系构造，帮助学生探索几何图形性质。"
+  },
+  {
+    "route_path": "/ds",
+    "source_title": "倒数的认识",
+    "title": "倒数关系实验室",
+    "description": "通过乘积关系与互逆配对，帮助学生理解倒数概念。"
+  },
+  {
+    "route_path": "/wz",
+    "source_title": "位置探索",
+    "title": "数对定位训练场",
+    "description": "通过坐标网格定位练习，帮助学生掌握数对表示方法。"
+  },
+  {
+    "route_path": "/sst",
+    "source_title": "三视图教学",
+    "title": "三视图搭建实验室",
+    "description": "通过积木搭建与视图联动，帮助学生理解三视图。"
+  },
+  {
+    "route_path": "/hrd",
+    "source_title": "三国华容道",
+    "title": "三国华容道闯关场",
+    "description": "通过路径规划与闯关挑战，帮助学生提升空间思维与策略判断。"
+  },
+  {
+    "route_path": "/cftg",
+    "source_title": "长方体切割最大正方体",
+    "title": "长方体切割实验室",
+    "description": "通过切割与拼合对比，帮助学生理解长方体与正方体关系。"
+  },
+  {
+    "route_path": "/nd",
+    "source_title": "魔法药水浓度模拟器",
+    "title": "百分数浓度实验室",
+    "description": "通过药水浓度调配互动，帮助学生理解百分数和配比。"
+  },
+  {
+    "route_path": "/sxt",
+    "source_title": "扇形统计图实验室",
+    "title": "扇形统计实验室",
+    "description": "通过生活数据动态构图，帮助学生理解扇形统计图。"
+  },
+  {
+    "route_path": "/pyxz",
+    "source_title": "平移与旋转工坊",
+    "title": "平移旋转工坊",
+    "description": "通过拖拽与动画变换，帮助学生理解平移与旋转。"
+  },
+  {
+    "route_path": "/tools/scoreboard",
+    "source_title": "小组龙虎榜",
+    "title": "小组积分工具台",
+    "description": "通过即时加减分和排名变化，帮助教师组织课堂竞赛与反馈。"
+  },
+  {
+    "route_path": "/tools/timer",
+    "source_title": "沉浸式倒计时",
+    "title": "课堂计时工具台",
+    "description": "通过大屏倒计时与节奏提醒，帮助教师管理课堂时间。"
+  },
+  {
+    "route_path": "/tools/random-picker",
+    "source_title": "随机点名神器",
+    "title": "课堂点名工具台",
+    "description": "通过随机抽取与名单轮播，帮助教师开展课堂互动。"
+  },
+  {
+    "route_path": "/qybs",
+    "source_title": "奇异博士",
+    "title": "奇异博士闯关场",
+    "description": "通过数学主题闯关与反馈互动，帮助学生提升观察与推理能力。"
+  }
+]

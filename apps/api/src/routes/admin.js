@@ -18,6 +18,9 @@ import {
 
 const loginRateLimiter = createLoginRateLimiter();
 const AI_CATEGORIES = ['数与代数', '图形与几何', '统计与概率', '综合实践', '微课', '习题', '其他'];
+const GAME_CATEGORY = '互动游戏';
+const TOOL_CATEGORY = '互动工具';
+const ALL_RESOURCE_CATEGORIES = [...AI_CATEGORIES, GAME_CATEGORY, TOOL_CATEGORY];
 const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '通用', '拓展'];
 const TEACHING_ZONES = ['standard', 'textbook', 'plan', 'courseware'];
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
@@ -52,7 +55,7 @@ function assertFile(file, allowedExtensions, fieldName) {
 
 function validateUpload(fields, files) {
   const section = fields.section;
-  if (!['ai', 'tools', 'teaching'].includes(section)) {
+  if (!['ai', 'games', 'tools', 'teaching'].includes(section)) {
     throw new Error('section is invalid');
   }
 
@@ -67,6 +70,12 @@ function validateUpload(fields, files) {
   }
 
   if (section === 'tools') {
+    assertNonEmptyString(fields.description, 'description');
+    assertFile(files.htmlFile, HTML_EXTENSIONS, 'htmlFile');
+    assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
+  }
+
+  if (section === 'games') {
     assertNonEmptyString(fields.description, 'description');
     assertFile(files.htmlFile, HTML_EXTENSIONS, 'htmlFile');
     assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
@@ -192,7 +201,7 @@ export async function registerAdminRoutes(app) {
           properties: {
             title: { type: 'string', minLength: 1 },
             description: { type: 'string', minLength: 1 },
-            category: { type: 'string', enum: AI_CATEGORIES },
+            category: { type: 'string', enum: ALL_RESOURCE_CATEGORIES },
             grade: { type: 'string', enum: GRADES },
             image_url: { type: 'string' },
             file_path: { type: ['string', 'null'] },
@@ -250,7 +259,7 @@ export async function registerAdminRoutes(app) {
           properties: {
             title: { type: 'string', minLength: 1 },
             description: { type: 'string', minLength: 1 },
-            category: { type: 'string', enum: [...AI_CATEGORIES, '赋能教学'] },
+            category: { type: 'string', enum: ALL_RESOURCE_CATEGORIES },
             grade: { type: 'string', enum: GRADES },
           },
         },
@@ -481,7 +490,7 @@ export async function registerAdminRoutes(app) {
 
       const section = fields.section;
 
-      if (section === 'ai' || section === 'tools') {
+      if (section === 'ai' || section === 'games' || section === 'tools') {
         const htmlFile = files.htmlFile;
         const coverFile = files.coverFile;
 
@@ -508,8 +517,8 @@ export async function registerAdminRoutes(app) {
           [
             fields.title,
             fields.description || '',
-            section === 'tools' ? '赋能教学' : fields.category,
-            section === 'tools' ? '通用' : fields.grade,
+            section === 'tools' ? TOOL_CATEGORY : section === 'games' ? GAME_CATEGORY : fields.category,
+            section === 'tools' || section === 'games' ? '通用' : fields.grade,
             imageUrl,
             fileUrl,
             null,

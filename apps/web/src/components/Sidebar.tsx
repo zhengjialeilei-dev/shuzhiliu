@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback } from 'react';
-import { Zap, GraduationCap, Hexagon, Sparkles, ThumbsUp, Menu, X } from 'lucide-react';
+import { Zap, GraduationCap, Hexagon, Sparkles, ThumbsUp, Menu, X, Gamepad2 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 
 const MENU_ITEMS = [
   { icon: Sparkles, label: 'AI赋能', path: '/', adminPath: '/admin/upload' },
-  { icon: Zap, label: '互动工具', path: '/empower', adminPath: '/admin/upload' },
+  { icon: Gamepad2, label: '互动游戏', path: '/games', adminPath: '/admin/upload' },
+  { icon: Zap, label: '实用工具', path: '/empower', adminPath: '/admin/upload' },
   { icon: GraduationCap, label: '教学专区', path: '/teaching-zone', adminPath: '/admin/upload' },
   { icon: ThumbsUp, label: '推荐', path: '/recommend', adminPath: '/admin/upload' },
 ];

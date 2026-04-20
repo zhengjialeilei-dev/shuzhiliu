@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>糖果色几何工坊：平移与旋转</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Varela+Round&display=swap');
+
+        :root {
+            --grid-size: 60px;
+            --bg-color: #FFFBF0;
+            --grid-line: #F0EDE5;
+            --player-color: #FF80AB; /* Strawberry Pink */
+            --target-color: #B2DFDB; /* Mint Green */
+            --accent-yellow: #FFD54F;
+            --accent-blue: #4FC3F7;
+        }
+
+        body {
+            font-family: 'Varela Round', 'Zcool KuaiLe', cursive;
+            background-color: #FFF9E6;
+            color: #5D4037;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Candy Grid Background */
+        .candy-grid {
+            width: 840px; /* 14 units */
+            height: 540px; /* 9 units */
+            background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(var(--grid-line) 2px, transparent 2px),
+                linear-gradient(90deg, var(--grid-line) 2px, transparent 2px);
+            background-size: var(--grid-size) var(--grid-size);
+            background-position: -1px -1px;
+            border: 8px solid white;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            position: relative;
+            margin: 0 auto;
+            border-radius: 30px;
+            overflow: hidden;
+        }
+
+        /* Juicy Block Container */
+        .block-container {
+            width: 120px; /* 2 units */
+            height: 120px; /* 2 units */
+            position: absolute;
+            /* Elastic movement: cubic-bezier(0.68, -0.55, 0.265, 1.55) gives the bounce */
+            transition: transform 0.6s cubic-bezier(0.68, -0.6, 0.32, 1.6);
+            z-index: 10;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            pointer-events: none;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            box-sizing: border-box;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+        
+        /* Strawberry Pink Player */
+        .player-block .cell.filled {
+            background: linear-gradient(135deg, #FF80AB, #F06292);
+            box-shadow: inset -4px -4px 0px rgba(0,0,0,0.1), 0 8px 15px rgba(240, 98, 146, 0.3);
+            border: 3px solid white;
+        }
+
+        /* Mint Green Target */
+        .target-block .cell.filled {
+            background-color: rgba(178, 223, 219, 0.4);
+            border: 3px dashed #80CBC4;
+        }
+
+        /* Energy Ball (The Reference Point) */
+        .energy-ball {
+            width: 18px;
+            height: 18px;
+            background: radial-gradient(circle at 30% 30%, #FFF, #FFEA00);
+            border: 2px solid white;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 6px;
+            left: 6px;
+            z-index: 25;
+            box-shadow: 0 0 10px #FFEA00;
+            animation: pulse 1s infinite alternate;
+        }
+        @keyframes pulse {
+            from { transform: scale(1); box-shadow: 0 0 5px #FFEA00; }
+            to { transform: scale(1.3); box-shadow: 0 0 15px #FFEA00; }
+        }
+
+        /* Trajectory Line (Rainbow) */
+        .trail-line {
+            position: absolute;
+            height: 4px;
+            background: linear-gradient(90deg, #FF80AB, #FFD54F, #4FC3F7, #B2DFDB);
+            z-index: 5;
+            opacity: 0.6;
+            border-radius: 2px;
+            transform-origin: left center;
+            pointer-events: none;
+        }
+
+        /* Floating Controls (Glassmorphism) */
+        .control-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            padding: 1.5rem;
+            width: fit-content;
+            margin-top: -30px;
+            z-index: 40;
+        }
+
+        /* 3D Candy Buttons */
+        .btn-candy {
+            padding: 12px 24px;
+            border-radius: 18px;
+            font-weight: bold;
+            color: white;
+            transition: all 0.1s;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+        .btn-candy.yellow { background-color: #FFD54F; border-bottom: 6px solid #FBC02D; }
+        .btn-candy.blue { background-color: #4FC3F7; border-bottom: 6px solid #0288D1; }
+        .btn-candy.green { background-color: #66BB6A; border-bottom: 6px solid #388E3C; }
+        .btn-candy.pink { background-color: #F06292; border-bottom: 6px solid #C2185B; }
+
+        .btn-candy:active {
+            transform: translateY(4px);
+            border-bottom-width: 2px;
+        }
+
+        /* Icon Styles */
+        .icon { width: 32px; height: 32px; fill: white; }
+
+        /* Floating Numbers Animation */
+        .float-num {
+            position: absolute;
+            color: #F06292;
+            font-weight: bold;
+            font-size: 20px;
+            pointer-events: none;
+            animation: floatUp 1s forwards;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-40px); opacity: 0; }
+        }
+
+        /* Confetti Canvas */
+        #confetti-canvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-start py-10">
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Header -->
+    <div class="w-full max-w-4xl flex justify-between items-center mb-8 px-6">
+        <div>
+            <h1 class="text-4xl font-bold text-pink-500 tracking-tight">🍭 糖果几何工坊</h1>
+            <div class="flex gap-3 mt-3">
+                <button onclick="setMode('lab')" id="btn-lab" class="rounded-full px-5 py-1 text-sm font-bold bg-pink-100 text-pink-600 border-2 border-pink-200 hover:bg-pink-200 transition">探索实验室</button>
+                <button onclick="setMode('game')" id="btn-game" class="rounded-full px-5 py-1 text-sm font-bold bg-gray-100 text-gray-500 border-2 border-gray-200 hover:bg-purple-100 hover:text-purple-600 transition">拼图挑战赛</button>
+            </div>
+        </div>
+        <div id="level-display" class="hidden text-right">
+            <div class="text-xs uppercase text-gray-400 font-bold tracking-widest">Puzzle Mission</div>
+            <div id="level-text" class="text-2xl font-black text-blue-400">LEVEL 1</div>
+        </div>
+    </div>
+
+    <!-- Playground -->
+    <div id="game-stage" class="candy-grid">
+        <!-- Target Block -->
+        <div id="target-block" class="block-container target-block hidden">
+            <div class="cell filled"></div>
+            <div class="cell"></div>
+            <div class="cell filled"></div>
+            <div class="cell filled"></div>
+        </div>
+
+        <!-- Player Block -->
+        <div id="player-block" class="block-container player-block" style="transform: translate(120px, 120px) rotate(0deg);">
+            <div class="cell filled"></div>
+            <div class="cell"></div>
+            <div class="cell filled relative">
+                <!-- Flashing Energy Ball -->
+                <div class="energy-ball"></div>
+            </div>
+            <div class="cell filled"></div>
+        </div>
+    </div>
+
+    <!-- Floating Control Panel -->
+    <div class="control-panel flex items-center gap-8">
+        
+        <!-- Mode: Lab -->
+        <div id="lab-controls" class="flex gap-6">
+            <button onclick="labAction('translate')" class="btn-candy yellow">
+                <!-- Train Icon -->
+                <svg class="icon" viewBox="0 0 24 24"><path d="M4,15V9H12V11H20V13H12V15H4M4,17H20V19H4V17Z"/></svg>
+                <span>平移 5 格</span>
+            </button>
+            <button onclick="labAction('rotate')" class="btn-candy blue">
+                <!-- Windmill Icon -->
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12,2L14.5,9H9.5L12,2M12,22L9.5,15H14.5L12,22M22,12L15,14.5V9.5L22,12M2,12L9,9.5V14.5L2,12Z"/></svg>
+                <span>旋转 90°</span>
+            </button>
+            <button onclick="resetPosition()" class="btn-candy pink">
+                <span>🔄 重置</span>
+            </button>
+        </div>
+
+        <!-- Mode: Game -->
+        <div id="game-controls" class="hidden flex items-center gap-6">
+            <div class="flex flex-col items-center gap-2">
+                <span class="text-xs text-gray-400 font-bold uppercase">方向调整</span>
+                <button onclick="gameAction('rotate')" class="btn-candy blue px-6">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12,2L14.5,9H9.5L12,2Z"/></svg>
+                    <span>旋转</span>
+                </button>
+            </div>
+            <div class="w-px h-12 bg-gray-200"></div>
+            <div class="flex flex-col items-center gap-2">
+                <span class="text-xs text-gray-400 font-bold uppercase">运输控制</span>
+                <div class="grid grid-cols-3 gap-1">
+                    <div></div>
+                    <button onclick="gameAction('up')" class="w-10 h-10 bg-white rounded-lg shadow border-b-2 border-gray-200 active:translate-y-1 active:border-b-0 flex items-center justify-center text-blue-500">▲</button>
+                    <div></div>
+                    <button onclick="gameAction('left')" class="w-10 h-10 bg-white rounded-lg shadow border-b-2 border-gray-200 active:translate-y-1 active:border-b-0 flex items-center justify-center text-blue-500">◀</button>
+                    <button onclick="gameAction('down')" class="w-10 h-10 bg-white rounded-lg shadow border-b-2 border-gray-200 active:translate-y-1 active:border-b-0 flex items-center justify-center text-blue-500">▼</button>
+                    <button onclick="gameAction('right')" class="w-10 h-10 bg-white rounded-lg shadow border-b-2 border-gray-200 active:translate-y-1 active:border-b-0 flex items-center justify-center text-blue-500">▶</button>
+                </div>
+            </div>
+            <div class="w-px h-12 bg-gray-200"></div>
+            <button onclick="checkWin()" class="btn-candy green">
+                <span class="text-xl">✨</span>
+                <span>装配完成</span>
+            </button>
+            <button id="btn-next" onclick="nextLevel()" class="hidden btn-candy pink">
+                <span>下一关 ⏭</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Success Overlay -->
+    <div id="victory-overlay" class="fixed inset-0 bg-white/60 backdrop-blur-sm hidden flex flex-col items-center justify-center z-[200]">
+        <div class="bg-white p-12 rounded-[40px] shadow-2xl text-center border-8 border-yellow-200 scale-100 animate-[bounce_1s_infinite]">
+            <div class="text-8xl mb-6">🍦</div>
+            <h2 class="text-4xl font-black text-pink-500 mb-2">太棒啦！</h2>
+            <p class="text-gray-500 font-bold mb-8">所有的积木都完美归位了！</p>
+            <button onclick="location.reload()" class="bg-blue-400 hover:bg-blue-500 text-white font-bold py-4 px-10 rounded-full text-xl shadow-lg transform transition active:scale-95">再玩一次</button>
+        </div>
+    </div>
+
+    <script>
+        const GRID_SIZE = 60;
+        const GRID_W = 14;
+        const GRID_H = 9;
+
+        let state = {
+            mode: 'lab',
+            level: 1,
+            player: { x: 2, y: 3, rot: 0 },
+            target: { x: 0, y: 0, rot: 0 },
+            isMoving: false
+        };
+
+        const playerBlock = document.getElementById('player-block');
+        const targetBlock = document.getElementById('target-block');
+        const stage = document.getElementById('game-stage');
+
+        function setMode(mode) {
+            state.mode = mode;
+            const isLab = mode === 'lab';
+            
+            document.getElementById('lab-controls').classList.toggle('hidden', !isLab);
+            document.getElementById('game-controls').classList.toggle('hidden', isLab);
+            document.getElementById('level-display').classList.toggle('hidden', isLab);
+            targetBlock.classList.toggle('hidden', isLab);
+            
+            // Highlight active button
+            document.getElementById('btn-lab').className = isLab ? 
+                'rounded-full px-5 py-1 text-sm font-bold bg-pink-500 text-white shadow-lg' : 
+                'rounded-full px-5 py-1 text-sm font-bold bg-gray-100 text-gray-500 border-2 border-gray-200';
+            document.getElementById('btn-game').className = !isLab ? 
+                'rounded-full px-5 py-1 text-sm font-bold bg-purple-500 text-white shadow-lg' : 
+                'rounded-full px-5 py-1 text-sm font-bold bg-gray-100 text-gray-500 border-2 border-gray-200';
+
+            if (isLab) resetPosition(); else loadLevel(1);
+        }
+
+        function updateVisuals(showEffects = false) {
+            playerBlock.style.transform = `translate(${state.player.x * GRID_SIZE}px, ${state.player.y * GRID_SIZE}px) rotate(${state.player.rot}deg)`;
+        }
+
+        function labAction(action) {
+            if (state.isMoving) return;
+            state.isMoving = true;
+
+            const oldPos = { ...state.player };
+
+            if (action === 'translate') {
+                const dist = 5;
+                if (state.player.x + dist < GRID_W - 1) state.player.x += dist;
+                else state.player.x = 1;
+                
+                drawTrail(oldPos, state.player);
+            } else if (action === 'rotate') {
+                state.player.rot += 90;
+            }
+
+            updateVisuals();
+            setTimeout(() => { state.isMoving = false; }, 600);
+        }
+
+        function drawTrail(start, end) {
+            // Create Rainbow Trajectory
+            const trail = document.createElement('div');
+            trail.className = 'trail-line';
+            const dx = (end.x - start.x) * GRID_SIZE;
+            const startX = start.x * GRID_SIZE + 60; // center of block
+            const startY = start.y * GRID_SIZE + 60;
+            
+            trail.style.left = startX + 'px';
+            trail.style.top = startY + 'px';
+            trail.style.width = Math.abs(dx) + 'px';
+            if (dx < 0) trail.style.transform = 'rotate(180deg)';
+            
+            stage.appendChild(trail);
+
+            // Floating Numbers (+1, +2...)
+            const count = Math.abs(end.x - start.x);
+            for(let i=1; i<=count; i++) {
+                setTimeout(() => {
+                    const num = document.createElement('div');
+                    num.className = 'float-num';
+                    num.textContent = `+${i}`;
+                    const stepX = startX + (dx/count) * i;
+                    num.style.left = stepX + 'px';
+                    num.style.top = (startY - 30) + 'px';
+                    stage.appendChild(num);
+                    setTimeout(() => num.remove(), 1000);
+                }, i * 100);
+            }
+
+            setTimeout(() => { trail.style.opacity = '0'; setTimeout(() => trail.remove(), 500); }, 1000);
+        }
+
+        function resetPosition() {
+            state.player = { x: 2, y: 3, rot: 0 };
+            updateVisuals();
+        }
+
+        // --- Game Logic ---
+        const levels = [
+            { id: 1, title: "Level 1: 甜甜运输", target: {x: 10, y: 3, rot: 0}, player: {x: 2, y: 3, rot: 0} },
+            { id: 2, title: "Level 2: 旋转果酱", target: {x: 6, y: 2, rot: 90}, player: {x: 6, y: 2, rot: 0} },
+            { id: 3, title: "Level 3: 几何大师", target: {x: 11, y: 5, rot: 180}, player: {x: 2, y: 1, rot: 0} }
+        ];
+
+        function loadLevel(num) {
+            state.level = num;
+            const data = levels[num-1];
+            document.getElementById('level-text').textContent = `MISSION ${num}`;
+            document.getElementById('btn-next').classList.add('hidden');
+            
+            state.player = { ...data.player };
+            state.target = { ...data.target };
+            
+            targetBlock.style.transform = `translate(${state.target.x * GRID_SIZE}px, ${state.target.y * GRID_SIZE}px) rotate(${state.target.rot}deg)`;
+            playerBlock.style.filter = "none";
+            updateVisuals();
+        }
+
+        function gameAction(cmd) {
+            if (state.isMoving) return;
+            if (cmd === 'rotate') state.player.rot += 90;
+            if (cmd === 'up' && state.player.y > 0) state.player.y--;
+            if (cmd === 'down' && state.player.y < GRID_H-2) state.player.y++;
+            if (cmd === 'left' && state.player.x > 0) state.player.x--;
+            if (cmd === 'right' && state.player.x < GRID_W-2) state.player.x++;
+            updateVisuals();
+        }
+
+        function checkWin() {
+            const normP = (state.player.rot % 360 + 360) % 360;
+            const normT = (state.target.rot % 360 + 360) % 360;
+            const isMatch = state.player.x === state.target.x && state.player.y === state.target.y && normP === normT;
+
+            if (isMatch) {
+                launchConfetti();
+                playerBlock.style.filter = "drop-shadow(0 0 20px #FFEA00)";
+                if (state.level < 3) document.getElementById('btn-next').classList.remove('hidden');
+                else document.getElementById('victory-overlay').classList.remove('hidden');
+            } else {
+                playerBlock.style.transform += " translateX(10px)";
+                setTimeout(() => updateVisuals(), 100);
+            }
+        }
+
+        function nextLevel() { loadLevel(state.level + 1); }
+
+        // --- Confetti Logic ---
+        function launchConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            let particles = [];
+            for(let i=0; i<100; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    size: Math.random() * 8 + 4,
+                    color: ['#FF80AB', '#FFD54F', '#4FC3F7', '#66BB6A'][Math.floor(Math.random()*4)],
+                    v: Math.random() * 5 + 2
+                });
+            }
+
+            function animate() {
+                ctx.clearRect(0,0,canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.y += p.v;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
+                });
+                if(particles[0].y < canvas.height) requestAnimationFrame(animate);
+                else ctx.clearRect(0,0,canvas.width, canvas.height);
+            }
+            animate();
+        }
+
+        // Init
+        setMode('lab');
+    </script>
+</body>
+</html>

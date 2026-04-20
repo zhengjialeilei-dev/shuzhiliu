@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>对策推演实验室</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;900&display=swap');
+        :root {
+            --primary-color: #3b82f6;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --bg-color: #f0f9ff;
+            --board-bg: #ffffff;
+            --border-color: #cbd5e1;
+            --drag-highlight: #bfdbfe;
+        }
+
+        * {
+            box-sizing: border-box;
+            tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: "Outfit", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #e0e5ec;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overscroll-behavior-y: none;
+            overflow: hidden;
+        }
+
+        html, body { height: 100%; }
+
+        h1 {
+            color: #1e293b;
+            text-align: center;
+            margin: 10px 0 10px 0;
+            font-size: 2em;
+            font-weight: 900;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Layout */
+        .main-layout {
+            display: flex;
+            flex-direction: row;
+            gap: 30px;
+            width: 100%;
+            max-width: 1600px;
+            align-items: flex-start;
+        }
+
+        .panel {
+            position: relative;
+        }
+
+        .left-panel { flex: 5; }
+        .right-panel { flex: 4; }
+
+        h3 {
+            font-size: 1.2em;
+            margin-bottom:10px;
+        }
+
+        /* Game Area */
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 40px; /* 增加行间距，给标题腾出空间 */
+            margin-bottom: 30px;
+            margin-top: 20px;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 25px 20px;
+            border-radius: 30px;
+            background: #e0e5ec;
+            
+            box-shadow: 9px 9px 16px rgba(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5), inset 3px 3px 7px rgba(255, 255, 255, 0.7), inset -3px -3px 7px rgba(163,177,198, 0.4);
+            border: 2px solid #ffffff;
+            position: relative;
+        }
+
+        .row-label {
+            width: 110px;
+            font-weight: 900;
+            font-size: 1.6em;
+            flex-shrink: 0;
+            text-align: center;
+            user-select: none;
+            line-height: 1.2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .role-emoji {
+            font-size: 1.2em;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .role-hint {
+            font-size: 0.4em; 
+            font-weight: normal; 
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+        
+        /* 针对田忌的特殊操作提示 */
+        .tianji-instruction {
+            font-size: 0.55em;
+            color: #3b82f6;
+            margin-top: 8px;
+            font-weight: bold;
+            line-height: 1.4;
+            background: #dbeafe;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .slots-container {
+            display: flex;
+            flex: 1;
+            justify-content: space-around;
+            gap: 20px;
+        }
+
+        /* Slots */
+        .slot {
+            width: 130px; 
+            height: 170px;
+            border: 3px dashed #cbd5e1;
+            border-radius: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(255,255,255,0.5);
+            position: relative;
+            transition: all 0.2s;
+            overflow: visible; 
+            z-index: 1;
+        }
+
+        .slot.filled {
+            border-style: solid;
+            border-color: transparent; 
+            background-color: transparent;
+        }
+
+        .slot.drag-over {
+            background-color: var(--drag-highlight);
+            transform: scale(1.05);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+
+        /* 场次标题优化 */
+        .slot-header {
+            position: absolute;
+            bottom: -64px; /* 移高一点 */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120%; /* 允许文字稍微宽一点 */
+            text-align: center;
+            font-size: 1.4em; /* 更大的字号 */
+            font-weight: 900; /* 更粗 */
+            color: #334155; /* 更深的颜色 */
+            pointer-events: none;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+            background: linear-gradient(to bottom, transparent 40%, rgba(255,255,255,0.8) 40%); /* 微妙的背景增强可读性 */
+            padding-bottom: 5px;
+        }
+
+        /* 3D Horse Cards */
+        .horse {
+            width: 115px;
+            height: 155px;
+            border-radius: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: grab;
+            user-select: none;
+            font-weight: 900;
+            font-size: 1.4em;
+            position: relative;
+            touch-action: none;
+            z-index: 10;
+            border: 2px solid;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        /* Rank Specific 3D Styles */
+        .horse.shang {
+            background: linear-gradient(to bottom right, #fff5f5, #ffe4e6);
+            border-color: #ef4444;
+            color: #b91c1c;
+            box-shadow: 0 6px 0 #b91c1c, 0 10px 10px rgba(0,0,0,0.15); 
+        }
+
+        .horse.zhong {
+            background: linear-gradient(to bottom right, #fffbeb, #fef3c7);
+            border-color: #f59e0b;
+            color: #b45309;
+            box-shadow: 0 6px 0 #b45309, 0 10px 10px rgba(0,0,0,0.15);
+        }
+
+        .horse.xia {
+            background: linear-gradient(to bottom right, #f0fdf4, #dcfce7);
+            border-color: #10b981;
+            color: #047857;
+            box-shadow: 0 6px 0 #047857, 0 10px 10px rgba(0,0,0,0.15);
+        }
+
+        .horse:active { 
+            cursor: grabbing; 
+            transform: translateY(6px); 
+            box-shadow: 0 0 0 transparent, 0 0 5px rgba(0,0,0,0.1); 
+        }
+        
+        .horse.king-horse:active {
+            cursor: default;
+            transform: none;
+        }
+        .horse.king-horse.shang:active { box-shadow: 0 6px 0 #b91c1c, 0 10px 10px rgba(0,0,0,0.15); }
+        .horse.king-horse.zhong:active { box-shadow: 0 6px 0 #b45309, 0 10px 10px rgba(0,0,0,0.15); }
+        .horse.king-horse.xia:active { box-shadow: 0 6px 0 #047857, 0 10px 10px rgba(0,0,0,0.15); }
+
+
+        .horse-icon {
+            font-size: 2em;
+            line-height: 1;
+            margin-bottom: 5px;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+        }
+
+        /* Stars Styling */
+        .stars-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            width: 100%;
+            margin-bottom: 10px;
+            line-height: 1;
+            height: 35px; 
+        }
+        
+        .star {
+            font-size: 32px;
+            margin: 0 -3px;
+            line-height: 1;
+        }
+
+        /* Star Visual Variations */
+        .star-shang { color: #fbbf24; text-shadow: 0 2px 0 #d97706, 0 4px 2px rgba(0,0,0,0.2); }
+        .star-zhong { color: #fcd34d; text-shadow: 0 1px 0 #d97706; opacity: 0.9; }
+        .star-xia { color: #fde68a; text-shadow: none; opacity: 0.6; filter: grayscale(0.2); }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        button {
+            padding: 15px 50px;
+            font-size: 1.4em;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.1s;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #1d4ed8, 0 5px 10px rgba(0,0,0,0.2); 
+            position: relative;
+            top: 0;
+        }
+
+        .btn-race { background-color: var(--primary-color); color: white; }
+        .btn-race:hover { background-color: #2563eb; transform: translateY(-2px); box-shadow: 0 6px 0 #1d4ed8, 0 7px 15px rgba(0,0,0,0.2); }
+        .btn-race:active { transform: translateY(4px); box-shadow: 0 0 0 #1d4ed8, inset 0 2px 5px rgba(0,0,0,0.2); }
+        .btn-race:disabled { background-color: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; top: 4px; }
+
+        /* Stamp Styles */
+        .stamp {
+            position: absolute;
+            width: 75px;
+            height: 75px;
+            border: 5px solid;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 900;
+            font-size: 2em;
+            opacity: 0;
+            z-index: 20;
+            background: #e0e5ec;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            top: -30px;
+            right: -30px;
+            transform: scale(2) rotate(20deg);
+            animation: stamp-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            pointer-events: none;
+        }
+
+        .stamp.win { color: #ef4444; border-color: #ef4444; transform: rotate(-15deg); }
+        .stamp.lose { color: #64748b; border-color: #64748b; transform: rotate(15deg); }
+
+        @keyframes stamp-in {
+            to { opacity: 1; transform: scale(1) rotate(var(--final-rotate)); }
+        }
+
+        /* Analysis Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1.1em;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 15px 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-size: 1.1em;
+            font-weight: 800;
+        }
+
+        tbody tr {
+            background-color: white;
+            transition: background-color 0.2s;
+            height: 70px;
+        }
+
+        tbody tr.draggable-row {
+            cursor: grab;
+        }
+        
+        tbody tr.dragging {
+            opacity: 0.6;
+            background-color: #e2e8f0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        /* DUPLICATE HIGHLIGHT ANIMATION */
+        .duplicate-highlight {
+            animation: row-flash 1.5s ease-out forwards;
+            z-index: 50;
+            position: relative;
+        }
+
+        @keyframes row-flash {
+            0% { outline: 6px solid #f59e0b; background-color: #fff7ed; transform: scale(1.02); box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4); }
+            60% { outline: 6px solid #f59e0b; background-color: #fff7ed; transform: scale(1.02); box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4); }
+            100% { outline: 0 solid transparent; background-color: #fff; transform: scale(1); box-shadow: none; }
+        }
+
+        .row-handle {
+            cursor: grab;
+            color: #94a3b8;
+            font-size: 1.3em;
+            padding-right: 12px;
+        }
+
+        .move-controls {
+            display: inline-flex;
+            gap: 8px;
+            margin-left: 8px;
+        }
+        .move-btn {
+            cursor: pointer;
+            color: #94a3b8;
+            font-size: 1.1em;
+            line-height: 1;
+            padding: 2px 6px;
+            border-radius: 6px;
+            transition: color 0.2s, background 0.2s;
+            user-select: none;
+        }
+        .move-btn:hover { color: #334155; background: #e2e8f0; }
+        .move-btn.disabled { color: #cbd5e1; cursor: not-allowed; pointer-events: none; }
+
+        .status-win { color: var(--success-color); font-weight: bold; }
+        .status-lose { color: var(--danger-color); font-weight: bold; }
+        
+        /* Table Result Stamp (Last Column) */
+        .table-result-stamp {
+            display: inline-flex;
+            width: 40px;
+            height: 40px;
+            border: 3px solid;
+            border-radius: 50%;
+            justify-content: center;
+            align-items: center;
+            font-weight: 900;
+            font-size: 1em;
+            transform: rotate(-10deg);
+        }
+        .table-result-stamp.win { color: #ef4444; border-color: #ef4444; background: #fee2e2; }
+        .table-result-stamp.lose { color: #64748b; border-color: #64748b; background: #e0e5ec; }
+
+
+        .mini-stamp {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            line-height: 26px;
+            border-radius: 50%;
+            border: 2px solid;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 8px;
+            vertical-align: middle;
+            text-align: center;
+        }
+        .mini-stamp.win { color: #ef4444; border-color: #ef4444; background: #fee2e2; }
+        .mini-stamp.lose { color: #64748b; border-color: #64748b; background: #e0e5ec; }
+
+        /* Text Colors matching cards */
+        .text-shang { color: #b91c1c; }
+        .text-zhong { color: #b45309; }
+        .text-xia { color: #047857; }
+
+        /* Drag Ghost */
+        .drag-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0.9;
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 1100px) {
+            .main-layout { flex-direction: column; }
+            .left-panel, .right-panel { width: 100%; }
+            .slot, .horse { width: 100px; height: 135px; font-size: 1.2em; }
+            .star { font-size: 24px; }
+            h1 { font-size: 2em; }
+        }
+    </style>
+<!-- EDU_BRAND_STYLE_START -->
+<style id="edu-brand-style">
+  :root {
+    --edu-bg: #eef5f7;
+    --edu-bg-deep: #dfeaf0;
+    --edu-surface: rgba(255, 255, 255, 0.82);
+    --edu-surface-strong: rgba(255, 255, 255, 0.94);
+    --edu-line: rgba(97, 132, 161, 0.24);
+    --edu-shadow: 0 18px 48px rgba(37, 78, 110, 0.12);
+    --edu-shadow-strong: 0 24px 56px rgba(24, 61, 90, 0.16);
+    --edu-text: #17324d;
+    --edu-text-soft: #4a647c;
+    --edu-accent: #0f9d8a;
+    --edu-accent-deep: #0d7b72;
+    --edu-warm: #ff9d6c;
+    --edu-warm-soft: #fff1e8;
+  }
+
+  body.edu-refactor-body {
+    background:
+      radial-gradient(circle at 12% 14%, rgba(15, 157, 138, 0.10), transparent 22%),
+      radial-gradient(circle at 88% 16%, rgba(255, 157, 108, 0.18), transparent 20%),
+      radial-gradient(circle at 50% 100%, rgba(81, 122, 164, 0.10), transparent 28%),
+      linear-gradient(180deg, #f6fbfc 0%, var(--edu-bg) 42%, var(--edu-bg-deep) 100%) !important;
+    color: var(--edu-text) !important;
+  }
+
+  body.edu-refactor-body::before,
+  body.edu-refactor-body::after {
+    content: '';
+    position: fixed;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+    opacity: 0.6;
+  }
+
+  body.edu-refactor-body::before {
+    width: 240px;
+    height: 240px;
+    right: -40px;
+    top: 80px;
+    background: rgba(15, 157, 138, 0.14);
+  }
+
+  body.edu-refactor-body::after {
+    width: 180px;
+    height: 180px;
+    left: -20px;
+    bottom: 80px;
+    background: rgba(255, 157, 108, 0.16);
+  }
+
+  body.edu-refactor-body button,
+  body.edu-refactor-body input[type="button"],
+  body.edu-refactor-body input[type="submit"] {
+    border-radius: 16px !important;
+    border: 1px solid rgba(22, 101, 122, 0.16) !important;
+    box-shadow: 0 10px 24px rgba(33, 76, 111, 0.12) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #edf7f6 100%) !important;
+    color: var(--edu-text) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+  }
+
+  body.edu-refactor-body button:hover,
+  body.edu-refactor-body input[type="button"]:hover,
+  body.edu-refactor-body input[type="submit"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(33, 76, 111, 0.16) !important;
+    filter: saturate(1.04);
+  }
+
+  body.edu-refactor-body input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  body.edu-refactor-body select,
+  body.edu-refactor-body textarea {
+    border-radius: 14px !important;
+    border: 1px solid rgba(82, 119, 148, 0.26) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: var(--edu-text) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px rgba(42, 77, 105, 0.08) !important;
+  }
+
+  body.edu-refactor-body [class*="panel"],
+  body.edu-refactor-body [class*="Panel"],
+  body.edu-refactor-body [class*="card"],
+  body.edu-refactor-body [class*="Card"],
+  body.edu-refactor-body [class*="dialog"],
+  body.edu-refactor-body [class*="Dialog"],
+  body.edu-refactor-body [class*="controls"],
+  body.edu-refactor-body [class*="Controls"],
+  body.edu-refactor-body [class*="toolbar"],
+  body.edu-refactor-body [class*="Toolbar"],
+  body.edu-refactor-body [class*="sidebar"],
+  body.edu-refactor-body [class*="Sidebar"],
+  body.edu-refactor-body [class*="instruction"],
+  body.edu-refactor-body [class*="Instruction"],
+  body.edu-refactor-body [id*="panel"],
+  body.edu-refactor-body [id*="Panel"],
+  body.edu-refactor-body [id*="controls"],
+  body.edu-refactor-body [id*="Controls"] {
+    border-radius: 24px !important;
+    border: 1px solid var(--edu-line) !important;
+    box-shadow: var(--edu-shadow) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  body.edu-refactor-body .page-title,
+  body.edu-refactor-body .header h1,
+  body.edu-refactor-body .header h2,
+  body.edu-refactor-body .title,
+  body.edu-refactor-body .subtitle,
+  body.edu-refactor-body .teacher-text,
+  body.edu-refactor-body #step-indicator,
+  body.edu-refactor-body #narrative-text {
+    color: var(--edu-text) !important;
+    text-shadow: none !important;
+  }
+
+  body.edu-refactor-body .edu-brand-shell {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  body.edu-refactor-body .edu-brand-panel,
+  body.edu-refactor-body .edu-brand-guide {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 251, 0.92) 100%);
+    border: 1px solid rgba(89, 127, 156, 0.22);
+    box-shadow: var(--edu-shadow-strong);
+    backdrop-filter: blur(18px);
+    border-radius: 26px;
+  }
+
+  body.edu-refactor-body .edu-brand-panel {
+    max-width: min(720px, calc(100vw - 280px));
+    padding: 18px 22px 20px;
+  }
+
+  body.edu-refactor-body .edu-brand-guide {
+    width: 220px;
+    padding: 16px 18px;
+  }
+
+  body.edu-refactor-body .edu-brand-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(15, 157, 138, 0.10);
+    color: var(--edu-accent-deep);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  body.edu-refactor-body .edu-brand-title {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.08;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-copy {
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  body.edu-refactor-body .edu-brand-copy strong {
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-brand-shell {
+      flex-direction: column;
+      right: 12px;
+      left: 12px;
+      top: 12px;
+    }
+
+    body.edu-refactor-body .edu-brand-panel,
+    body.edu-refactor-body .edu-brand-guide {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
+
+
+  body.edu-refactor-body .edu-border-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 10001;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(89, 127, 156, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--edu-text, #1f2937);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  body.edu-refactor-body .edu-border-toggle:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  body.edu-refactor-body.edu-hide-brand-panels .edu-brand-shell {
+    display: none !important;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-border-toggle {
+      top: auto;
+      bottom: 12px;
+      right: 12px;
+    }
+  }
+
+</style>
+<!-- EDU_BRAND_STYLE_END -->
+
+
+</head>
+<body class="edu-refactor-body">
+<!-- EDU_BRAND_SHELL_START -->
+<div class="edu-brand-shell" data-brand-shell>
+  <section class="edu-brand-panel" aria-label="页面导语">
+    <div class="edu-brand-kicker">博弈策略 · EDU STUDIO</div>
+    <h1 class="edu-brand-title">对策推演实验室</h1>
+    <div class="edu-brand-copy">
+      <div><strong>任务目标：</strong>通过调换出场顺序，比较不同对策方案的得失。</div>
+      <div><strong>操作提示：</strong>拖动队列或交换次序，回看每一轮的胜负结果。</div>
+      <div><strong>理解重点：</strong>策略题的关键不在蛮试，而在理解“强弱匹配”带来的整体收益。</div>
+    </div>
+</section>
+  <aside class="edu-brand-guide" aria-label="操作建议">
+    <h2>建议这样探索</h2>
+    <ul><li>先看双方实力排序。</li><li>优先设计能稳定拿分的对位。</li><li>用总分而不是单轮结果评价方案。</li></ul>
+  </aside>
+</div>
+<!-- EDU_BRAND_SHELL_END -->
+
+<button type="button" class="edu-border-toggle" id="edu-border-toggle" aria-pressed="false" aria-label="隐藏说明框" title="隐藏说明框">-</button>
+
+
+    <h1>出场顺序推演</h1>
+    
+    <div class="main-layout">
+        <!-- Left Panel: Game Board -->
+        <div class="panel left-panel">
+            <!-- Game Board -->
+            <div class="game-area">
+                <!-- King's Row -->
+                <div class="row">
+                    <div class="row-label">
+                        <span class="role-emoji">�</span>
+                        对手阵列
+                    </div>
+                    <div class="slots-container" id="king-slots">
+                        <div class="slot filled">
+                            <div class="slot-header">第一场</div>
+                        </div>
+                        <div class="slot filled">
+                            <div class="slot-header">第二场</div>
+                        </div>
+                        <div class="slot filled">
+                            <div class="slot-header">第三场</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tian Ji's Row (Drop Zones) -->
+                <div class="row" style="background-color: #eff6ff;">
+                    <div class="row-label">
+                        <span class="role-emoji">�‍♂️</span>
+                        玩<br/>家
+                        <!-- Moved Instruction Here -->
+                        <div class="tianji-instruction">
+                            拖动卡牌<br>调整顺序
+                        </div>
+                    </div>
+                    <div class="slots-container">
+                        <!-- Slots ID: slot-0, slot-1, slot-2 -->
+                        <div class="slot drop-zone" data-index="0"></div>
+                        <div class="slot drop-zone" data-index="1"></div>
+                        <div class="slot drop-zone" data-index="2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="btn-race" id="raceBtn" onclick="startRace()">开始推演</button>
+            </div>
+        </div>
+
+        <!-- Right Panel: Analysis Table -->
+        <div class="panel right-panel">
+            <h3 style="text-align: center; margin-top:0;">对战记录</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">方案</th>
+                        <th>第一场</th>
+                        <th>第二场</th>
+                        <th>第三场</th>
+                        <th>总结果</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body">
+                    <!-- Rows generated by JS -->
+                </tbody>
+            </table>
+            <!-- Empty state message -->
+            <div id="empty-table-msg" style="text-align: center; padding: 40px; color: #cbd5e1; font-style: italic; font-size: 1.2em;">还没有推演记录</div>
+            <div style="text-align:center; margin: 12px 0;">
+                <button id="sortBtn" class="btn-race" style="display:none;" onclick="autoSortResults()">按得分排序</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game Data Configuration
+        const horses = {
+            shang: { id: 'shang', name: '战力 100', icon: '⚔️', rank: 3, label: 'UR' },
+            zhong: { id: 'zhong', name: '战力 80', icon: '⚔️', rank: 2, label: 'SR' },
+            xia:   { id: 'xia',   name: '战力 60', icon: '⚔️', rank: 1, label: 'R' }
+        };
+
+        const kingHorses = {
+            shang: { id: 'king-shang', name: '战力 110', icon: '🛡️', rank: 3.5, label: 'UR+' },
+            zhong: { id: 'king-zhong', name: '战力 90', icon: '🛡️', rank: 2.5, label: 'SR+' },
+            xia:   { id: 'king-xia',   name: '战力 70', icon: '🛡️', rank: 1.5, label: 'R+' }
+        };
+
+        let tianSlots = [horses.shang, horses.zhong, horses.xia];
+        const KING_HORSES = [kingHorses.shang, kingHorses.zhong, kingHorses.xia];
+        let matchCount = 0;
+        let dragItem = null;
+        let dragSource = null;
+        let ghostEl = null;
+        let dragOffsets = { x: 0, y: 0 };
+        let currentDropTarget = null;
+        let historyRecords = [];
+
+        function init() {
+            renderKingRow();
+            renderBoard();
+        }
+
+        function renderKingRow() {
+            const kingSlots = document.querySelectorAll('#king-slots .slot');
+            kingSlots.forEach(slot => {
+                const horse = slot.querySelector('.horse');
+                if (horse) horse.remove();
+            });
+
+            KING_HORSES.forEach((horse, index) => {
+                const slot = kingSlots[index];
+                const el = createHorseElement(horse);
+                el.classList.add('king-horse');
+                slot.appendChild(el);
+            });
+        }
+
+        function renderBoard() {
+            const dropZones = document.querySelectorAll('.slot.drop-zone');
+            dropZones.forEach(zone => {
+                const index = parseInt(zone.dataset.index);
+                zone.innerHTML = '';
+                zone.classList.remove('filled');
+                const horse = tianSlots[index];
+                if (horse) {
+                    const el = createHorseElement(horse);
+                    setupDragEvents(el, { type: 'slot', index: index });
+                    zone.appendChild(el);
+                    zone.classList.add('filled');
+                }
+            });
+            checkRaceButton();
+        }
+
+        function createHorseElement(horse) {
+            const el = document.createElement('div');
+            const isKing = horse.id.startsWith('king-');
+            el.className = `horse ${horse.id.split('-').pop()} ${isKing ? 'king-horse' : ''}`;
+            
+            let starsHtml = '';
+            for (let i = 0; i < horse.rank; i++) {
+                starsHtml += `<div class="star star-${horse.id.split('-').pop()}">⭐</div>`;
+            }
+
+            el.innerHTML = `
+                <div class="stars-container">
+                    ${starsHtml}
+                </div>
+                <div class="horse-icon">${horse.icon}</div>
+                <div>${horse.name}</div>
+            `;
+            return el;
+        }
+
+        function clearStamps() {
+            document.querySelectorAll('.stamp').forEach(el => el.remove());
+        }
+
+        function checkRaceButton() {
+            const allFilled = tianSlots.every(slot => slot !== null);
+            document.getElementById('raceBtn').disabled = !allFilled;
+        }
+
+        function setupDragEvents(el, source) {
+            if (el.classList.contains('king-horse')) return;
+
+            const onDragStart = (e) => {
+                if (e.type === 'touchstart') e.preventDefault();
+                clearStamps();
+                
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                dragItem = tianSlots[source.index];
+                dragSource = source;
+                
+                const rect = el.getBoundingClientRect();
+                dragOffsets.x = clientX - rect.left;
+                dragOffsets.y = clientY - rect.top;
+
+                ghostEl = el.cloneNode(true);
+                ghostEl.classList.add('drag-ghost');
+                ghostEl.style.width = rect.width + 'px';
+                ghostEl.style.height = rect.height + 'px';
+                ghostEl.style.left = (clientX - dragOffsets.x) + 'px';
+                ghostEl.style.top = (clientY - dragOffsets.y) + 'px';
+                document.body.appendChild(ghostEl);
+                
+                el.style.opacity = '0.3';
+
+                if (e.type === 'touchstart') {
+                    document.addEventListener('touchmove', onDragMove, { passive: false });
+                    document.addEventListener('touchend', onDragEnd);
+                } else {
+                    document.addEventListener('mousemove', onDragMove);
+                    document.addEventListener('mouseup', onDragEnd);
+                }
+            };
+
+            el.addEventListener('mousedown', onDragStart);
+            el.addEventListener('touchstart', onDragStart, { passive: false });
+        }
+
+        function onDragMove(e) {
+            e.preventDefault();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            if (ghostEl) {
+                ghostEl.style.left = (clientX - dragOffsets.x) + 'px';
+                ghostEl.style.top = (clientY - dragOffsets.y) + 'px';
+            }
+
+            ghostEl.style.display = 'none';
+            let elemBelow = document.elementFromPoint(clientX, clientY);
+            ghostEl.style.display = 'block';
+
+            if (!elemBelow) return;
+
+            const dropZone = elemBelow.closest('.drop-zone');
+            
+            document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drag-over'));
+            
+            if (dropZone) {
+                dropZone.classList.add('drag-over');
+                currentDropTarget = dropZone;
+            } else {
+                currentDropTarget = null;
+            }
+        }
+
+        function onDragEnd(e) {
+            document.removeEventListener('mousemove', onDragMove);
+            document.removeEventListener('mouseup', onDragEnd);
+            document.removeEventListener('touchmove', onDragMove);
+            document.removeEventListener('touchend', onDragEnd);
+
+            document.querySelectorAll('.horse').forEach(h => h.style.opacity = '1');
+            document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drag-over'));
+
+            if (ghostEl) {
+                ghostEl.remove();
+                ghostEl = null;
+            }
+
+            if (currentDropTarget) {
+                handleDrop(currentDropTarget);
+            }
+            
+            currentDropTarget = null;
+            dragItem = null;
+            dragSource = null;
+        }
+
+        function handleDrop(dropZone) {
+            const targetIndex = parseInt(dropZone.dataset.index);
+            
+            if (dragSource.type === 'slot' && targetIndex !== undefined) {
+                if (dragSource.index === targetIndex) return;
+                
+                const targetItem = tianSlots[targetIndex];
+                tianSlots[targetIndex] = dragItem;
+                tianSlots[dragSource.index] = targetItem;
+            }
+            
+            renderBoard();
+        }
+
+        async function startRace() {
+            const currentPerm = tianSlots.map(h => h.id).join('-');
+            const existingRow = document.querySelector(`tr[data-perm="${currentPerm}"]`);
+            
+            if (existingRow) {
+                existingRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                void existingRow.offsetWidth; 
+                existingRow.classList.remove('duplicate-highlight');
+                existingRow.classList.add('duplicate-highlight');
+                return;
+            }
+
+            document.getElementById('raceBtn').disabled = true;
+            clearStamps();
+
+            let wins = 0;
+            let losses = 0;
+            let currentLineup = [...tianSlots];
+
+            for (let i = 0; i < 3; i++) {
+                const kingHorse = KING_HORSES[i];
+                const tianHorse = tianSlots[i];
+                const kingSlot = document.querySelector(`#king-slots .slot:nth-child(${i + 1})`);
+                const tianSlot = document.querySelector(`.slot[data-index="${i}"]`);
+
+                let win = tianHorse.power > kingHorse.power;
+                if (win) wins++; else losses++;
+
+                addStamp(kingSlot, !win);
+                addStamp(tianSlot, win);
+
+                await new Promise(resolve => setTimeout(resolve, 400));
+            }
+
+            historyRecords.push(currentPerm);
+            matchCount++;
+            addRecordRow(matchCount, currentLineup, wins > losses);
+
+            setTimeout(() => {
+                if (wins > losses) {
+                    alert('本轮获胜，继续试试其他顺序。');
+                }
+                document.getElementById('raceBtn').disabled = false;
+            }, 500);
+        }
+
+        function addStamp(parent, isWin) {
+            const stamp = document.createElement('div');
+            stamp.className = `stamp ${isWin ? 'win' : 'lose'}`;
+            stamp.innerHTML = isWin ? '胜' : '负';
+            stamp.style.transform = `scale(2) rotate(${isWin ? '-15deg' : '15deg'})`;
+            parent.appendChild(stamp);
+        }
+
+        function addRecordRow(matchNum, lineup, isOverallWin) {
+            const tbody = document.getElementById('results-body');
+            document.getElementById('empty-table-msg').style.display = 'none';
+            
+            const tr = document.createElement('tr');
+            tr.dataset.perm = lineup.map(h => h.id).join('-');
+            
+            const results = lineup.map((horse, i) => {
+                const win = horse.power > KING_HORSES[i].power;
+                const labelClass = `text-${horse.id}`;
+                return `<span class="${labelClass}">${horse.name}</span> <div class="mini-stamp ${win ? 'win' : 'lose'}">${win ? '胜' : '负'}</div>`;
+            });
+
+            tr.innerHTML = `
+                <td>方案 ${matchNum}</td>
+                <td>${results[0]}</td>
+                <td>${results[1]}</td>
+                <td>${results[2]}</td>
+                <td>
+                    <div class="table-result-stamp ${isOverallWin ? 'win' : 'lose'}">
+                        ${isOverallWin ? '胜' : '负'}
+                    </div>
+                </td>
+            `;
+            
+            tbody.prepend(tr);
+        }
+
+        init();
+        
+        // Prevent default touch behaviors that might interfere with drag and drop
+        document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+        window.addEventListener('wheel', function(e) { e.preventDefault(); }, { passive: false });
+    </script>
+
+
+
+
+<script>
+(function () {
+  var storageKey = 'edu_hide_brand_panels';
+  var toggleButton = document.getElementById('edu-border-toggle');
+  if (!toggleButton || !document.body) {
+    return;
+  }
+
+  function applyState(hidden) {
+    document.body.classList.toggle('edu-hide-brand-panels', hidden);
+    toggleButton.textContent = hidden ? '+' : '-';
+    toggleButton.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    toggleButton.setAttribute('aria-label', hidden ? '显示说明框' : '隐藏说明框');
+    toggleButton.setAttribute('title', hidden ? '显示说明框' : '隐藏说明框');
+  }
+
+  var hiddenByDefault = false;
+  try {
+    hiddenByDefault = localStorage.getItem(storageKey) === '1';
+  } catch (e) {
+    hiddenByDefault = false;
+  }
+
+  applyState(hiddenByDefault);
+
+  toggleButton.addEventListener('click', function () {
+    var nextHidden = !document.body.classList.contains('edu-hide-brand-panels');
+    applyState(nextHidden);
+    try {
+      localStorage.setItem(storageKey, nextHidden ? '1' : '0');
+    } catch (e) {
+      // no-op
+    }
+  });
+})();
+</script>
+
+
+</body>
+</html>

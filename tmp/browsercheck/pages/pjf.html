@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>均分投放训练场</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, sans-serif;
+            background: #fdfbf7; /* 温馨的米白色背景 */
+            background-image: radial-gradient(circle at center, #fff 0%, #fff0e5 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            display: block;
+            cursor: grab;
+            background: transparent;
+        }
+
+        #gameCanvas:active {
+            cursor: grabbing;
+        }
+
+        #gameCanvas.select-mode {
+            cursor: crosshair;
+        }
+
+        .controls {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 20px;
+            border: 3px solid #ffb6c1; /* 浅粉色边框 */
+            box-shadow: 0 10px 25px rgba(255, 182, 193, 0.4);
+            z-index: 10;
+        }
+
+        .switch-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            background: #ffb6c1; /* 浅粉色 */
+            border-radius: 30px;
+            padding: 4px;
+            width: 60px;
+            height: 32px;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 2px solid #ff69b4;
+        }
+
+        .switch-checkbox:not(:checked) + .switch-label {
+            background: #87cefa; /* 浅蓝色 */
+            border: 2px solid #4682b4;
+        }
+
+        .mode-button {
+            padding: 10px 20px;
+            border: 2px solid #ffb6c1;
+            border-radius: 12px;
+            background: #fff0f5;
+            color: #d147a3;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .mode-button:hover {
+            background: #ffb6c1;
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 182, 193, 0.6);
+        }
+
+        .mode-button.active {
+            background: #ff69b4;
+            color: #fff;
+            border-color: #ff1493;
+            box-shadow: 0 0 20px rgba(255, 105, 180, 0.5);
+        }
+
+        .auto-distribute-buttons {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 20px;
+            border: 3px solid #ffb6c1;
+            box-shadow: 0 10px 25px rgba(255, 182, 193, 0.4);
+            z-index: 10;
+        }
+
+        .auto-button {
+            width: 44px;
+            height: 44px;
+            border: 2px solid #ffb6c1;
+            border-radius: 50%;
+            background: #fff0f5;
+            color: #d147a3;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auto-button:hover {
+            background: #ffb6c1;
+            color: #fff;
+            transform: translateY(-3px) scale(1.1);
+            box-shadow: 0 5px 15px rgba(255, 182, 193, 0.6);
+        }
+
+        .auto-button.active {
+            background: #ff69b4;
+            color: #fff;
+            border-color: #ff1493;
+            box-shadow: 0 0 20px rgba(255, 105, 180, 0.5);
+        }
+
+        .instruction {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #d147a3;
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            border-radius: 12px;
+            border: 3px solid #ffb6c1;
+            box-shadow: 0 10px 25px rgba(255, 182, 193, 0.6);
+            z-index: 10;
+            letter-spacing: 1px;
+        }
+        
+        .loading {
+            color: #d147a3;
+            font-weight: 700;
+            font-size: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 20px;
+                top: -40px;
+            }
+            
+            .controls {
+                top: 15px;
+                right: 15px;
+                padding: 15px;
+            }
+            
+            .mode-button {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+            
+            .instruction {
+                font-size: 14px;
+                padding: 10px 20px;
+                max-width: 90%;
+            }
+            .auto-distribute-buttons {
+                bottom: 15px;
+                right: 15px;
+                padding: 10px;
+            }
+        }
+    </style>
+<!-- EDU_BRAND_STYLE_START -->
+<style id="edu-brand-style">
+  :root {
+    --edu-bg: #eef5f7;
+    --edu-bg-deep: #dfeaf0;
+    --edu-surface: rgba(255, 255, 255, 0.82);
+    --edu-surface-strong: rgba(255, 255, 255, 0.94);
+    --edu-line: rgba(97, 132, 161, 0.24);
+    --edu-shadow: 0 18px 48px rgba(37, 78, 110, 0.12);
+    --edu-shadow-strong: 0 24px 56px rgba(24, 61, 90, 0.16);
+    --edu-text: #17324d;
+    --edu-text-soft: #4a647c;
+    --edu-accent: #0f9d8a;
+    --edu-accent-deep: #0d7b72;
+    --edu-warm: #ff9d6c;
+    --edu-warm-soft: #fff1e8;
+  }
+
+  body.edu-refactor-body {
+    background:
+      radial-gradient(circle at 12% 14%, rgba(15, 157, 138, 0.10), transparent 22%),
+      radial-gradient(circle at 88% 16%, rgba(255, 157, 108, 0.18), transparent 20%),
+      radial-gradient(circle at 50% 100%, rgba(81, 122, 164, 0.10), transparent 28%),
+      linear-gradient(180deg, #f6fbfc 0%, var(--edu-bg) 42%, var(--edu-bg-deep) 100%) !important;
+    color: var(--edu-text) !important;
+  }
+
+  body.edu-refactor-body::before,
+  body.edu-refactor-body::after {
+    content: '';
+    position: fixed;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+    opacity: 0.6;
+  }
+
+  body.edu-refactor-body::before {
+    width: 240px;
+    height: 240px;
+    right: -40px;
+    top: 80px;
+    background: rgba(15, 157, 138, 0.14);
+  }
+
+  body.edu-refactor-body::after {
+    width: 180px;
+    height: 180px;
+    left: -20px;
+    bottom: 80px;
+    background: rgba(255, 157, 108, 0.16);
+  }
+
+  body.edu-refactor-body button,
+  body.edu-refactor-body input[type="button"],
+  body.edu-refactor-body input[type="submit"] {
+    border-radius: 16px !important;
+    border: 1px solid rgba(22, 101, 122, 0.16) !important;
+    box-shadow: 0 10px 24px rgba(33, 76, 111, 0.12) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #edf7f6 100%) !important;
+    color: var(--edu-text) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+  }
+
+  body.edu-refactor-body button:hover,
+  body.edu-refactor-body input[type="button"]:hover,
+  body.edu-refactor-body input[type="submit"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(33, 76, 111, 0.16) !important;
+    filter: saturate(1.04);
+  }
+
+  body.edu-refactor-body input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  body.edu-refactor-body select,
+  body.edu-refactor-body textarea {
+    border-radius: 14px !important;
+    border: 1px solid rgba(82, 119, 148, 0.26) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: var(--edu-text) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px rgba(42, 77, 105, 0.08) !important;
+  }
+
+  body.edu-refactor-body [class*="panel"],
+  body.edu-refactor-body [class*="Panel"],
+  body.edu-refactor-body [class*="card"],
+  body.edu-refactor-body [class*="Card"],
+  body.edu-refactor-body [class*="dialog"],
+  body.edu-refactor-body [class*="Dialog"],
+  body.edu-refactor-body [class*="controls"],
+  body.edu-refactor-body [class*="Controls"],
+  body.edu-refactor-body [class*="toolbar"],
+  body.edu-refactor-body [class*="Toolbar"],
+  body.edu-refactor-body [class*="sidebar"],
+  body.edu-refactor-body [class*="Sidebar"],
+  body.edu-refactor-body [class*="instruction"],
+  body.edu-refactor-body [class*="Instruction"],
+  body.edu-refactor-body [id*="panel"],
+  body.edu-refactor-body [id*="Panel"],
+  body.edu-refactor-body [id*="controls"],
+  body.edu-refactor-body [id*="Controls"] {
+    border-radius: 24px !important;
+    border: 1px solid var(--edu-line) !important;
+    box-shadow: var(--edu-shadow) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  body.edu-refactor-body .page-title,
+  body.edu-refactor-body .header h1,
+  body.edu-refactor-body .header h2,
+  body.edu-refactor-body .title,
+  body.edu-refactor-body .subtitle,
+  body.edu-refactor-body .teacher-text,
+  body.edu-refactor-body #step-indicator,
+  body.edu-refactor-body #narrative-text {
+    color: var(--edu-text) !important;
+    text-shadow: none !important;
+  }
+
+  body.edu-refactor-body .edu-brand-shell {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  body.edu-refactor-body .edu-brand-panel,
+  body.edu-refactor-body .edu-brand-guide {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 251, 0.92) 100%);
+    border: 1px solid rgba(89, 127, 156, 0.22);
+    box-shadow: var(--edu-shadow-strong);
+    backdrop-filter: blur(18px);
+    border-radius: 26px;
+  }
+
+  body.edu-refactor-body .edu-brand-panel {
+    max-width: min(720px, calc(100vw - 280px));
+    padding: 18px 22px 20px;
+  }
+
+  body.edu-refactor-body .edu-brand-guide {
+    width: 220px;
+    padding: 16px 18px;
+  }
+
+  body.edu-refactor-body .edu-brand-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(15, 157, 138, 0.10);
+    color: var(--edu-accent-deep);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  body.edu-refactor-body .edu-brand-title {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.08;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-copy {
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  body.edu-refactor-body .edu-brand-copy strong {
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-brand-shell {
+      flex-direction: column;
+      right: 12px;
+      left: 12px;
+      top: 12px;
+    }
+
+    body.edu-refactor-body .edu-brand-panel,
+    body.edu-refactor-body .edu-brand-guide {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
+
+
+  body.edu-refactor-body .edu-border-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 10001;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(89, 127, 156, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--edu-text, #1f2937);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  body.edu-refactor-body .edu-border-toggle:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  body.edu-refactor-body.edu-hide-brand-panels .edu-brand-shell {
+    display: none !important;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-border-toggle {
+      top: auto;
+      bottom: 12px;
+      right: 12px;
+    }
+  }
+
+</style>
+<!-- EDU_BRAND_STYLE_END -->
+
+
+</head>
+<body class="edu-refactor-body">
+<!-- EDU_BRAND_SHELL_START -->
+<div class="edu-brand-shell" data-brand-shell>
+  <section class="edu-brand-panel" aria-label="页面导语">
+    <div class="edu-brand-kicker">除法建模 · EDU STUDIO</div>
+    <h1 class="edu-brand-title">均分投放训练场</h1>
+    <div class="edu-brand-copy">
+      <div><strong>任务目标：</strong>把同一批物体平均投放到多个位置中，真正理解“每份一样多”。</div>
+      <div><strong>操作提示：</strong>可以手动圈选拖动，也能切换自动投放规则，看每一轮怎样平均展开。</div>
+      <div><strong>理解重点：</strong>均分的关键不是快，而是确保每一份在每一轮结束后都保持公平。</div>
+    </div>
+</section>
+  <aside class="edu-brand-guide" aria-label="操作建议">
+    <h2>建议这样探索</h2>
+    <ul><li>先确认总数和份数。</li><li>一轮一轮平均投放更稳。</li><li>最后检查是否有剩余。</li></ul>
+  </aside>
+</div>
+<!-- EDU_BRAND_SHELL_END -->
+
+<button type="button" class="edu-border-toggle" id="edu-border-toggle" aria-pressed="false" aria-label="隐藏说明框" title="隐藏说明框">-</button>
+
+    <div class="game-container">
+        <div class="controls">
+            <div class="switch-container">
+                <input type="checkbox" id="distributionToggle" class="switch-checkbox" checked>
+                <label for="distributionToggle" class="switch-label">
+                    <span class="switch-slider"></span>
+                    <span class="switch-text"></span>
+                </label>
+            </div>
+            <button id="toggleMode" class="mode-button">进入圈选</button>
+            <button id="resetBtn" class="mode-button" style="display: none;">重新分配</button>
+        </div>
+        <div class="auto-distribute-buttons">
+            <button id="autoBtn1" class="auto-button">1</button>
+            <button id="autoBtn2" class="auto-button">2</button>
+            <button id="autoBtn3" class="auto-button">3</button>
+        </div>
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
+        <div class="loading" id="loading">准备素材中...</div>
+        <div class="instruction" id="instruction">把餐食平均送到每只猫咪面前</div>
+    </div>
+
+    <script>
+        class CanvasDragGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.loading = document.getElementById('loading');
+                this.instruction = document.getElementById('instruction');
+                this.toggleModeBtn = document.getElementById('toggleMode');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.distributionToggleBtn = document.getElementById('distributionToggle');
+                this.autoBtn1 = document.getElementById('autoBtn1');
+                this.autoBtn2 = document.getElementById('autoBtn2');
+                this.autoBtn3 = document.getElementById('autoBtn3');
+                
+                // 游戏对象
+                this.oranges = [];
+                this.plates = [];
+                this.images = {};
+                this.imagesLoaded = 0;
+                this.totalImages = 2; // 只加载橘子和盘子
+                
+                // 拖拽状态
+                this.isDragging = false;
+                this.dragOrange = null;
+                this.dragOffset = { x: 0, y: 0 };
+                this.hoveredPlate = null;
+                
+                // 多点触控拖拽状态
+                this.activeTouches = new Map(); // 存储活跃的触摸点和对应的橘子
+                
+                // 圈选模式状态
+                this.isSelectMode = false;
+                this.isSelecting = false;
+                this.selectionPath = []; // 存储绳子式圈选的路径点
+                this.selectedOranges = [];
+                this.isDraggingSelection = false;
+                this.selectionDragOffset = { x: 0, y: 0 };
+                this.ghostOranges = []; // 半透明的原位置橘子
+                this.distributionCount = 0; // 分配次数计数器
+                
+                // 游戏配置
+                this.orangeSize = 60;
+                this.plateWidth = 120;
+                this.plateHeight = 58; // 调整盘子高度保持比例
+                this.plateY = this.canvas.height - 160; // 调整Y位置
+                
+                // 自动分配模式状态
+                this.autoDistributeMode = 0; // 0: 关闭, 1: 1个1个, 2: 2个2个, 3: 3个3个
+                this.autoDistributeIndex = 0; // 当前分配到第几个盘子
+                this.autoDistributeCount = 0; // 当前轮次已分配的橘子数量
+                
+                // 橘子分布模式状态
+                this.isCenterMode = true; // true: 中心堆叠模式, false: 分散模式
+                
+                this.init();
+            }
+
+            init() {
+                this.setupCanvas();
+                this.loadImages();
+            }
+
+            setupCanvas() {
+                // 获取Canvas的实际显示尺寸
+                const rect = this.canvas.getBoundingClientRect();
+                
+                // 设置Canvas的实际尺寸为显示尺寸
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                
+                // 更新plateY位置基于实际Canvas高度
+                this.plateY = this.canvas.height - 160;
+            }
+
+            loadImages() {
+                const imageUrls = {
+                    orange: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+                        <svg xmlns="http://www.w3.org/2000/svg" width="120" height="90" viewBox="0 0 120 90">
+                            <defs>
+                                <linearGradient id="fishBody" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#7bd7c7" />
+                                    <stop offset="100%" stop-color="#1fa58f" />
+                                </linearGradient>
+                            </defs>
+                            <ellipse cx="52" cy="45" rx="28" ry="18" fill="url(#fishBody)" />
+                            <polygon points="74,45 102,24 102,66" fill="#157d72" />
+                            <circle cx="42" cy="40" r="4" fill="#17324d" />
+                            <path d="M28 44 C34 50 40 50 46 44" stroke="#17324d" stroke-width="4" fill="none" stroke-linecap="round" />
+                            <path d="M50 24 L58 34 L44 34 Z" fill="#ffb36b" />
+                            <path d="M54 56 L66 66 L48 66 Z" fill="#ffb36b" />
+                        </svg>
+                    `)}`,
+                    plate: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+                        <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+                            <defs>
+                                <linearGradient id="catFace" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#ffd8b8" />
+                                    <stop offset="100%" stop-color="#f0a870" />
+                                </linearGradient>
+                            </defs>
+                            <circle cx="90" cy="96" r="52" fill="url(#catFace)" />
+                            <polygon points="48,52 70,18 84,56" fill="#f0a870" />
+                            <polygon points="132,52 110,18 96,56" fill="#f0a870" />
+                            <polygon points="56,48 69,28 78,51" fill="#ffc8dc" />
+                            <polygon points="124,48 111,28 102,51" fill="#ffc8dc" />
+                            <circle cx="72" cy="92" r="6" fill="#17324d" />
+                            <circle cx="108" cy="92" r="6" fill="#17324d" />
+                            <ellipse cx="90" cy="109" rx="9" ry="7" fill="#ff9d6c" />
+                            <path d="M90 116 C82 124 76 126 68 126" stroke="#17324d" stroke-width="4" fill="none" stroke-linecap="round" />
+                            <path d="M90 116 C98 124 104 126 112 126" stroke="#17324d" stroke-width="4" fill="none" stroke-linecap="round" />
+                            <path d="M56 108 L28 102" stroke="#17324d" stroke-width="3" stroke-linecap="round" />
+                            <path d="M56 116 L24 116" stroke="#17324d" stroke-width="3" stroke-linecap="round" />
+                            <path d="M124 108 L152 102" stroke="#17324d" stroke-width="3" stroke-linecap="round" />
+                            <path d="M124 116 L156 116" stroke="#17324d" stroke-width="3" stroke-linecap="round" />
+                        </svg>
+                    `)}`
+                };
+
+                Object.keys(imageUrls).forEach(key => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.images[key] = img;
+                        this.imagesLoaded++;
+                        if (this.imagesLoaded === this.totalImages) {
+                            this.startGame();
+                        }
+                    };
+                    img.onerror = () => {
+                        // 创建占位符图像 (橘子和盘子)
+                        this.images[key] = this.createPlaceholderImage(key);
+                        this.imagesLoaded++;
+                        if (this.imagesLoaded === this.totalImages) {
+                            this.startGame();
+                        }
+                    };
+                    img.src = imageUrls[key];
+                });
+            }
+
+            createPlaceholderImage(type) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                if (type === 'orange') {
+                    // 绘制橘子
+                    canvas.width = canvas.height = 60;
+                    ctx.fillStyle = '#ffd700';
+                    ctx.beginPath();
+                    ctx.arc(30, 30, 25, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#daa520';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    ctx.fillStyle = '#daa520';
+                    ctx.font = '24px Outfit';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('$', 30, 30);
+                } else if (type === 'plate') {
+                    // 绘制盘子
+                    canvas.width = 120;
+                    canvas.height = 80;
+                    ctx.fillStyle = '#8b4513';
+                    ctx.fillRect(10, 20, 100, 60);
+                    ctx.fillStyle = '#a0522d';
+                    ctx.fillRect(15, 25, 90, 50);
+                    ctx.fillStyle = '#ffd700';
+                    ctx.fillRect(50, 40, 20, 10);
+                }
+                
+                return canvas;
+            }
+
+            startGame() {
+                this.loading.style.display = 'none';
+                this.createGameObjects();
+                this.addEventListeners();
+                this.addModeListeners();
+                this.gameLoop();
+            }
+
+            createGameObjects() {
+                // 创建18个橘子，确保不重叠且在容器内
+                this.createOrangesWithoutOverlap();
+                // 创建6个盘子
+                const plateSpacing = (this.canvas.width - 6 * this.plateWidth) / 7;
+                for (let i = 0; i < 6; i++) {
+                    this.plates.push({
+                        id: i,
+                        x: plateSpacing + i * (this.plateWidth + plateSpacing),
+                        y: this.plateY,
+                        width: this.plateWidth,
+                        height: this.plateHeight,
+                        oranges: [], // 存储盘子里的橘子数组
+                        highlight: false,
+                        scale: 1,
+                        targetScale: 1
+                    });
+                }
+            }
+
+            exitSelectModeAndShowReset() {
+                // 退出圈选模式
+                this.isSelectMode = false;
+                this.canvas.classList.remove('select-mode');
+                this.clearSelection();
+                
+                // 隐藏圈选按钮，显示重新分按钮
+                this.toggleModeBtn.style.display = 'none';
+                this.resetBtn.style.display = 'inline-block';
+            }
+
+            resetGame() {
+                // 重置所有状态
+                this.distributionCount = 0;
+                this.isSelectMode = false;
+                this.canvas.classList.remove('select-mode');
+                this.clearSelection();
+                
+                // 重置自动分配模式
+                this.autoDistributeMode = 0;
+                this.autoDistributeIndex = 0;
+                this.autoDistributeCount = 0;
+                this.updateAutoButtonStates();
+                
+                // 清空所有盘子并重置橘子状态
+                this.plates.forEach(plate => {
+                    plate.oranges = [];
+                    plate.highlight = false;
+                    plate.targetScale = 1;
+                });
+                
+                // 重置所有橘子状态并重新生成位置
+                this.oranges = []; // 清空现有橘子数组
+                this.createOrangesWithoutOverlap(); // 重新创建橘子
+                
+                // 恢复按钮状态
+                this.toggleModeBtn.style.display = 'inline-block';
+                this.toggleModeBtn.textContent = '进入圈选';
+                this.toggleModeBtn.classList.remove('active');
+                this.resetBtn.style.display = 'none';
+                
+                // 恢复初始指令
+                this.instruction.textContent = '把餐食平均送到每只猫咪面前';
+            }
+
+            createOrangesWithoutOverlap() {
+                const maxAttempts = 1000; // 防止无限循环
+                const gameAreaHeight = this.canvas.height - 200; // 为盘子留出空间
+                const margin = 10; // 边界边距
+                
+                if (this.isCenterMode) {
+                    // 中心堆叠模式 - 橘子重叠在中心
+                    const centerX = this.canvas.width / 2 - this.orangeSize / 2;
+                    const centerY = gameAreaHeight / 2 - this.orangeSize;
+                    const maxOffset = 100; // 最大偏移量，让橘子稍微分散一点
+                    
+                    for (let i = 0; i < 18; i++) {
+                        // 在中心点附近随机偏移
+                        const offsetX = (Math.random() - 0.5) * maxOffset;
+                        const offsetY = (Math.random() - 0.5) * maxOffset;
+                        
+                        const newOrange = {
+                            id: i,
+                            x: centerX + offsetX,
+                            y: centerY + offsetY,
+                            width: this.orangeSize,
+                            height: this.orangeSize,
+                            onPlate: false,
+                            plateId: null,
+                            scale: 1,
+                            targetScale: 1
+                        };
+                        
+                        this.oranges.push(newOrange);
+                    }
+                } else {
+                    // 分散模式 - 橘子不重叠分布
+                    const minDistance = this.orangeSize; // 橘子之间的最小距离
+                    
+                    // 定义中心区域范围（画布的中心60%区域）
+                    const centerAreaWidth = this.canvas.width * 0.6;
+                    const centerAreaHeight = gameAreaHeight * 0.6;
+                    const centerStartX = (this.canvas.width - centerAreaWidth) / 2;
+                    const centerStartY = (gameAreaHeight - centerAreaHeight) / 2;
+
+                    for (let i = 0; i < 18; i++) {
+                        let attempts = 0;
+                        let validPosition = false;
+                        let newOrange;
+                        
+                        while (!validPosition && attempts < maxAttempts) {
+                            // 在中心区域内生成随机位置
+                            const maxX = centerStartX + centerAreaWidth - this.orangeSize;
+                            const maxY = centerStartY + centerAreaHeight - this.orangeSize;
+                            const x = Math.random() * (maxX - centerStartX) + centerStartX;
+                            const y = Math.random() * (maxY - centerStartY) + centerStartY;
+                            
+                            newOrange = {
+                                id: i,
+                                x: x,
+                                y: y,
+                                width: this.orangeSize,
+                                height: this.orangeSize,
+                                onPlate: false,
+                                plateId: null,
+                                scale: 1,
+                                targetScale: 1
+                            };
+                            
+                            // 检查是否与现有橘子重叠
+                            validPosition = true;
+                            for (let j = 0; j < this.oranges.length; j++) {
+                                const existingOrange = this.oranges[j];
+                                const distance = Math.sqrt(
+                                    Math.pow(newOrange.x + newOrange.width/2 - existingOrange.x - existingOrange.width/2, 2) +
+                                    Math.pow(newOrange.y + newOrange.height/2 - existingOrange.y - existingOrange.height/2, 2)
+                                );
+                                
+                                if (distance < minDistance) {
+                                    validPosition = false;
+                                    break;
+                                }
+                            }
+                            
+                            attempts++;
+                        }
+                        
+                        // 如果找不到合适位置，使用网格布局（在中心区域）
+                        if (!validPosition) {
+                            const cols = Math.ceil(Math.sqrt(18));
+                            const rows = Math.ceil(18 / cols);
+                            const cellWidth = centerAreaWidth / cols;
+                            const cellHeight = centerAreaHeight / rows;
+                            
+                            const col = i % cols;
+                            const row = Math.floor(i / cols);
+                            
+                            newOrange = {
+                                id: i,
+                                x: centerStartX + col * cellWidth + (cellWidth - this.orangeSize) / 2,
+                                y: centerStartY + row * cellHeight + (cellHeight - this.orangeSize) / 2,
+                                width: this.orangeSize,
+                                height: this.orangeSize,
+                                onPlate: false,
+                                plateId: null,
+                                scale: 1,
+                                targetScale: 1
+                            };
+                            
+                            // 确保网格布局的橘子也在中心区域内
+                            newOrange.x = Math.max(centerStartX, Math.min(newOrange.x, centerStartX + centerAreaWidth - this.orangeSize));
+                            newOrange.y = Math.max(centerStartY, Math.min(newOrange.y, centerStartY + centerAreaHeight - this.orangeSize));
+                        }
+                        
+                        this.oranges.push(newOrange);
+                    }
+                }
+            }
+
+            addEventListeners() {
+                // 鼠标事件
+                this.canvas.addEventListener('mousedown', (e) => this.handleStart(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMove(e));
+                this.canvas.addEventListener('mouseup', (e) => this.handleEnd(e));
+
+                // 触摸事件 - 支持多点触控
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    // 处理所有新的触摸点
+                    for (let i = 0; i < e.changedTouches.length; i++) {
+                        this.handleTouchStart(e.changedTouches[i]);
+                    }
+                });
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    // 处理所有移动的触摸点
+                    for (let i = 0; i < e.changedTouches.length; i++) {
+                        this.handleTouchMove(e.changedTouches[i]);
+                    }
+                });
+                this.canvas.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    // 处理所有结束的触摸点
+                    for (let i = 0; i < e.changedTouches.length; i++) {
+                        this.handleTouchEnd(e.changedTouches[i]);
+                    }
+                });
+
+                // 防止右键菜单
+                this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            }
+
+            addModeListeners() {
+                this.toggleModeBtn.addEventListener('click', () => {
+                    this.toggleMode();
+                });
+                
+                this.resetBtn.addEventListener('click', () => {
+                    this.resetGame();
+                });
+                
+                // 添加自动分配按钮事件监听器
+                this.autoBtn1.addEventListener('click', () => {
+                    this.startAutoDistribute(1);
+                });
+                
+                this.autoBtn2.addEventListener('click', () => {
+                    this.startAutoDistribute(2);
+                });
+                
+                this.autoBtn3.addEventListener('click', () => {
+                    this.startAutoDistribute(3);
+                });
+                
+                // 添加分布模式切换按钮事件监听器
+                this.distributionToggleBtn.addEventListener('change', () => {
+                    this.toggleDistributionMode();
+                });
+            }
+
+            toggleMode() {
+                if (this.isSelectMode) {
+                    // 当前是圈选模式，切换到普通模式
+                    this.isSelectMode = false;
+                    this.toggleModeBtn.textContent = '圈分';
+                    this.toggleModeBtn.classList.remove('active');
+                    this.canvas.classList.remove('select-mode');
+                    this.instruction.textContent = '把橘子平均放进每个盘子里';
+                    this.clearSelection();
+                } else {
+                    // 当前是普通模式，切换到圈选模式
+                    this.isSelectMode = true;
+                    this.toggleModeBtn.textContent = '退出圈选';
+                    this.toggleModeBtn.classList.add('active');
+                    this.canvas.classList.add('select-mode');
+                    this.instruction.textContent = '圈住 6 个橘子后拖动，系统会按顺序平均投放。';
+                    this.clearSelection();
+                }
+            }
+
+            toggleDistributionMode() {
+                // 根据checkbox状态设置分布模式
+                this.isCenterMode = this.distributionToggleBtn.checked;
+                
+                // 重新生成橘子位置
+                this.oranges = []; // 清空现有橘子数组
+                this.createOrangesWithoutOverlap(); // 重新创建橘子
+            }
+
+            clearSelection() {
+                this.selectedOranges = [];
+                this.selectionPath = [];
+                this.isSelecting = false;
+                this.isDraggingSelection = false;
+                this.ghostOranges = [];
+                this.originalPositions = null; // 清除保存的原始位置
+                // 移除拖拽样式
+                this.canvas.classList.remove('dragging-selection');
+            }
+
+            getCanvasCoordinates(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+            }
+
+            handleStart(e) {
+                const pos = this.getCanvasCoordinates(e);
+                
+                if (this.isSelectMode) {
+                    if (this.selectedOranges.length === 6 && this.isPointInSelectionPath(pos)) {
+                        // 开始拖拽选区
+                        this.isDraggingSelection = true;
+                        const center = this.getSelectionCenter();
+                        this.selectionDragOffset.x = pos.x - center.x;
+                        this.selectionDragOffset.y = pos.y - center.y;
+                        
+                        // 立即创建透明橘子显示在原位置
+                        if (this.originalPositions) {
+                            this.ghostOranges = this.originalPositions.map(pos => ({
+                                x: pos.x,
+                                y: pos.y,
+                                width: pos.width,
+                                height: pos.height
+                            }));
+                        }
+                    } else if (this.selectedOranges.length === 6) {
+                        // 如果已经选中6个橘子，但点击在选区外，开始新的圈选
+                        this.clearSelection();
+                        this.isSelecting = true;
+                        this.selectionPath = [{ x: pos.x, y: pos.y }];
+                        this.selectedOranges = [];
+                    } else {
+                        // 开始新的画线圈选
+                        this.isSelecting = true;
+                        this.selectionPath = [{ x: pos.x, y: pos.y }];
+                        this.selectedOranges = []; // 清空之前的选择
+                    }
+                } else {
+                    // 普通模式
+                    // 从上到下检查橘子（后绘制的在上层）
+                    for (let i = this.oranges.length - 1; i >= 0; i--) {
+                        const orange = this.oranges[i];
+                        if (this.isPointInOrange(pos, orange)) {
+                            this.isDragging = true;
+                            this.dragOrange = orange;
+                            this.dragOffset.x = pos.x - orange.x;
+                            this.dragOffset.y = pos.y - orange.y;
+                            orange.targetScale = 1.1;
+                            
+                            // 如果橘子在盘子上，从盘子上移除
+                            if (orange.onPlate && orange.plateId !== null) {
+                                const plate = this.plates[orange.plateId];
+                                const index = plate.oranges.indexOf(orange);
+                                if (index > -1) {
+                                    plate.oranges.splice(index, 1);
+                                    // 重新排列剩余橘子
+                                    this.arrangeOrangesOnPlate(plate);
+                                }
+                                orange.onPlate = false;
+                                orange.plateId = null;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            handleMove(e) {
+                const pos = this.getCanvasCoordinates(e);
+
+                if (this.isSelectMode) {
+                    if (this.isSelecting) {
+                        // 实时添加路径点，创建平滑的画线效果
+                        const lastPoint = this.selectionPath[this.selectionPath.length - 1];
+                        const distance = Math.sqrt(
+                            Math.pow(pos.x - lastPoint.x, 2) + Math.pow(pos.y - lastPoint.y, 2)
+                        );
+                        
+                        // 降低距离阈值，让线条更平滑
+                        if (distance > 3) {
+                            this.selectionPath.push({ x: pos.x, y: pos.y });
+                            // 实时更新选中的橘子
+                            this.updateSelectionFromPath();
+                        }
+                    } else if (this.isDraggingSelection && this.selectedOranges.length === 6) {
+                        // 拖拽选区
+                        const center = this.getSelectionCenter();
+                        const newCenterX = pos.x - this.selectionDragOffset.x;
+                        const newCenterY = pos.y - this.selectionDragOffset.y;
+                        
+                        // 计算移动偏移
+                        const deltaX = newCenterX - center.x;
+                        const deltaY = newCenterY - center.y;
+                        
+                        // 同时移动选中的橘子
+                        this.selectedOranges.forEach(orange => {
+                            orange.x += deltaX;
+                            orange.y += deltaY;
+                        });
+                    }
+                } else {
+                    // 普通模式
+                    if (!this.isDragging || !this.dragOrange) return;
+
+                    // 限制小鱼干在canvas边界内，添加边距
+                    const margin = 5;
+                    let newX = pos.x - this.dragOffset.x;
+                    let newY = pos.y - this.dragOffset.y;
+                    
+                    // 确保小鱼干完全在canvas边界内
+                    newX = Math.max(margin, Math.min(newX, this.canvas.width - this.dragOrange.width - margin));
+                    newY = Math.max(margin, Math.min(newY, this.canvas.height - this.dragOrange.height - margin));
+                    
+                    this.dragOrange.x = newX;
+                    this.dragOrange.y = newY;
+
+                    // 检查悬停的猫咪
+                    this.hoveredPlate = null;
+                    this.plates.forEach(plate => {
+                        plate.highlight = false;
+                        plate.targetScale = 1;
+                        if (this.isPointInPlate(pos, plate)) {
+                            this.hoveredPlate = plate;
+                            plate.highlight = true;
+                            plate.targetScale = 1.05;
+                        }
+                    });
+                }
+            }
+
+            handleEnd(e) {
+                const pos = this.getCanvasCoordinates(e);
+
+                if (this.isSelectMode) {
+                    if (this.isSelecting) {
+                        // 完成画线圈选
+                        this.isSelecting = false;
+                        // 闭合路径（连接最后一点到第一点）
+                        if (this.selectionPath.length > 2) {
+                            // 自动闭合路径
+                            this.selectionPath.push(this.selectionPath[0]);
+                            this.updateSelectionFromPath();
+                            this.finalizeSelection();
+                        }
+                    } else if (this.isDraggingSelection) {
+                        // 完成选区拖拽，检查是否需要自动分配
+                        this.isDraggingSelection = false;
+                        if (this.selectedOranges.length === 6) {
+                            this.autoDistributeToPlates();
+                        }
+                    }
+                } else {
+                    // 普通模式
+                    if (!this.isDragging || !this.dragOrange) return;
+
+                    const targetPlate = this.getPlateAt(pos);
+
+                    if (targetPlate) {
+                        this.placeOrangeOnPlate(this.dragOrange, targetPlate);
+                    }
+
+                    // 重置状态
+                    this.dragOrange.targetScale = 1; // 统一保持原始大小
+                    this.plates.forEach(plate => {
+                        plate.highlight = false;
+                        plate.targetScale = 1;
+                    });
+
+                    this.isDragging = false;
+                    this.dragOrange = null;
+                    this.hoveredPlate = null;
+                }
+            }
+
+            // 多点触控处理函数
+            handleTouchStart(touch) {
+                const pos = this.getCanvasCoordinates(touch);
+                
+                // 在圈选模式下，仍使用原有的单点逻辑
+                if (this.isSelectMode) {
+                    this.handleStart(touch);
+                    return;
+                }
+                
+                // 普通模式下支持多点触控
+                // 从上到下检查橘子（后绘制的在上层）
+                for (let i = this.oranges.length - 1; i >= 0; i--) {
+                    const orange = this.oranges[i];
+                    if (this.isPointInOrange(pos, orange) && !orange.onPlate) {
+                        // 检查这个橘子是否已经被其他触摸点拖拽
+                        let alreadyDragging = false;
+                        for (let [touchId, touchData] of this.activeTouches) {
+                            if (touchData.orange === orange) {
+                                alreadyDragging = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!alreadyDragging) {
+                            // 创建新的触摸拖拽
+                            this.activeTouches.set(touch.identifier, {
+                                orange: orange,
+                                offset: {
+                                    x: pos.x - orange.x,
+                                    y: pos.y - orange.y
+                                }
+                            });
+                            
+                            orange.targetScale = 1.1;
+                            
+                            // 如果橘子在盘子上，从盘子上移除
+                            if (orange.onPlate && orange.plateId !== null) {
+                                const plate = this.plates[orange.plateId];
+                                const index = plate.oranges.indexOf(orange);
+                                if (index > -1) {
+                                    plate.oranges.splice(index, 1);
+                                    // 重新排列剩余橘子
+                                    this.arrangeOrangesOnPlate(plate);
+                                }
+                                orange.onPlate = false;
+                                orange.plateId = null;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            handleTouchMove(touch) {
+                const pos = this.getCanvasCoordinates(touch);
+                
+                // 在圈选模式下，仍使用原有的单点逻辑
+                if (this.isSelectMode) {
+                    this.handleMove(touch);
+                    return;
+                }
+                
+                // 普通模式下的多点触控移动
+                const touchData = this.activeTouches.get(touch.identifier);
+                if (touchData) {
+                    const orange = touchData.orange;
+                    orange.x = pos.x - touchData.offset.x;
+                    orange.y = pos.y - touchData.offset.y;
+                    
+                    // 检查盘子高亮
+                    this.plates.forEach(plate => {
+                        plate.highlight = false;
+                        plate.targetScale = 1;
+                    });
+                    
+                    const targetPlate = this.getPlateAt(pos);
+                    if (targetPlate) {
+                        targetPlate.highlight = true;
+                        targetPlate.targetScale = 1.1;
+                    }
+                }
+            }
+
+            handleTouchEnd(touch) {
+                const pos = this.getCanvasCoordinates(touch);
+                
+                // 在圈选模式下，仍使用原有的单点逻辑
+                if (this.isSelectMode) {
+                    this.handleEnd(touch);
+                    return;
+                }
+                
+                // 普通模式下的多点触控结束
+                const touchData = this.activeTouches.get(touch.identifier);
+                if (touchData) {
+                    const orange = touchData.orange;
+                    const targetPlate = this.getPlateAt(pos);
+                    
+                    if (targetPlate) {
+                        this.placeOrangeOnPlate(orange, targetPlate);
+                    }
+                    
+                    // 重置橘子状态
+                    orange.targetScale = 1;
+                    
+                    // 移除触摸点
+                    this.activeTouches.delete(touch.identifier);
+                }
+                
+                // 重置所有盘子状态
+                this.plates.forEach(plate => {
+                    plate.highlight = false;
+                    plate.targetScale = 1;
+                });
+            }
+
+            isPointInOrange(point, orange) {
+                return point.x >= orange.x && point.x <= orange.x + orange.width &&
+                       point.y >= orange.y && point.y <= orange.y + orange.height;
+            }
+
+            isPointInPlate(point, plate) {
+                // 增加吸附识别高度，让盘子更容易被检测到
+                const attractionHeight = 40; // 增加40像素的吸附高度
+                return point.x >= plate.x && point.x <= plate.x + plate.width &&
+                       point.y >= plate.y - attractionHeight && point.y <= plate.y + plate.height;
+            }
+
+            getPlateAt(point) {
+                for (let plate of this.plates) {
+                    if (this.isPointInPlate(point, plate)) {
+                        return plate;
+                    }
+                }
+                return null;
+            }
+
+            // 检查点是否在画线圈选路径内
+            isPointInSelectionPath(point) {
+                if (this.selectionPath.length < 3 || this.selectedOranges.length !== 6) return false;
+                return this.isPointInPolygon(point, this.selectionPath);
+            }
+
+            // 根据画线路径更新选择
+            updateSelectionFromPath() {
+                if (this.selectionPath.length < 3) {
+                    this.selectedOranges = [];
+                    return;
+                }
+
+                // 找到路径内的橘子
+                this.selectedOranges = [];
+                this.oranges.forEach(orange => {
+                    if (!orange.onPlate && this.isOrangeInSelectionPath(orange)) {
+                        this.selectedOranges.push(orange);
+                    }
+                });
+            }
+
+            // 检查橘子是否在画线圈选路径内（改进算法）
+            isOrangeInSelectionPath(orange) {
+                if (this.selectionPath.length < 3) return false;
+                
+                // 检查橘子的多个点是否在路径内，而不仅仅是中心点
+                const orangeCenterX = orange.x + orange.width / 2;
+                const orangeCenterY = orange.y + orange.height / 2;
+                const radius = orange.width / 3; // 橘子的有效半径
+                
+                // 检查中心点和周围几个点
+                const checkPoints = [
+                    { x: orangeCenterX, y: orangeCenterY }, // 中心点
+                    { x: orangeCenterX - radius, y: orangeCenterY }, // 左
+                    { x: orangeCenterX + radius, y: orangeCenterY }, // 右
+                    { x: orangeCenterX, y: orangeCenterY - radius }, // 上
+                    { x: orangeCenterX, y: orangeCenterY + radius }  // 下
+                ];
+                
+                // 如果任何一个检查点在路径内，就认为橘子被选中
+                return checkPoints.some(point => this.isPointInPolygon(point, this.selectionPath));
+            }
+
+            // 点在多边形内的判断算法（射线法）- 优化版本
+            isPointInPolygon(point, polygon) {
+                if (polygon.length < 3) return false;
+                
+                let inside = false;
+                for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                    const xi = polygon[i].x, yi = polygon[i].y;
+                    const xj = polygon[j].x, yj = polygon[j].y;
+                    
+                    if (((yi > point.y) !== (yj > point.y)) &&
+                        (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi)) {
+                        inside = !inside;
+                    }
+                }
+                return inside;
+            }
+
+            // 获取选中橘子的中心点
+            getSelectionCenter() {
+                if (this.selectedOranges.length === 0) return { x: 0, y: 0 };
+                
+                let totalX = 0, totalY = 0;
+                this.selectedOranges.forEach(orange => {
+                    totalX += orange.x + orange.width / 2;
+                    totalY += orange.y + orange.height / 2;
+                });
+                
+                return {
+                    x: totalX / this.selectedOranges.length,
+                    y: totalY / this.selectedOranges.length
+                };
+            }
+
+            finalizeSelection() {
+                if (this.selectedOranges.length === 6) {
+                    // 正好6个橘子，保存原始位置并添加拖拽样式
+                    this.originalPositions = this.selectedOranges.map(orange => ({
+                        x: orange.x,
+                        y: orange.y,
+                        width: orange.width,
+                        height: orange.height
+                    }));
+                    this.canvas.classList.add('dragging-selection');
+                    this.instruction.textContent = '拖动选区，自动平均送到 6 只猫咪前';
+                } else {
+                    // 不等于6个，自动取消圈选
+                    this.clearSelection();
+                    this.instruction.textContent = '请圈选6个小鱼干';
+                }
+            }
+
+            autoDistributeToPlates() {
+                if (this.selectedOranges.length !== 6) return;
+
+                // 透明橘子已经在开始拖拽时创建，这里不需要重复创建
+                // 如果还没有透明橘子（比如直接调用这个函数），则创建
+                if (this.ghostOranges.length === 0) {
+                    this.ghostOranges = this.originalPositions ? this.originalPositions.slice() : this.selectedOranges.map(orange => ({
+                        x: orange.x,
+                        y: orange.y,
+                        width: orange.width,
+                        height: orange.height
+                    }));
+                }
+
+                // 将6个小鱼干分配给6只猫咪
+                this.selectedOranges.forEach((orange, index) => {
+                    const plate = this.plates[index];
+                    
+                    // 从之前的猫咪中移除小鱼干（如果有）
+                    if (orange.onPlate && orange.plateId !== null) {
+                        const oldPlate = this.plates[orange.plateId];
+                        const oldIndex = oldPlate.oranges.indexOf(orange);
+                        if (oldIndex > -1) {
+                            oldPlate.oranges.splice(oldIndex, 1);
+                            // 重新排列剩余小鱼干
+                            this.arrangeOrangesOnPlate(oldPlate);
+                        }
+                    }
+
+                    // 不清空目标猫咪，直接添加新小鱼干实现累积效果
+                    // 将小鱼干添加到猫咪
+                    plate.oranges.push(orange);
+                    orange.onPlate = true;
+                    orange.plateId = plate.id;
+                    
+                    // 重新排列猫咪上的所有小鱼干
+                    this.arrangeOrangesOnPlate(plate);
+                });
+
+                // 增加分配次数
+                this.distributionCount++;
+                
+                // 清除选择状态，但保持圈选模式
+                this.selectedOranges = [];
+                this.selectionPath = [];
+                this.isSelecting = false;
+                this.isDraggingSelection = false;
+                this.originalPositions = null; // 清除保存的原始位置
+                this.canvas.classList.remove('dragging-selection');
+                
+                // 根据分配次数更新指令文字
+                let instructionText = '';
+                if (this.distributionCount === 1) {
+                    instructionText = '第一轮每份先放 1 个，先分掉 6 个。';
+                } else if (this.distributionCount === 2) {
+                    instructionText = '第二轮每份再放 1 个，再分掉 6 个。';
+                } else if (this.distributionCount === 3) {
+                    instructionText = '第三轮每份补上 1 个，正好全部分完。';
+                    // 第三次分配后，自动退出圈选模式并显示重新分按钮
+                    setTimeout(() => {
+                        this.exitSelectModeAndShowReset();
+                    }, 2000);
+                } else {
+                    instructionText = '本轮投放完成！';
+                }
+                
+                this.instruction.textContent = instructionText;
+                
+                // 3秒后清除半透明橘子
+                setTimeout(() => {
+                    this.ghostOranges = [];
+                }, 3000);
+                
+                // 检查是否所有橘子都已分配完毕
+                this.checkAllOrangesDistributed();
+            }
+
+            placeOrangeOnPlate(orange, plate) {
+                // 从之前的盘子中移除橘子
+                if (orange.onPlate && orange.plateId !== null) {
+                    const oldPlate = this.plates[orange.plateId];
+                    const index = oldPlate.oranges.indexOf(orange);
+                    if (index > -1) {
+                        oldPlate.oranges.splice(index, 1);
+                    }
+                }
+
+                // 将橘子添加到新盘子
+                plate.oranges.push(orange);
+                
+                // 计算橘子在盘子中的位置（避免重叠）
+                this.arrangeOrangesOnPlate(plate);
+
+                // 更新橘子状态
+                orange.onPlate = true;
+                orange.plateId = plate.id;
+                orange.targetScale = 1; // 保持原始大小
+                
+                // 检查是否所有橘子都已分配完毕
+                this.checkAllOrangesDistributed();
+            }
+
+            // 检查是否所有橘子都已分配完毕
+            checkAllOrangesDistributed() {
+                const totalOranges = this.oranges.length;
+                const orangesOnPlates = this.oranges.filter(orange => orange.onPlate).length;
+                
+                if (totalOranges === 18 && orangesOnPlates === 18) {
+                    // 所有18个小鱼干都已分配完毕，显示重分按钮
+                    this.toggleModeBtn.style.display = 'none';
+                    this.resetBtn.style.display = 'block';
+                    this.instruction.textContent = '所有餐食都平均送达，分配任务完成！';
+                    
+                    // 如果当前在圈选模式，自动退出
+                    if (this.isSelectMode) {
+                        setTimeout(() => {
+                            this.exitSelectMode();
+                        }, 1000);
+                    }
+                } else {
+                    // 还有小鱼干未分配，隐藏重分按钮
+                    this.resetBtn.style.display = 'none';
+                }
+            }
+
+            exitSelectMode() {
+                this.isSelectMode = false;
+                this.toggleModeBtn.textContent = '圈分';
+                this.toggleModeBtn.classList.remove('active');
+                this.canvas.classList.remove('select-mode');
+                this.clearSelection();
+            }
+
+            calculateOrangePosition(plate, orangeIndex, totalCount) {
+                const plateCenter = {
+                    x: plate.x + plate.width / 2,
+                    y: plate.y + plate.height / 2
+                };
+                
+                // 假设橘子的宽高为40（与实际橘子尺寸一致）
+                const orangeWidth = 40;
+                const orangeHeight = 40;
+
+                if (totalCount === 1) {
+                    // 单个橘子放在盘子中心
+                    return {
+                        x: plateCenter.x - orangeWidth / 2,
+                        y: plateCenter.y - orangeHeight / 2
+                    };
+                } else if (totalCount === 2) {
+                    // 两个橘子左右排列
+                    const spacing = 50;
+                    return {
+                        x: plateCenter.x - orangeWidth / 2 + (orangeIndex - 0.5) * spacing,
+                        y: plateCenter.y - orangeHeight / 2
+                    };
+                } else if (totalCount === 3) {
+                    // 三个橘子三角形排列
+                    const positions = [
+                        { x: -25, y: 0 },     // 左下 (索引0)
+                        { x: 25, y: 0 },      // 右下 (索引1)
+                        { x: 0, y: -40 }      // 上方 (索引2)
+                    ];
+                    return {
+                        x: plateCenter.x - orangeWidth / 2 + positions[orangeIndex].x,
+                        y: plateCenter.y - orangeHeight / 2 + positions[orangeIndex].y
+                    };
+                } else if (totalCount === 4) {
+                    // 四个橘子三角形排列
+                    const positions = [
+                        { x: -23, y: -35 },      // 上左
+                        { x: 23, y: -35 },      // 上右
+                        { x: -25, y: 10 },     // 左下
+                        { x: 25, y: 10 }       // 右下
+                    ];
+                    return {
+                        x: plateCenter.x - orangeWidth / 2 + positions[orangeIndex].x,
+                        y: plateCenter.y - orangeHeight / 2 + positions[orangeIndex].y
+                    };
+                } else {
+                    // 更多橘子采用圆形排列
+                    const radius = 30;
+                    const angle = (orangeIndex / totalCount) * 2 * Math.PI;
+                    return {
+                        x: plateCenter.x - orangeWidth / 2 + Math.cos(angle) * radius,
+                        y: plateCenter.y - orangeHeight / 2 + Math.sin(angle) * radius
+                    };
+                }
+            }
+
+            arrangeOrangesOnPlate(plate) {
+                const orangeCount = plate.oranges.length;
+                if (orangeCount === 0) return;
+
+                const plateCenter = {
+                    x: plate.x + plate.width / 2,
+                    y: plate.y + plate.height / 2
+                };
+
+                if (orangeCount === 1) {
+                    // 单个橘子放在盘子中心
+                    const orange = plate.oranges[0];
+                    orange.x = plateCenter.x - orange.width / 2;
+                    orange.y = plateCenter.y - orange.height / 2;
+                } else if (orangeCount === 2) {
+                    // 两个橘子左右排列
+                    const spacing = 50;
+                    plate.oranges.forEach((orange, index) => {
+                        orange.x = plateCenter.x - orange.width / 2 + (index - 0.5) * spacing;
+                        orange.y = plateCenter.y - orange.height / 2;
+                    });
+                } else if (orangeCount === 3) {
+                    // 三个橘子三角形排列
+                    const positions = [
+                        { x: -25, y: 0 },     // 左下 (索引0)
+                        { x: 25, y: 0 },      // 右下 (索引1)
+                        { x: 0, y: -40 }      // 上方 (索引2)
+                    ];
+                    plate.oranges.forEach((orange, index) => {
+                        orange.x = plateCenter.x - orange.width / 2 + positions[index].x;
+                        orange.y = plateCenter.y - orange.height / 2 + positions[index].y;
+                    });
+                } else if (orangeCount === 4) {
+                    // 四个橘子三角形排列
+                    const positions = [
+                        { x: -23, y: -35 },      // 上左
+                        { x: 23, y: -35 },      // 上右
+                        { x: -25, y: 10 },     // 左下
+                        { x: 25, y: 10 }       // 右下
+                    ];
+                    plate.oranges.forEach((orange, index) => {
+                        orange.x = plateCenter.x - orange.width / 2 + positions[index].x;
+                        orange.y = plateCenter.y - orange.height / 2 + positions[index].y;
+                    });
+                } else {
+                    // 更多橘子采用圆形排列
+                    const radius = 30;
+                    plate.oranges.forEach((orange, index) => {
+                        const angle = (index / orangeCount) * 2 * Math.PI;
+                        orange.x = plateCenter.x - orange.width / 2 + Math.cos(angle) * radius;
+                        orange.y = plateCenter.y - orange.height / 2 + Math.sin(angle) * radius;
+                    });
+                }
+            }
+
+            returnOrangeToRandomPosition(orange) {
+                // 从盘子中移除橘子
+                if (orange.onPlate && orange.plateId !== null) {
+                    const plate = this.plates[orange.plateId];
+                    const index = plate.oranges.indexOf(orange);
+                    if (index > -1) {
+                        plate.oranges.splice(index, 1);
+                        // 重新排列剩余橘子
+                        this.arrangeOrangesOnPlate(plate);
+                    }
+                }
+
+                // 生成新的随机位置
+                const margin = 10;
+                const gameAreaHeight = this.canvas.height - 200;
+                orange.x = Math.random() * (this.canvas.width - orange.width - 2 * margin) + margin;
+                orange.y = Math.random() * (gameAreaHeight - orange.height - 2 * margin) + margin;
+                orange.onPlate = false;
+                orange.plateId = null;
+                orange.targetScale = 1;
+            }
+
+            updateAnimations() {
+                // 更新橘子动画
+                this.oranges.forEach(orange => {
+                    orange.scale += (orange.targetScale - orange.scale) * 0.2;
+                });
+
+                // 更新盘子动画
+                this.plates.forEach(plate => {
+                    plate.scale += (plate.targetScale - plate.scale) * 0.2;
+                });
+            }
+
+            render() {
+                // 清空画布
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // 绘制半透明的原位置橘子
+                if (this.ghostOranges.length > 0) {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = 0.3;
+                    // 优化图片渲染，避免模糊和锯齿
+                    this.ctx.imageSmoothingEnabled = true;
+                    this.ctx.imageSmoothingQuality = 'high';
+                    this.ghostOranges.forEach(ghost => {
+                        // 使用整数像素位置避免模糊
+                        const finalX = Math.round(ghost.x);
+                        const finalY = Math.round(ghost.y);
+                        const finalWidth = Math.round(ghost.width);
+                        const finalHeight = Math.round(ghost.height);
+                        
+                        this.ctx.drawImage(
+                            this.images.orange,
+                            finalX,
+                            finalY,
+                            finalWidth,
+                            finalHeight
+                        );
+                    });
+                    this.ctx.restore();
+                }
+
+                // 绘制盘子
+                this.plates.forEach(plate => {
+                    this.ctx.save();
+                    
+                    const centerX = plate.x + plate.width / 2;
+                    const centerY = plate.y + plate.height / 2;
+                    
+                    this.ctx.translate(centerX, centerY);
+                    
+                    if (plate.highlight) {
+                        this.ctx.filter = 'brightness(1.2)';
+                    }
+                    
+                    // 优化图片渲染，避免模糊和锯齿
+                    this.ctx.imageSmoothingEnabled = true;
+                    this.ctx.imageSmoothingQuality = 'high';
+                    
+                    // 按比例绘制盘子，保持原始图片比例
+                    const plateImg = this.images.plate;
+                    const aspectRatio = plateImg.width / plateImg.height;
+                    let drawWidth = plate.width * plate.scale;
+                    let drawHeight = plate.width * plate.scale / aspectRatio; // 根据宽度计算高度
+                    
+                    // 如果计算出的高度超过设定高度，则以高度为准
+                    if (drawHeight > plate.height * plate.scale) {
+                        drawHeight = plate.height * plate.scale;
+                        drawWidth = plate.height * plate.scale * aspectRatio;
+                    }
+                    
+                    // 使用整数像素位置避免模糊
+                    const finalX = Math.round(-drawWidth / 2);
+                    const finalY = Math.round(-drawHeight / 2);
+                    const finalWidth = Math.round(drawWidth);
+                    const finalHeight = Math.round(drawHeight);
+                    
+                    this.ctx.drawImage(
+                        plateImg,
+                        finalX,
+                        finalY,
+                        finalWidth,
+                        finalHeight
+                    );
+                    
+                    this.ctx.restore();
+                });
+
+                // 绘制橘子（被拖拽的橘子最后绘制）
+                const orangesToDraw = [...this.oranges];
+                if (this.dragOrange) {
+                    const dragIndex = orangesToDraw.indexOf(this.dragOrange);
+                    orangesToDraw.splice(dragIndex, 1);
+                    orangesToDraw.push(this.dragOrange);
+                }
+
+                orangesToDraw.forEach(orange => {
+                    this.ctx.save();
+                    
+                    const centerX = orange.x + orange.width / 2;
+                    const centerY = orange.y + orange.height / 2;
+                    
+                    this.ctx.translate(centerX, centerY);
+                    this.ctx.scale(orange.scale, orange.scale);
+                    
+                    // 优化图片渲染，避免模糊和锯齿
+                    this.ctx.imageSmoothingEnabled = true;
+                    this.ctx.imageSmoothingQuality = 'high';
+                    
+                    // 如果是选中的橘子，添加高亮效果
+                    if (this.selectedOranges.includes(orange)) {
+                        this.ctx.shadowColor = '#FFD700';
+                        this.ctx.shadowBlur = 10;
+                    }
+                    
+                    // 使用整数像素位置避免模糊
+                    const finalX = Math.round(-orange.width / 2);
+                    const finalY = Math.round(-orange.height / 2);
+                    const finalWidth = Math.round(orange.width);
+                    const finalHeight = Math.round(orange.height);
+                    
+                    this.ctx.drawImage(
+                        this.images.orange,
+                        finalX,
+                        finalY,
+                        finalWidth,
+                        finalHeight
+                    );
+                    
+                    this.ctx.restore();
+                });
+
+                // 绘制绳子式圈选路径
+                if (this.isSelectMode && this.selectionPath.length > 0) {
+                    this.ctx.save();
+                    
+                    if (this.selectedOranges.length === 6) {
+                        // 已选中6个橘子，显示绿色
+                        this.ctx.strokeStyle = '#4CAF50';
+                        this.ctx.fillStyle = 'rgba(76, 175, 80, 0.1)';
+                    } else {
+                        // 正在选择或选择数量不对，显示橙色
+                        this.ctx.strokeStyle = '#FF6B35';
+                        this.ctx.fillStyle = 'rgba(255, 107, 53, 0.1)';
+                    }
+                    
+                    this.ctx.lineWidth = 3;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    
+                    // 绘制路径填充（如果路径闭合）
+                    if (this.selectionPath.length > 2 && !this.isSelecting) {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(this.selectionPath[0].x, this.selectionPath[0].y);
+                        for (let i = 1; i < this.selectionPath.length; i++) {
+                            this.ctx.lineTo(this.selectionPath[i].x, this.selectionPath[i].y);
+                        }
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                    }
+                    
+                    // 绘制路径线条
+                    this.ctx.beginPath();
+                    if (this.selectionPath.length > 0) {
+                        this.ctx.moveTo(this.selectionPath[0].x, this.selectionPath[0].y);
+                        for (let i = 1; i < this.selectionPath.length; i++) {
+                            this.ctx.lineTo(this.selectionPath[i].x, this.selectionPath[i].y);
+                        }
+                        
+                        // 如果不是正在选择状态，闭合路径
+                        if (!this.isSelecting && this.selectionPath.length > 2) {
+                            this.ctx.closePath();
+                        }
+                    }
+                    this.ctx.stroke();
+                    
+                    // 显示选中橘子数量
+                    if (this.selectedOranges.length > 0 && this.selectionPath.length > 2) {
+                        // 计算路径的中心点来显示文字
+                        let centerX = 0, centerY = 0;
+                        this.selectionPath.forEach(point => {
+                            centerX += point.x;
+                            centerY += point.y;
+                        });
+                        centerX /= this.selectionPath.length;
+                        centerY /= this.selectionPath.length;
+                        
+                        this.ctx.fillStyle = this.selectedOranges.length === 6 ? '#4CAF50' : '#FF6B35';
+                        this.ctx.font = 'bold 16px Arial';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText(
+                            `已选择: ${this.selectedOranges.length}`,
+                            centerX,
+                            centerY - 10
+                        );
+                        this.ctx.textAlign = 'left'; // 重置对齐方式
+                    }
+                    
+                    this.ctx.restore();
+                }
+            }
+
+            gameLoop() {
+                this.updateAnimations();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+
+            // 自动分配相关方法
+            // 计算橘子与盘子中心的距离
+            calculateDistance(orange, plate) {
+                const orangeCenterX = orange.x + orange.width / 2;
+                const orangeCenterY = orange.y + orange.height / 2;
+                const plateCenterX = plate.x + plate.width / 2;
+                const plateCenterY = plate.y + plate.height / 2;
+                
+                return Math.sqrt(
+                    Math.pow(orangeCenterX - plateCenterX, 2) + 
+                    Math.pow(orangeCenterY - plateCenterY, 2)
+                );
+            }
+
+            // 为指定盘子找到最近的橘子
+            findClosestOranges(targetPlate, unassignedOranges, count) {
+                // 计算所有未分配橘子到目标盘子的距离
+                const orangesWithDistance = unassignedOranges.map(orange => ({
+                    orange: orange,
+                    distance: this.calculateDistance(orange, targetPlate)
+                }));
+                
+                // 按距离排序，选择最近的count个橘子
+                orangesWithDistance.sort((a, b) => a.distance - b.distance);
+                
+                return orangesWithDistance.slice(0, count).map(item => item.orange);
+            }
+
+            startAutoDistribute(mode) {
+                // 重置自动分配状态
+                this.autoDistributeMode = mode;
+                this.autoDistributeIndex = 0;
+                this.autoDistributeCount = 0;
+                
+                // 更新按钮状态
+                this.updateAutoButtonStates();
+                
+                // 更新指令文字
+                this.instruction.textContent = `当前规则：每轮每盘放 ${mode} 个`;
+                
+                // 开始自动分配
+                this.performAutoDistribute();
+            }
+
+            updateAutoButtonStates() {
+                // 重置所有按钮状态
+                this.autoBtn1.classList.remove('active');
+                this.autoBtn2.classList.remove('active');
+                this.autoBtn3.classList.remove('active');
+                
+                // 激活当前模式按钮
+                if (this.autoDistributeMode === 1) {
+                    this.autoBtn1.classList.add('active');
+                } else if (this.autoDistributeMode === 2) {
+                    this.autoBtn2.classList.add('active');
+                } else if (this.autoDistributeMode === 3) {
+                    this.autoBtn3.classList.add('active');
+                }
+            }
+
+            // 带动画效果的橘子移动方法
+            animateOrangeToPlate(orange, targetPlate, delay = 0, expectedTotalCount = null) {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        // 获取橘子的起始位置
+                        const orangeRect = { x: orange.x, y: orange.y };
+                        
+                        // 计算最终摆放位置
+                        let finalPosition;
+                        if (expectedTotalCount !== null) {
+                            // 如果提供了预期的橘子总数，计算该橘子的位置
+                            const currentOrangeIndex = targetPlate.oranges.length; // 当前橘子的索引
+                            finalPosition = this.calculateOrangePosition(targetPlate, currentOrangeIndex, expectedTotalCount);
+                        } else {
+                            // 否则使用原来的方法
+                            targetPlate.oranges.push(orange);
+                            orange.onPlate = true;
+                            orange.plateId = targetPlate.id;
+                            
+                            this.arrangeOrangesOnPlate(targetPlate);
+                            finalPosition = { x: orange.x, y: orange.y };
+                            
+                            // 恢复橘子的起始位置和状态
+                            orange.x = orangeRect.x;
+                            orange.y = orangeRect.y;
+                            targetPlate.oranges.pop();
+                            orange.onPlate = false;
+                            orange.plateId = null;
+                        }
+                        
+                        // 保存this引用
+                        const self = this;
+                        
+                        // 创建动画
+                        const startTime = Date.now();
+                        const duration = 200;
+                        
+                        const animate = () => {
+                            const elapsed = Date.now() - startTime;
+                            const progress = Math.min(elapsed / duration, 1);
+                            
+                            // 使用缓动函数
+                            const easeProgress = 1 - Math.pow(1 - progress, 3);
+                            
+                            // 计算当前位置，直接移动到最终摆放位置
+                            orange.x = orangeRect.x + (finalPosition.x - orangeRect.x) * easeProgress;
+                            orange.y = orangeRect.y + (finalPosition.y - orangeRect.y) * easeProgress;
+                            
+                            // 重绘画布
+                            self.render();
+                            
+                            if (progress < 1) {
+                                requestAnimationFrame(animate);
+                            } else {
+                                // 动画完成，将橘子正式放到盘子上
+                                targetPlate.oranges.push(orange);
+                                orange.onPlate = true;
+                                orange.plateId = targetPlate.id;
+                                // 重新排列所有橘子以确保位置正确
+                                self.arrangeOrangesOnPlate(targetPlate);
+                                self.render();
+                                resolve();
+                            }
+                        };
+                        
+                        requestAnimationFrame(animate);
+                    }, delay);
+                });
+            }
+
+            async performAutoDistribute() {
+                if (this.autoDistributeMode === 0) return;
+                
+                // 获取未分配的橘子
+                const unassignedOranges = this.oranges.filter(orange => !orange.onPlate);
+                
+                if (unassignedOranges.length === 0) {
+                    // 所有橘子都已分配完毕
+                    this.autoDistributeMode = 0;
+                    this.updateAutoButtonStates();
+                    this.instruction.textContent = '所有橘子都已经平均分完！';
+                    this.toggleModeBtn.style.display = 'none';
+                    this.resetBtn.style.display = 'block';
+                    return;
+                }
+                
+                // 计算本次要分配的橘子数量
+                const orangesToDistribute = Math.min(this.autoDistributeMode, unassignedOranges.length);
+                const targetPlate = this.plates[this.autoDistributeIndex];
+                
+                // 特殊处理2个2个分配模式
+                if (this.autoDistributeMode === 2) {
+                    // 检查是否已经完成第一轮（每个盘子2个）
+                    const platesWithTwoOranges = this.plates.filter(plate => plate.oranges.length >= 2).length;
+                    
+                    if (platesWithTwoOranges === 6 && unassignedOranges.length === 6) {
+                        // 第一轮完成，剩余6个橘子，停止分配
+                        this.autoDistributeMode = 0;
+                        this.updateAutoButtonStates();
+                        this.instruction.textContent = '每个盘子先分到 2 个后，剩余数量不足以再完成一轮。';
+                        this.toggleModeBtn.style.display = 'none';
+                        this.resetBtn.style.display = 'block';
+                        return;
+                    }
+                }
+                
+                // 使用就近选择算法选择橘子
+                const selectedOranges = this.findClosestOranges(targetPlate, unassignedOranges, orangesToDistribute);
+                
+                // 使用动画依次分配橘子
+                const animationPromises = [];
+                for (let i = 0; i < selectedOranges.length; i++) {
+                    const orange = selectedOranges[i];
+                    const animationDelay = i * 100; // 每个橘子间隔100ms
+                    // 计算当前橘子在盘子上的预期位置索引
+                    const expectedOrangeIndex = targetPlate.oranges.length + i;
+                    const expectedTotalCount = targetPlate.oranges.length + selectedOranges.length;
+                    animationPromises.push(this.animateOrangeToPlate(orange, targetPlate, animationDelay, expectedTotalCount));
+                }
+                
+                // 等待所有动画完成
+                await Promise.all(animationPromises);
+                
+                // 更新分配状态
+                this.autoDistributeCount += selectedOranges.length;
+                
+                // 移动到下一个盘子
+                this.autoDistributeIndex = (this.autoDistributeIndex + 1) % 6;
+                
+                // 更新提示信息
+                const remainingOranges = this.oranges.filter(orange => !orange.onPlate).length;
+                this.instruction.textContent = `${this.autoDistributeMode} 个 ${this.autoDistributeMode} 个分`;//剩余${remainingOranges}个橘子
+                
+                // 如果回到第一个盘子，说明完成了一轮
+                if (this.autoDistributeIndex === 0) {
+                    if (remainingOranges > 0) {
+                        // 继续下一轮分配
+                        setTimeout(() => {
+                            this.performAutoDistribute();
+                        }, 300); // 延迟500ms让用户看到分配过程
+                    } else {
+                        // 所有橘子分配完毕
+                        this.autoDistributeMode = 0;
+                        this.updateAutoButtonStates();
+                        this.instruction.textContent = '所有橘子都已经分完！';
+                        this.toggleModeBtn.style.display = 'none';
+                        this.resetBtn.style.display = 'block';
+                    }
+                } else {
+                    // 继续分配到下一个盘子
+                    setTimeout(() => {
+                        this.performAutoDistribute();
+                    }, 300); // 延迟600ms让用户看到分配过程
+                }
+            }
+        }
+
+        // 页面加载完成后初始化游戏
+        window.addEventListener('load', () => {
+            new CanvasDragGame();
+        });
+    </script>
+
+
+
+
+<script>
+(function () {
+  var storageKey = 'edu_hide_brand_panels';
+  var toggleButton = document.getElementById('edu-border-toggle');
+  if (!toggleButton || !document.body) {
+    return;
+  }
+
+  function applyState(hidden) {
+    document.body.classList.toggle('edu-hide-brand-panels', hidden);
+    toggleButton.textContent = hidden ? '+' : '-';
+    toggleButton.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    toggleButton.setAttribute('aria-label', hidden ? '显示说明框' : '隐藏说明框');
+    toggleButton.setAttribute('title', hidden ? '显示说明框' : '隐藏说明框');
+  }
+
+  var hiddenByDefault = false;
+  try {
+    hiddenByDefault = localStorage.getItem(storageKey) === '1';
+  } catch (e) {
+    hiddenByDefault = false;
+  }
+
+  applyState(hiddenByDefault);
+
+  toggleButton.addEventListener('click', function () {
+    var nextHidden = !document.body.classList.contains('edu-hide-brand-panels');
+    applyState(nextHidden);
+    try {
+      localStorage.setItem(storageKey, nextHidden ? '1' : '0');
+    } catch (e) {
+      // no-op
+    }
+  });
+})();
+</script>
+
+
+</body>
+</html>

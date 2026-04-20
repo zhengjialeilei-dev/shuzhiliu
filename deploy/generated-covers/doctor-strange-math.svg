@@ -1,0 +1,25 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="104" y1="76" x2="1096" y2="599" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ECFCCB"/>
+      <stop offset="1" stop-color="#CFFAFE"/>
+    </linearGradient>
+    <radialGradient id="portal" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(845 324) rotate(90) scale(134 134)">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="0.55" stop-color="#FB923C"/>
+      <stop offset="1" stop-color="#EA580C"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="675" rx="40" fill="url(#bg)"/>
+  <rect x="56" y="56" width="1088" height="563" rx="36" fill="#F9FFFB" stroke="#86EFAC" stroke-width="4"/>
+  <text x="96" y="132" fill="#166534" font-size="28" font-family="Microsoft YaHei, PingFang SC, sans-serif">互动游戏</text>
+  <text x="96" y="220" fill="#14532D" font-size="64" font-weight="700" font-family="Microsoft YaHei, PingFang SC, sans-serif">奇异博士</text>
+  <text x="96" y="276" fill="#15803D" font-size="28" font-family="Microsoft YaHei, PingFang SC, sans-serif">数学主题闯关 · 视觉反馈强 · 适合课堂活跃气氛</text>
+  <circle cx="845" cy="324" r="132" fill="url(#portal)"/>
+  <circle cx="845" cy="324" r="164" stroke="#FDBA74" stroke-width="12" stroke-dasharray="8 16"/>
+  <path d="M780 370 C805 278 864 256 913 318 C936 348 937 401 888 430 C832 463 787 427 780 370Z" fill="#14532D" opacity="0.92"/>
+  <path d="M812 286 L878 358" stroke="#FFF7ED" stroke-width="10" stroke-linecap="round"/>
+  <path d="M878 286 L812 358" stroke="#FFF7ED" stroke-width="10" stroke-linecap="round"/>
+  <rect x="124" y="348" width="246" height="82" rx="24" fill="#22C55E"/>
+  <text x="186" y="400" fill="#FFF" font-size="34" font-weight="700" font-family="Microsoft YaHei, PingFang SC, sans-serif">开始闯关</text>
+</svg>

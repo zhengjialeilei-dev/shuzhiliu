@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小乐的喝果汁问题</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* === 极致现代化 UI - 升级版 === */
+        :root {
+            --blue-50: #eff6ff;
+            --blue-200: #bfdbfe;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-900: #1e3a8a;
+            
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            
+            --orange-100: #ffedd5;
+            --orange-200: #fed7aa;
+            --orange-400: #fb923c;
+            --orange-600: #ea580c;
+            --orange-800: #9a3412;
+            
+            --green-100: #dcfce7;
+            --green-200: #bbf7d0;
+            --green-400: #4ade80;
+            --green-800: #166534;
+            
+            --purple-50: #faf5ff;
+            --purple-100: #f3e8ff;
+            --purple-300: #d8b4fe;
+            --purple-500: #a855f7;
+            --purple-600: #9333ea;
+            --purple-700: #7e22ce;
+            --purple-800: #6b21a8;
+            --purple-900: #581c87;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+            position: relative;
+        }
+
+        /* === 通用工具类 === */
+        .hidden { display: none !important; }
+        .flex { display: flex; }
+        .flex-row { flex-direction: row; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 0.5rem; }
+        .gap-4 { gap: 1rem; }
+        .w-full { width: 100%; }
+        .h-full { height: 100%; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: 700; }
+        
+        /* === 动画定义 === */
+        .liquid-rect { transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        @keyframes rise {
+            0% { transform: translateY(0) scale(1); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-100px) scale(0.5); opacity: 0; }
+        }
+        .bubble { animation: rise 3s infinite ease-in; }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translate(-50%, -20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        .fade-in-down { animation: fadeInDown 0.5s ease-out forwards; }
+
+        /* === 顶部区域 === */
+        .app-header {
+            width: 100%;
+            text-align: center;
+            padding-top: 1rem;
+            padding-bottom: 0.5rem;
+            z-index: 10;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .page-title {
+            font-size: 1.875rem;
+            line-height: 2.25rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin: 0;
+            letter-spacing: 0.5px;
+        }
+        @media (min-width: 768px) {
+            .page-title { font-size: 2.25rem; line-height: 2.5rem; }
+        }
+
+        .instruction-box {
+            background-color: rgba(239, 246, 255, 0.75);
+            
+            border-left: 8px solid var(--blue-500);
+            border-top: 1px solid rgba(255,255,255,0.4);
+            border-right: 1px solid rgba(255,255,255,0.4);
+            border-bottom: 1px solid rgba(255,255,255,0.4);
+            padding: 0.75rem 1.5rem;
+            border-radius: 0 0.75rem 0.75rem 0;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06), inset 0 1px 1px rgba(255,255,255,0.8);
+            width: 100%;
+            max-width: 56rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 4rem;
+        }
+        .instruction-box.purple {
+            background-color: rgba(250, 245, 255, 0.75);
+            border-left-color: var(--purple-500);
+        }
+
+        .instruction-text {
+            color: var(--blue-900);
+            font-size: 1.125rem;
+            font-weight: 700;
+            text-align: center;
+            transition: all 0.3s;
+            margin: 0;
+        }
+        .instruction-box.purple .instruction-text {
+            color: var(--purple-900);
+        }
+        @media (min-width: 768px) {
+            .instruction-text { font-size: 1.25rem; }
+        }
+
+        /* === 浮动选项按钮 === */
+        .floating-choices {
+            position: absolute;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            width: 90%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: row;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .choice-btn {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border-radius: 99px; /* 毛玻璃椭圆按钮 */
+            font-weight: 700;
+            font-size: 1.125rem;
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.1);
+            
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            border-width: 1px;
+            border-style: solid;
+        }
+        .choice-btn:active { transform: scale(0.95); }
+        .choice-btn:hover { transform: translateY(-3px); box-shadow: 0 20px 30px -5px rgba(0, 0, 0, 0.15); }
+        
+        .btn-green {
+            background-color: rgba(220, 252, 231, 0.8);
+            color: var(--green-800);
+            border-color: rgba(255,255,255,0.7);
+        }
+        .btn-orange {
+            background-color: rgba(255, 237, 213, 0.8);
+            color: var(--orange-800);
+            border-color: rgba(255,255,255,0.7);
+        }
+
+        .icon-svg { width: 1.5rem; height: 1.5rem; }
+
+        /* === 主布局 === */
+        .main-layout {
+            flex: 1;
+            width: 100%;
+            max-width: 80rem;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            gap: 1rem;
+            padding-bottom: 8rem;
+        }
+        @media (min-width: 768px) {
+            .main-layout {
+                flex-direction: row;
+                padding: 0.5rem 2rem;
+                padding-bottom: 6rem;
+                gap: 2rem;
+                align-items: flex-start;
+                margin-top: 1rem;
+            }
+        }
+
+        /* === 左侧：水杯 === */
+        .left-col {
+            width: 100%;
+            height: 40vh;
+            position: relative;
+            order: 2;
+            background-color: rgba(255, 255, 255, 0.75);
+            
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08), inset 0 1px 1px rgba(255,255,255,0.8);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        @media (min-width: 768px) {
+            .left-col {
+                width: 50%;
+                height: 50vh;
+                order: 1;
+            }
+        }
+        .svg-container {
+            height: 100%;
+            width: 100%;
+            max-height: 450px;
+        }
+
+        /* === 右侧：表格 === */
+        .right-col {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 1.5rem;
+            order: 1;
+            height: auto;
+            padding: 0 0.5rem;
+        }
+        @media (min-width: 768px) {
+            .right-col {
+                width: 50%;
+                order: 2;
+                margin-top: 1rem; 
+            }
+        }
+
+        .table-card {
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.75);
+            
+            border-radius: 1rem;
+            box-shadow: 9px 9px 16px rgba(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5), inset 3px 3px 7px rgba(255, 255, 255, 0.7), inset -3px -3px 7px rgba(163,177,198, 0.4);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .table-header {
+            background-color: rgba(255, 255, 255, 0.4);
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .table-title {
+            font-weight: 700;
+            font-size: 1.125rem;
+            color: var(--gray-800);
+            margin: 0;
+        }
+
+        .data-table {
+            width: 100%;
+            text-align: center;
+            font-size: 0.875rem;
+            border-collapse: collapse;
+        }
+        @media (min-width: 768px) {
+            .data-table { font-size: 1rem; }
+        }
+
+        .data-table thead {
+            background-color: rgba(255, 255, 255, 0.4);
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .data-table th {
+            padding: 0.75rem 0.25rem;
+            font-weight: 600;
+            width: 20%;
+        }
+        @media (min-width: 768px) {
+            .data-table th { font-size: 1.125rem; } 
+        }
+
+        .data-table td {
+            padding: 0.75rem 0.25rem;
+        }
+        @media (min-width: 768px) {
+            .data-table tbody { font-size: 1.125rem; }
+        }
+
+        .row-active {
+            background-color: rgba(239, 246, 255, 0.6);
+            border-left: 4px solid var(--blue-500);
+        }
+        .row-hidden {
+            display: none;
+        }
+        .table-row {
+            transition: all 0.5s;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        /* 分数相关 - 字号加大 */
+        .fraction {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            line-height: 1;
+            margin: 0 2px;
+        }
+        .fraction-top {
+            border-bottom: 2px solid currentColor;
+            padding-bottom: 1px;
+            margin-bottom: 1px;
+            display: block;
+            width: 100%;
+            text-align: center;
+            font-size: 1.25em; /* 加大 */
+            font-weight: bold;
+        }
+        .fraction-bottom {
+            display: block;
+            width: 100%;
+            text-align: center;
+            font-size: 1.25em; /* 加大 */
+            font-weight: bold;
+        }
+        .inline-fraction { vertical-align: middle; margin: 0 0.25rem; }
+
+        /* 问号悬浮控件 */
+        .question-mark {
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #eff6ff 0%, #bfdbfe 100%);
+            border-radius: 50%;
+            color: #2563eb;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
+            font-size: 1.25rem;
+        }
+        .question-mark:hover {
+            transform: scale(1.15) translateY(-2px);
+            background: linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%);
+            box-shadow: 0 6px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        /* 提示框 */
+        .hint-box {
+            color: var(--gray-500);
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: opacity 0.5s;
+            opacity: 0;
+        }
+        .hint-box.visible { opacity: 1; }
+        .text-blue-highlight { color: var(--blue-500); font-size: 1.25rem; font-weight: bold; }
+
+        /* === 底部 Footer === */
+        .app-footer {
+            width: 100%;
+            background-color: transparent;
+            padding: 1rem;
+            z-index: 20;
+            position: absolute;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .footer-content {
+            max-width: 80rem;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .steps-indicator {
+            display: flex;
+            gap: 0.5rem;
+            pointer-events: auto; /* 恢复交互 */
+            background: rgba(255, 255, 255, 0.75);
+            
+            border: 2px solid #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .step-dot {
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 9999px;
+            background-color: var(--gray-300);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .step-dot.active {
+            background-color: var(--blue-500);
+            transform: scale(1.3);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+        }
+
+        /* === 右下角悬浮控制面板 === */
+        .bottom-right-controls {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 100;
+            
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 两列 */
+            gap: 0.75rem;
+            
+            background-color: rgba(255, 255, 255, 0.75);
+            padding: 1rem;
+            border-radius: 1rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255,255,255,0.8);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            
+            }
+
+        @media (max-width: 768px) {
+            .bottom-right-controls {
+                bottom: 1rem;
+                right: 1rem;
+                left: 1rem;
+                grid-template-columns: 1fr 1fr;
+            }
+            .app-footer {
+                display: none;
+            }
+        }
+
+        .control-btn {
+            padding: 0.75rem 0.5rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            border: none;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        .control-btn:active { transform: scale(0.95); }
+        .control-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); transform: none; }
+        
+        .control-btn svg {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        /* 按钮颜色 */
+        .btn-secondary {
+            background: rgba(241, 245, 249, 0.8);
+            color: var(--gray-600);
+        }
+        .btn-secondary:hover:not(:disabled) { background: rgba(226, 232, 240, 0.9); color: var(--gray-800); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+        .btn-toggle {
+            background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
+            color: var(--purple-800);
+        }
+        .btn-toggle:hover:not(:disabled) { background: linear-gradient(135deg, #d8b4fe 0%, #c084fc 100%); transform: translateY(-2px); box-shadow: 0 6px 15px rgba(168, 85, 247, 0.2); }
+        .btn-toggle.active {
+            background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
+            color: white;
+            box-shadow: 0 6px 15px rgba(126, 34, 206, 0.3);
+        }
+        .btn-toggle.active:hover:not(:disabled) { box-shadow: 0 8px 20px rgba(126, 34, 206, 0.4); }
+
+        .btn-primary {
+            background: #4f46e5;
+            color: white;
+            box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3);
+        }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4); }
+
+        /* 文字颜色辅助类 */
+        .text-gray-600 { color: var(--gray-600); }
+        .text-orange-600 { color: var(--orange-600); }
+        .text-blue-600 { color: var(--blue-600); }
+        .text-purple-600 { color: var(--purple-600); }
+        .font-medium { font-weight: 500; }
+        .text-gray-300 { color: var(--gray-300); }
+    </style>
+</head>
+<body>
+
+    <!-- 顶部区域 -->
+    <header class="app-header">
+        <h1 class="page-title">一杯纯果汁的旅程</h1>
+        
+        <!-- 步骤描述容器 -->
+        <div class="w-full" style="max-width: 56rem;">
+            <!-- 居中显示的提示框 -->
+            <div id="instruction-box" class="instruction-box">
+                <p class="instruction-text" id="instruction-text">
+                    点击“下一步”开始观察变化
+                </p>
+            </div>
+        </div>
+    </header>
+
+    <!-- 浮动选项按钮区 (默认隐藏) -->
+    <div id="choice-buttons" class="floating-choices hidden">
+        <button onclick="choosePath('add')" class="choice-btn btn-green">
+            <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            继续加半杯水？
+        </button>
+        <button onclick="choosePath('finish')" class="choice-btn btn-orange">
+            <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+            一口气喝完？
+        </button>
+    </div>
+
+    <!-- 主体区域 -->
+    <main class="main-layout">
+        
+        <!-- 左侧：杯子演示区 -->
+        <div class="left-col">
+            <svg id="main-svg" class="svg-container" viewBox="0 0 300 500" preserveAspectRatio="xMidYMid meet">
+                <!-- 滤镜定义 -->
+                <defs>
+                    <linearGradient id="juiceGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#FFB74D;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#FB8C00;stop-opacity:1" />
+                    </linearGradient>
+                    <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#81D4FA;stop-opacity:0.9" />
+                        <stop offset="100%" style="stop-color:#29B6F6;stop-opacity:0.9" />
+                    </linearGradient>
+                    <clipPath id="cup-clip">
+                         <path d="M 60 50 L 60 460 L 240 460 L 240 50 Z" />
+                    </clipPath>
+                </defs>
+
+                <!-- 液体容器 -->
+                <g clip-path="url(#cup-clip)">
+                    <rect id="liquid-bottom" class="liquid-rect" x="0" y="480" width="300" height="0" fill="url(#juiceGradient)" />
+                    <rect id="liquid-top" class="liquid-rect" x="0" y="480" width="300" height="0" fill="url(#waterGradient)" />
+                    
+                    <!-- 气泡 -->
+                    <circle cx="100" cy="400" r="5" fill="rgba(255,255,255,0.4)" class="bubble" style="animation-delay: 0s" />
+                    <circle cx="150" cy="420" r="3" fill="rgba(255,255,255,0.4)" class="bubble" style="animation-delay: 1s" />
+                    <circle cx="200" cy="380" r="4" fill="rgba(255,255,255,0.4)" class="bubble" style="animation-delay: 2s" />
+                </g>
+
+                <!-- 杯子轮廓 -->
+                <path d="M 60 50 L 60 460 L 240 460 L 240 50" 
+                      fill="none" stroke="#94A3B8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                
+                <!-- 刻度线 -->
+                <line x1="240" y1="50" x2="255" y2="50" stroke="#CBD5E1" stroke-width="3" />
+                <text x="260" y="55" font-size="14" fill="#94A3B8">1</text>
+
+                <!-- 中间刻度 (1/2) -->
+                <line id="mark-half" class="liquid-rect" style="opacity: 0;"
+                      x1="240" y1="255" x2="255" y2="255" stroke="#CBD5E1" stroke-width="3" />
+                
+                <!-- 四分之一刻度 (1/4) -->
+                <line id="mark-quarter" class="liquid-rect" style="opacity: 0;"
+                      x1="240" y1="357.5" x2="255" y2="357.5" stroke="#CBD5E1" stroke-width="3" />
+
+                <!-- 标签 -->
+                <g id="labels" class="liquid-rect" style="opacity: 0; pointer-events: none;">
+                    <line id="label-line-bottom" x1="150" y1="400" x2="150" y2="400" stroke="white" stroke-width="2" stroke-dasharray="4 2"/>
+                    <text id="label-text-bottom" x="150" y="400" font-size="18" fill="white" font-weight="bold" text-anchor="middle" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3)">纯果汁</text>
+                    <text id="label-text-top" x="150" y="200" font-size="18" fill="white" font-weight="bold" text-anchor="middle" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3)">水</text>
+                </g>
+            </svg>
+        </div>
+
+        <!-- 右侧：表格区 -->
+        <div class="right-col">
+            
+            <div class="table-card">
+                <div class="table-header">
+                    <h3 class="table-title">饮用记录表</h3>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>步骤</th>
+                            <th class="text-gray-600">动作</th>
+                            <th class="text-orange-600">喝掉果汁</th>
+                            <th class="text-blue-600">喝掉水</th>
+                            <th class="text-purple-600">加水情况</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stats-table-body">
+                        <!-- 表格内容将由 JS 动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 提示语 -->
+            <div id="hint-box" class="hint-box">
+                <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>提示：点击表格中的 <b class="text-blue-highlight">?</b> 查看数据。</span>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 底部 Footer (仅保留进度点) -->
+    <footer class="app-footer">
+        <div class="footer-content">
+            <!-- 进度点容器 -->
+            <div class="steps-indicator" id="steps-indicator">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+    </footer>
+
+    <!-- 右下角悬浮控制面板 (两行两列) -->
+    <div class="bottom-right-controls">
+        <!-- 第一行 -->
+        <button onclick="resetApp()" class="control-btn btn-secondary" id="btn-reset">
+            <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            重置
+        </button>
+        
+        <button onclick="toggleView()" id="btn-toggle" class="control-btn btn-toggle" disabled>
+            <svg style="width: 1.25rem; height: 1.25rem;" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+            </svg>
+            <span>神奇眼镜</span>
+        </button>
+
+        <!-- 第二行 -->
+        <button onclick="prevStep()" class="control-btn btn-secondary" id="btn-prev">
+            <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            上一步
+        </button>
+
+        <button onclick="nextStep()" class="control-btn btn-primary" id="btn-next">
+            下一步
+            <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+    </div>
+
+    <script>
+const FULL_Y = 70;
+const EMPTY_Y = 480;
+const FULL_HEIGHT = EMPTY_Y - FULL_Y;
+const CHOICE_STEP = 5;
+const MAX_PROGRESS_DOTS = 8;
+
+const state = {
+    step: 0,
+    juice: 1,
+    water: 0,
+    pendingAddWater: 0,
+    magicMode: false,
+    path: null,
+    revealed: {},
+    history: []
+};
+
+const stepsData = [
+    { text: "点击“下一步”开始观察变化", action: "start" },
+    { text: "第一次：喝掉了一半纯果汁", action: "drink", amount: 1 / 2 },
+    { text: "加水：加满水，现在杯子里有一半果汁、一半水", action: "add_water", amount: 1 / 2 },
+    { text: "第二次：混合后果汁和水各喝掉一半", action: "drink", amount: 1 / 2 },
+    { text: "再次加水：重新加满后，水的占比变得更大了", action: "add_water", amount: 1 / 2 },
+    { text: "接下来你想怎么喝？", action: "choice" }
+];
+
+const pathAdd = [
+    { text: "第三次：继续喝掉半杯混合饮料", action: "drink", amount: 1 / 2 },
+    { text: "加水：再次补满到一整杯", action: "add_water", amount: 1 / 2 },
+    { text: "观察记录表，比较每次喝掉的果汁和水分别是多少", action: "end" }
+];
+
+const pathFinish = [
+    { text: "第三次：一口气喝完剩下的混合饮料", action: "drink", amount: 1 },
+    { text: "观察记录表，比较每次喝掉的果汁和水分别是多少", action: "end" }
+];
+
+const dom = {
+    instruction: document.getElementById('instruction-text'),
+    btnNext: document.getElementById('btn-next'),
+    btnPrev: document.getElementById('btn-prev'),
+    btnToggle: document.getElementById('btn-toggle'),
+    choices: document.getElementById('choice-buttons'),
+    liquidBottom: document.getElementById('liquid-bottom'),
+    liquidTop: document.getElementById('liquid-top'),
+    markHalf: document.getElementById('mark-half'),
+    markQuarter: document.getElementById('mark-quarter'),
+    labels: document.getElementById('labels'),
+    labelLineBottom: document.getElementById('label-line-bottom'),
+    labelTextBottom: document.getElementById('label-text-bottom'),
+    labelTextTop: document.getElementById('label-text-top'),
+    hintBox: document.getElementById('hint-box'),
+    tbody: document.getElementById('stats-table-body'),
+    dots: document.getElementById('steps-indicator')
+};
+
+function gcd(a, b) {
+    let x = Math.abs(a);
+    let y = Math.abs(b);
+    while (y) {
+        const temp = x % y;
+        x = y;
+        y = temp;
+    }
+    return x || 1;
+}
+
+function formatFraction(value) {
+    if (value === 0) return '0';
+    if (value === 1) return '1';
+    const denominator = 16;
+    const numerator = Math.round(value * denominator);
+    const divisor = gcd(numerator, denominator);
+    const top = numerator / divisor;
+    const bottom = denominator / divisor;
+    if (bottom === 1) return String(top);
+    return `<div class="fraction"><span class="fraction-top">${top}</span><span class="fraction-bottom">${bottom}</span></div>`;
+}
+
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function getSequenceForPath(path) {
+    return path === 'add' ? pathAdd : pathFinish;
+}
+
+function getStepData(stepIndex, path = state.path) {
+    if (stepIndex < stepsData.length) return stepsData[stepIndex];
+    const sequence = getSequenceForPath(path);
+    return sequence[stepIndex - stepsData.length] || sequence[sequence.length - 1];
+}
+
+function rebuildDerivedState() {
+    state.juice = 1;
+    state.water = 0;
+    state.pendingAddWater = 0;
+    state.history = [];
+
+    for (let index = 1; index <= state.step; index++) {
+        const stepData = getStepData(index, state.path);
+        if (!stepData) break;
+        if (stepData.action === 'drink') {
+            const juiceDrunk = state.juice * stepData.amount;
+            const waterDrunk = state.water * stepData.amount;
+            state.juice -= juiceDrunk;
+            state.water -= waterDrunk;
+            state.history.push({
+                desc: stepData.amount === 1 ? '喝完剩余' : '喝半杯',
+                juiceDrunk,
+                waterDrunk,
+                addWater: state.pendingAddWater
+            });
+            state.pendingAddWater = 0;
+        } else if (stepData.action === 'add_water') {
+            state.water += stepData.amount;
+            state.pendingAddWater += stepData.amount;
+        }
+    }
+
+    state.revealed = Object.fromEntries(
+        Object.entries(state.revealed).filter(([key]) => Number(key) < state.history.length)
+    );
+}
+
+function updateLabels(juiceHeight, waterHeight) {
+    const hasJuice = state.juice > 0;
+    const hasWater = state.water > 0;
+    const juiceMidY = clamp(EMPTY_Y - juiceHeight / 2, FULL_Y + 24, EMPTY_Y - 24);
+    const waterMidY = clamp(EMPTY_Y - juiceHeight - waterHeight / 2, FULL_Y + 24, EMPTY_Y - 24);
+
+    dom.labelLineBottom.setAttribute('x1', '92');
+    dom.labelLineBottom.setAttribute('x2', '208');
+    dom.labelLineBottom.setAttribute('y1', String(juiceMidY));
+    dom.labelLineBottom.setAttribute('y2', String(juiceMidY));
+    dom.labelLineBottom.style.opacity = hasJuice ? '1' : '0';
+
+    dom.labelTextBottom.setAttribute('x', '150');
+    dom.labelTextBottom.setAttribute('y', String(juiceMidY - 8));
+    dom.labelTextBottom.style.opacity = hasJuice ? '1' : '0';
+
+    dom.labelTextTop.setAttribute('x', '150');
+    dom.labelTextTop.setAttribute('y', String(waterMidY));
+    dom.labelTextTop.style.opacity = hasWater ? '1' : '0';
+}
+
+function getProgressCount() {
+    if (state.step === 0) return 0;
+    if (state.path === 'finish' && getStepData(state.step).action === 'end') return MAX_PROGRESS_DOTS;
+    return Math.min(state.step, MAX_PROGRESS_DOTS);
+}
+
+function render() {
+    const total = state.juice + state.water;
+    const juiceHeight = state.juice * FULL_HEIGHT;
+    const waterHeight = state.water * FULL_HEIGHT;
+
+    dom.liquidBottom.setAttribute('height', String(juiceHeight));
+    dom.liquidBottom.setAttribute('y', String(EMPTY_Y - juiceHeight));
+    dom.liquidTop.setAttribute('height', String(waterHeight));
+    dom.liquidTop.setAttribute('y', String(EMPTY_Y - juiceHeight - waterHeight));
+
+    updateLabels(juiceHeight, waterHeight);
+
+    if (state.magicMode) {
+        dom.liquidBottom.setAttribute('fill', 'url(#juiceGradient)');
+        dom.liquidTop.setAttribute('fill', 'url(#waterGradient)');
+        dom.liquidTop.style.opacity = '1';
+        dom.labels.style.opacity = total > 0 ? '1' : '0';
+        dom.btnToggle.classList.add('active');
+    } else {
+        dom.liquidBottom.setAttribute('fill', 'url(#juiceGradient)');
+        dom.liquidTop.setAttribute('fill', 'url(#juiceGradient)');
+        dom.liquidTop.style.opacity = '0.6';
+        dom.labels.style.opacity = '0';
+        dom.btnToggle.classList.remove('active');
+    }
+
+    const currentStepData = getStepData(state.step);
+    dom.instruction.textContent = currentStepData.text;
+
+    if (currentStepData.action === 'choice') {
+        dom.choices.classList.remove('hidden');
+        dom.btnNext.classList.add('hidden');
+    } else {
+        dom.choices.classList.add('hidden');
+        dom.btnNext.classList.remove('hidden');
+        dom.btnNext.disabled = currentStepData.action === 'end';
+    }
+
+    dom.btnPrev.disabled = state.step === 0;
+    dom.btnToggle.disabled = state.history.length === 0;
+    dom.markHalf.style.opacity = total >= 0.5 ? '1' : '0';
+    dom.markQuarter.style.opacity = total >= 0.25 ? '1' : '0';
+
+    dom.tbody.innerHTML = state.history.map((row, index) => {
+        const isRevealed = state.revealed[index] || state.magicMode;
+        const juiceHtml = isRevealed ? `<span class="font-bold">${formatFraction(row.juiceDrunk)}</span>` : `<span class="question-mark" onclick="handleReveal(${index})">?</span>`;
+        const waterHtml = isRevealed ? `<span class="font-bold">${formatFraction(row.waterDrunk)}</span>` : `<span class="question-mark" onclick="handleReveal(${index})">?</span>`;
+        return `<tr class="table-row ${index === state.history.length - 1 ? 'row-active' : ''}">
+            <td class="font-medium">第${index + 1}次喝</td>
+            <td class="text-gray-600">${row.desc}</td>
+            <td class="text-orange-600">${juiceHtml}</td>
+            <td class="text-blue-600">${waterHtml}</td>
+            <td class="text-purple-600">${row.addWater > 0 ? `加了${formatFraction(row.addWater)}杯` : '无'}</td>
+        </tr>`;
+    }).join('');
+
+    const hasHiddenAnswer = state.history.some((_, index) => !state.revealed[index]) && !state.magicMode;
+    dom.hintBox.classList.toggle('visible', hasHiddenAnswer);
+
+    const activeDots = getProgressCount();
+    dom.dots.innerHTML = Array.from({ length: MAX_PROGRESS_DOTS }).map((_, index) =>
+        `<div class="step-dot ${index < activeDots ? 'active' : ''}"></div>`
+    ).join('');
+}
+
+function nextStep() {
+    const currentStepData = getStepData(state.step);
+    if (currentStepData.action === 'choice' || currentStepData.action === 'end') return;
+    state.step += 1;
+    rebuildDerivedState();
+    render();
+}
+
+function prevStep() {
+    if (state.step === 0) return;
+    state.step -= 1;
+    if (state.step <= CHOICE_STEP) {
+        state.path = null;
+    }
+    rebuildDerivedState();
+    render();
+}
+
+function choosePath(path) {
+    state.path = path;
+    state.step += 1;
+    rebuildDerivedState();
+    render();
+}
+
+function toggleView() {
+    state.magicMode = !state.magicMode;
+    render();
+}
+
+function handleReveal(index) {
+    state.revealed[index] = true;
+    render();
+}
+
+function resetApp() {
+    state.step = 0;
+    state.juice = 1;
+    state.water = 0;
+    state.pendingAddWater = 0;
+    state.magicMode = false;
+    state.path = null;
+    state.revealed = {};
+    state.history = [];
+    render();
+}
+
+window.onload = resetApp;
+    </script>
+</body>
+</html>

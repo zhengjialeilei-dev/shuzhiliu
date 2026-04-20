@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>解比例 - 交互练习</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: #a5b4fc;
+            --primary-bg: #eef2ff;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-gray: #64748b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .app-header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white; padding: 20px 24px; text-align: center;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+        }
+        .app-header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 2px; }
+        .app-header p { font-size: 0.9rem; opacity: 0.85; margin-top: 4px; }
+
+        .main-container { max-width: 860px; margin: 0 auto; padding: 20px 16px 40px; }
+        .card {
+            background: var(--card); border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 24px;
+            margin-bottom: 20px; border: 1px solid #f1f5f9;
+        }
+        .card-title {
+            font-size: 1.15rem; font-weight: 700; color: var(--primary);
+            margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+        }
+
+        /* 演示步骤 */
+        .step-demo {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 24px; background: var(--primary-bg); border-radius: 14px;
+        }
+        .step {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 1.3rem; font-weight: 600; margin: 8px 0;
+            opacity: 0.3; transition: all 0.4s;
+        }
+        .step.active { opacity: 1; transform: scale(1.05); }
+        .step .num { color: var(--primary); }
+        .step .x-val { color: var(--accent); font-weight: 700; }
+        .step-label {
+            display: inline-block; background: var(--primary); color: white;
+            font-size: 0.7rem; padding: 2px 8px; border-radius: 20px;
+            margin-right: 6px; font-weight: 600;
+        }
+
+        .btn {
+            padding: 10px 24px; border: none; border-radius: 10px;
+            font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; font-family: inherit;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-outline:hover { background: var(--primary-bg); }
+
+        /* 练习题 */
+        .exercise {
+            background: #f8fafc; border-radius: 14px; padding: 20px;
+            margin: 12px 0; border: 2px solid #e2e8f0; transition: border-color 0.3s;
+        }
+        .exercise.correct { border-color: var(--success); background: #f0fdf4; }
+        .exercise.wrong { border-color: var(--danger); background: #fef2f2; }
+        .exercise-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px;
+        }
+        .exercise-num { font-weight: 700; color: var(--primary); }
+        .exercise-badge {
+            font-size: 0.8rem; padding: 2px 10px; border-radius: 20px; font-weight: 600;
+        }
+        .proportion-eq {
+            display: flex; align-items: center; justify-content: center;
+            gap: 6px; font-size: 1.6rem; font-weight: 700; margin: 12px 0;
+        }
+        .solve-input {
+            width: 80px; height: 48px; border: 2px solid #cbd5e1;
+            border-radius: 10px; text-align: center; font-size: 1.4rem;
+            font-weight: 600; outline: none; transition: all 0.3s; background: white;
+        }
+        .solve-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+
+        /* 解题过程展开 */
+        .solve-steps {
+            margin-top: 12px; padding: 12px 16px;
+            background: white; border-radius: 10px;
+            border-left: 4px solid var(--primary);
+            font-size: 0.95rem; line-height: 1.8;
+            display: none;
+        }
+        .solve-steps.show { display: block; animation: slideDown 0.3s ease-out; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .difficulty-bar {
+            display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;
+        }
+        .diff-btn {
+            padding: 6px 16px; border-radius: 20px; border: 2px solid #e2e8f0;
+            background: white; font-size: 0.9rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .diff-btn.active { border-color: var(--primary); background: var(--primary-bg); color: var(--primary); }
+
+        .stats-bar {
+            display: flex; gap: 16px; justify-content: center;
+            font-size: 0.95rem; font-weight: 600; margin-top: 16px;
+        }
+
+        @media (max-width: 640px) {
+            .proportion-eq { font-size: 1.2rem; }
+            .solve-input { width: 60px; height: 40px; font-size: 1.1rem; }
+            .step { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1><i class="fas fa-calculator"></i> 解比例</h1>
+        <p>根据比例的基本性质，求出未知项</p>
+    </div>
+
+    <div class="main-container">
+        <!-- 演示 -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-lightbulb"></i> 解题步骤演示</div>
+            <div class="step-demo" id="demo">
+                <div class="step active" id="s0">
+                    <span class="step-label">原式</span>
+                    <span class="num">2</span> : <span class="num">3</span> = <span class="num">4</span> : <span class="x-val">x</span>
+                </div>
+                <div style="font-size:1.2rem;color:var(--text-gray);margin:4px 0;"><i class="fas fa-arrow-down"></i></div>
+                <div class="step" id="s1">
+                    <span class="step-label">写乘积</span>
+                    <span class="num">2</span> × <span class="x-val">x</span> = <span class="num">3</span> × <span class="num">4</span>
+                </div>
+                <div style="font-size:1.2rem;color:var(--text-gray);margin:4px 0;"><i class="fas fa-arrow-down"></i></div>
+                <div class="step" id="s2">
+                    <span class="step-label">计算</span>
+                    <span class="num">2</span> × <span class="x-val">x</span> = <span class="num">12</span>
+                </div>
+                <div style="font-size:1.2rem;color:var(--text-gray);margin:4px 0;"><i class="fas fa-arrow-down"></i></div>
+                <div class="step" id="s3">
+                    <span class="step-label">求解</span>
+                    <span class="x-val">x</span> = 12 ÷ 2 = <span class="x-val">6</span>
+                </div>
+            </div>
+            <div style="text-align:center;margin-top:16px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="playDemo()"><i class="fas fa-play"></i> 播放步骤</button>
+                <button class="btn btn-outline" onclick="randomDemo()"><i class="fas fa-random"></i> 换一题演示</button>
+            </div>
+        </div>
+
+        <!-- 练习 -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-pencil-alt"></i> 解比例练习</div>
+
+            <div class="difficulty-bar">
+                <button class="diff-btn active" onclick="setDifficulty(1, this)">基础</button>
+                <button class="diff-btn" onclick="setDifficulty(2, this)">进阶</button>
+                <button class="diff-btn" onclick="setDifficulty(3, this)">挑战</button>
+            </div>
+
+            <div id="exercise-container"></div>
+
+            <div style="display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
+                <button class="btn btn-success" onclick="checkAll()"><i class="fas fa-check"></i> 批量检查</button>
+                <button class="btn btn-outline" onclick="generateExercises()"><i class="fas fa-redo"></i> 换一批</button>
+            </div>
+
+            <div class="stats-bar" id="stats-bar" style="display:none;">
+                <span><i class="fas fa-check-circle" style="color:var(--success)"></i> <span id="stat-c">0</span> 正确</span>
+                <span><i class="fas fa-times-circle" style="color:var(--danger)"></i> <span id="stat-w">0</span> 错误</span>
+                <span><i class="fas fa-fire" style="color:var(--accent)"></i> 连对 <span id="stat-s">0</span> 题</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let difficulty = 1;
+        let exercises = [];
+        let streak = 0;
+
+        function randInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+        function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+        // === 演示 ===
+        let demoStep = -1;
+        let demoA, demoB, demoC, demoX;
+
+        function randomDemo() {
+            demoStep = -1;
+            demoA = randInt(2, 9);
+            demoB = randInt(2, 9);
+            demoC = randInt(2, 9);
+            let product = demoB * demoC;
+            if (product % demoA !== 0) { randomDemo(); return; }
+            demoX = product / demoA;
+
+            document.getElementById('s0').innerHTML = '<span class="step-label">原式</span><span class="num">' + demoA + '</span> : <span class="num">' + demoB + '</span> = <span class="num">' + demoC + '</span> : <span class="x-val">x</span>';
+            document.getElementById('s1').innerHTML = '<span class="step-label">写乘积</span><span class="num">' + demoA + '</span> × <span class="x-val">x</span> = <span class="num">' + demoB + '</span> × <span class="num">' + demoC + '</span>';
+            document.getElementById('s2').innerHTML = '<span class="step-label">计算</span><span class="num">' + demoA + '</span> × <span class="x-val">x</span> = <span class="num">' + (demoB * demoC) + '</span>';
+            document.getElementById('s3').innerHTML = '<span class="step-label">求解</span><span class="x-val">x</span> = ' + (demoB * demoC) + ' ÷ ' + demoA + ' = <span class="x-val">' + demoX + '</span>';
+
+            for (let i = 0; i < 4; i++) document.getElementById('s' + i).classList.remove('active');
+            document.getElementById('s0').classList.add('active');
+        }
+
+        function playDemo() {
+            demoStep = -1;
+            for (let i = 0; i < 4; i++) document.getElementById('s' + i).classList.remove('active');
+            function next() {
+                demoStep++;
+                if (demoStep < 4) {
+                    document.getElementById('s' + demoStep).classList.add('active');
+                    setTimeout(next, 800);
+                }
+            }
+            next();
+        }
+
+        randomDemo();
+
+        // === 练习 ===
+        function setDifficulty(d, el) {
+            difficulty = d;
+            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            generateExercises();
+        }
+
+        function generateExercises() {
+            exercises = [];
+            const count = difficulty === 3 ? 3 : 4;
+            for (let i = 0; i < count; i++) {
+                let a, b, c, x;
+                if (difficulty === 1) {
+                    a = randInt(2, 6); b = randInt(2, 6); c = randInt(2, 6);
+                } else if (difficulty === 2) {
+                    a = randInt(3, 12); b = randInt(3, 12); c = randInt(3, 12);
+                } else {
+                    a = randInt(5, 20); b = randInt(5, 20); c = randInt(5, 20);
+                }
+                let prod = b * c;
+                if (prod % a !== 0) { i--; continue; }
+                x = prod / a;
+                // 随机决定 x 的位置：0=a位 1=b位 2=c位 3=d位
+                const hidePos = randInt(0, 3);
+                exercises.push({ nums: [a, b, c, x], hide: hidePos, answer: [a, b, c, x][hidePos] });
+            }
+            renderExercises();
+        }
+
+        function renderExercises() {
+            const container = document.getElementById('exercise-container');
+            container.innerHTML = '';
+            document.getElementById('stats-bar').style.display = 'none';
+            exercises.forEach((ex, idx) => {
+                const [a, b, c, d] = ex.nums;
+                let html = '<div class="exercise" id="ex-' + idx + '"><div class="exercise-header"><span class="exercise-num">第 ' + (idx+1) + ' 题</span><button class="btn btn-outline" style="padding:4px 12px;font-size:0.8rem;" onclick="toggleHint(' + idx + ')"><i class="fas fa-eye"></i> 解题过程</button></div>';
+                html += '<div class="proportion-eq">';
+                const positions = [
+                    { left: a, right: c, sep: ':' },
+                    { left: b, right: d, sep: '=' },
+                ];
+                // Render: a : b = c : d with one hidden
+                const all = [a, b, c, d];
+                for (let j = 0; j < 4; j++) {
+                    if (j === 1) html += '<span style="margin:0 2px;">:</span>';
+                    if (j === 2) html += '<span style="margin:0 6px;">=</span>';
+                    if (j === 3) html += '<span style="margin:0 2px;">:</span>';
+                    if (j === ex.hide) {
+                        html += '<input class="solve-input" id="input-' + idx + '" type="number" placeholder="x" autocomplete="off" onkeydown="if(event.key===\'Enter\')checkOne(' + idx + ')">';
+                    } else {
+                        html += '<span>' + all[j] + '</span>';
+                    }
+                }
+                html += '</div>';
+                html += '<div class="solve-steps" id="hint-' + idx + '">';
+                // 生成解题过程
+                const outerP = all[0] * all[3];
+                const innerP = all[1] * all[2];
+                const hiddenName = ['a', 'b', 'c', 'd'][ex.hide];
+                if (ex.hide === 3) {
+                    html += '解：根据比例的基本性质<br>' + a + ' × x = ' + b + ' × ' + c + '<br>' + a + ' × x = ' + (b * c) + '<br>x = ' + (b * c) + ' ÷ ' + a + ' = <b>' + d + '</b>';
+                } else if (ex.hide === 0) {
+                    html += '解：根据比例的基本性质<br>x × ' + d + ' = ' + b + ' × ' + c + '<br>x × ' + d + ' = ' + (b * c) + '<br>x = ' + (b * c) + ' ÷ ' + d + ' = <b>' + a + '</b>';
+                } else if (ex.hide === 1) {
+                    html += '解：根据比例的基本性质<br>' + a + ' × ' + d + ' = x × ' + c + '<br>' + (a * d) + ' = x × ' + c + '<br>x = ' + (a * d) + ' ÷ ' + c + ' = <b>' + b + '</b>';
+                } else {
+                    html += '解：根据比例的基本性质<br>' + a + ' × ' + d + ' = ' + b + ' × x<br>' + (a * d) + ' = ' + b + ' × x<br>x = ' + (a * d) + ' ÷ ' + b + ' = <b>' + c + '</b>';
+                }
+                html += '</div></div>';
+                container.innerHTML += html;
+            });
+        }
+
+        function toggleHint(idx) {
+            const hint = document.getElementById('hint-' + idx);
+            hint.classList.toggle('show');
+        }
+
+        function checkOne(idx) {
+            const input = document.getElementById('input-' + idx);
+            const card = document.getElementById('ex-' + idx);
+            const val = parseFloat(input.value);
+            card.classList.remove('correct', 'wrong');
+            if (val === exercises[idx].answer) {
+                card.classList.add('correct');
+            } else {
+                card.classList.add('wrong');
+            }
+        }
+
+        function checkAll() {
+            let c = 0, w = 0;
+            exercises.forEach((ex, idx) => {
+                const input = document.getElementById('input-' + idx);
+                const card = document.getElementById('ex-' + idx);
+                if (!input.value) { card.classList.add('wrong'); w++; return; }
+                const val = parseFloat(input.value);
+                card.classList.remove('correct', 'wrong');
+                if (val === ex.answer) { card.classList.add('correct'); c++; }
+                else { card.classList.add('wrong'); w++; }
+            });
+            if (w === 0) streak += c; else streak = 0;
+            document.getElementById('stats-bar').style.display = 'flex';
+            document.getElementById('stat-c').textContent = c;
+            document.getElementById('stat-w').textContent = w;
+            document.getElementById('stat-s').textContent = streak;
+        }
+
+        generateExercises();
+    </script>
+</body>
+</html>

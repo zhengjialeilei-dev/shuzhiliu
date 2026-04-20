@@ -1,7 +1,9 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Resource } from '../lib/types';
+import { prefetchHtmlView } from '../lib/htmlContent';
 import { getResourcePath } from '../lib/resourceRoutes';
+import { formatCategoryLabel } from '../lib/displayLabels';
 import HighlightText from './HighlightText';
 
 interface ResourceCardProps {
@@ -32,14 +34,13 @@ const ResourceCardMemo: React.FC<ResourceCardProps> = ({
   const [hasPrefetched, setHasPrefetched] = useState(false);
   const accent = ACCENT_CONFIG[accentColor];
 
-  const to = useMemo(() => {
-    return getResourcePath(resource);
-  }, [resource]);
+  const to = useMemo(() => getResourcePath(resource), [resource]);
 
   const href = useMemo(() => {
     if (to.startsWith('/')) {
       return `${window.location.origin}${to}`;
     }
+
     return to;
   }, [to]);
 
@@ -48,19 +49,7 @@ const ResourceCardMemo: React.FC<ResourceCardProps> = ({
 
     queryClient.prefetchQuery({
       queryKey: ['html-file', resource.file_path],
-      queryFn: async () => {
-        try {
-          const response = await fetch(resource.file_path, { mode: 'cors' });
-          if (!response.ok) throw new Error(`加载失败: ${response.status}`);
-          const text = await response.text();
-          if (!/<!doctype html|<html[\s>]/i.test(text)) {
-            throw new Error('NOT_HTML');
-          }
-          return { text, mode: 'srcdoc' as const };
-        } catch {
-          return null;
-        }
-      },
+      queryFn: () => prefetchHtmlView(resource.file_path as string),
       staleTime: 30 * 60 * 1000,
     });
 
@@ -73,38 +62,38 @@ const ResourceCardMemo: React.FC<ResourceCardProps> = ({
       target="_blank"
       rel="noopener noreferrer"
       onMouseEnter={handleMouseEnter}
-      className={`group relative flex flex-col bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl ${accent.hoverShadow} hover:-translate-y-1 transition-all duration-300`}
+      className={`group relative flex flex-col overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl sm:rounded-2xl ${accent.hoverShadow}`}
     >
-      <div className="aspect-[4/3] overflow-hidden bg-gray-100 relative">
+      <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
         <img
           src={resource.image_url}
           alt={resource.title}
           loading="lazy"
           decoding="async"
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out"
+          className="h-full w-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-110"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-        <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
+        <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
           <span
-            className={`px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/90 backdrop-blur-md text-[8px] sm:text-[10px] font-bold ${accent.categoryBadge} rounded sm:rounded-md shadow-sm uppercase tracking-wider border`}
+            className={`rounded border bg-white/90 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md sm:rounded-md sm:px-2 sm:py-1 sm:text-[10px] ${accent.categoryBadge}`}
           >
-            {resource.category}
+            {formatCategoryLabel(resource.category)}
           </span>
         </div>
 
-        <div className="absolute top-2 sm:top-3 right-2 sm:right-3">
-          <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/90 backdrop-blur-md text-[8px] sm:text-[10px] font-bold text-purple-600 rounded sm:rounded-md shadow-sm uppercase tracking-wider border border-purple-100">
+        <div className="absolute right-2 top-2 sm:right-3 sm:top-3">
+          <span className="rounded border border-purple-100 bg-white/90 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-purple-600 shadow-sm backdrop-blur-md sm:rounded-md sm:px-2 sm:py-1 sm:text-[10px]">
             {resource.grade}
           </span>
         </div>
       </div>
 
-      <div className="p-3 sm:p-4 flex flex-col gap-0.5 sm:gap-1">
-        <h3 className={`font-bold text-gray-800 text-sm sm:text-base ${accent.hoverText} transition-colors line-clamp-1`}>
+      <div className="flex flex-col gap-0.5 p-3 sm:gap-1 sm:p-4">
+        <h3 className={`line-clamp-1 text-sm font-bold text-gray-800 transition-colors sm:text-base ${accent.hoverText}`}>
           {searchQuery ? <HighlightText text={resource.title} query={searchQuery} /> : resource.title}
         </h3>
-        <p className="text-[10px] sm:text-xs text-gray-500 line-clamp-1 hidden sm:block">
+        <p className="hidden line-clamp-1 text-[10px] text-gray-500 sm:block sm:text-xs">
           {searchQuery ? (
             <HighlightText text={resource.description} query={searchQuery} />
           ) : (

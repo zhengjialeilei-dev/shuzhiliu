@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分数墙探索台</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ========================================================
+           披萨大厨主题 UI
+        ======================================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; tap-highlight-color: transparent; touch-callout: none; user-select: none; }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Outfit', 'SF Pro Display', -apple-system, sans-serif;
+            background: #2a1f1a; /* 昏暗的木纹背景感 */
+            background-image: radial-gradient(circle at center, #3d2b24 0%, #1a120e 100%);
+            touch-action: manipulation;
+        }
+        
+        #canvas { display: block; cursor: pointer; user-select: none; }
+        
+        /* 弹出的九宫格切披萨面板 */
+        .number-panel {
+            position: fixed;
+            background: rgba(255, 248, 230, 0.95);
+            border: 3px solid #d2691e;
+            border-radius: 20px;
+            padding: 20px;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5), inset 0 0 0 2px rgba(210, 105, 30, 0.3);
+            min-width: 260px;
+        }
+        
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        
+        .panel-title-text {
+            color: #8b4513;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .close-btn {
+            width: 32px; height: 32px; border: none;
+            background: #ff9999;
+            color: #8b0000; font-size: 20px; font-weight: 600;
+            cursor: pointer; border-radius: 50%;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid #cd5c5c;
+        }
+        .close-btn:hover { background: #ff6666; transform: rotate(90deg); }
+        
+        .number-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        
+        .number-btn {
+            width: 100%; aspect-ratio: 1/1; border: 2px solid #deb887;
+            background: #fdf5e6; box-shadow: 0 4px 6px rgba(139, 69, 19, 0.2);
+            color: #8b4513; font-size: 24px; font-weight: 700; font-family: 'Outfit', sans-serif;
+            cursor: pointer; border-radius: 15px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .number-btn:hover { background: #ffe4b5; transform: translateY(-3px); box-shadow: 0 8px 12px rgba(139, 69, 19, 0.3); border-color: #d2691e; }
+        .number-btn:active { transform: scale(0.95); }
+        
+        .undo-btn {
+            width: 100%; aspect-ratio: 1/1; border: 2px solid #a9a9a9;
+            background: #dcdcdc; color: #696969;
+            font-size: 15px; font-weight: 600; cursor: pointer; border-radius: 15px;
+            transition: all 0.2s ease;
+        }
+        .undo-btn:hover { background: #d3d3d3; color: #404040; transform: translateY(-2px); }
+        
+        .ok-btn {
+            width: 100%; aspect-ratio: 1/1; border: none;
+            background: linear-gradient(135deg, #ff6347 0%, #cd5c5c 100%) !important; color: white !important;
+            font-size: 15px; font-weight: 600; cursor: pointer; border-radius: 15px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 6px 15px -3px rgba(205, 92, 92, 0.6);
+            border: 2px solid #8b0000 !important;
+        }
+        .ok-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -3px rgba(205, 92, 92, 0.8); }
+        .ok-btn:active { transform: scale(0.95); }
+        
+        .control-panel {
+            position: fixed; bottom: 30px; right: 30px;
+            display: flex; flex-direction: column; gap: 15px; z-index: 1000;
+            background: rgba(60, 40, 30, 0.8);
+            padding: 15px;
+            border-radius: 20px;
+            border: 2px solid #8b4513;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        
+        .swap-btn {
+            width: 50px; height: 50px; border: 2px solid #a0522d;
+            background: linear-gradient(135deg, #deb887 0%, #cd853f 100%); color: #4a2e15;
+            cursor: pointer; border-radius: 15px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+        }
+        .swap-btn:hover { transform: scale(1.05); box-shadow: 0 8px 15px rgba(0,0,0,0.4); background: #d2b48c; }
+        .swap-btn.active { border-color: #ffd700; background: #ff8c00; box-shadow: 0 0 15px rgba(255, 215, 0, 0.6); color: white; }
+        
+        .color-palette { display: flex; flex-direction: column; gap: 12px; }
+        
+        /* 披萨配料颜色 */
+        .color-block {
+            width: 45px; height: 45px; border: 3px solid #8b4513;
+            cursor: pointer; border-radius: 50%;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.4);
+            position: relative;
+        }
+        .color-block:hover { transform: scale(1.15) translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.5); }
+        
+        .color-block.selected {
+            border-color: #ffd700; transform: scale(1.2);
+            box-shadow: 0 0 0 2px rgba(255,215,0,0.5), 0 10px 20px rgba(0,0,0,0.5);
+        }
+        
+        /* 披萨口味颜色定义 */
+        .color-white { background: #fffacd; } /* 芝士原味 */
+        .color-blue { background: #8b0000; } /* 辣味香肠 (原蓝色位置) */
+        .color-green { background: #556b2f; } /* 青椒蔬菜 (原绿色位置) */
+        .color-orange { background: #d2691e; } /* 烤肉味 (原橙色位置) */
+        .color-red { background: #ff4500; } /* 番茄酱 (原红色位置) */
+        
+        /* 标题提示 */
+        .game-title {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd700;
+            font-size: 28px;
+            font-weight: 800;
+            text-shadow: 2px 2px 4px #000;
+            background: rgba(139, 69, 19, 0.8);
+            padding: 10px 30px;
+            border-radius: 30px;
+            border: 2px solid #daa520;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        /* 用于兼容多余废弃类的清空 */
+        .panel-title, .input-box { display: none; }
+    </style>
+<!-- EDU_BRAND_STYLE_START -->
+<style id="edu-brand-style">
+  :root {
+    --edu-bg: #eef5f7;
+    --edu-bg-deep: #dfeaf0;
+    --edu-surface: rgba(255, 255, 255, 0.82);
+    --edu-surface-strong: rgba(255, 255, 255, 0.94);
+    --edu-line: rgba(97, 132, 161, 0.24);
+    --edu-shadow: 0 18px 48px rgba(37, 78, 110, 0.12);
+    --edu-shadow-strong: 0 24px 56px rgba(24, 61, 90, 0.16);
+    --edu-text: #17324d;
+    --edu-text-soft: #4a647c;
+    --edu-accent: #0f9d8a;
+    --edu-accent-deep: #0d7b72;
+    --edu-warm: #ff9d6c;
+    --edu-warm-soft: #fff1e8;
+  }
+
+  body.edu-refactor-body {
+    background:
+      radial-gradient(circle at 12% 14%, rgba(15, 157, 138, 0.10), transparent 22%),
+      radial-gradient(circle at 88% 16%, rgba(255, 157, 108, 0.18), transparent 20%),
+      radial-gradient(circle at 50% 100%, rgba(81, 122, 164, 0.10), transparent 28%),
+      linear-gradient(180deg, #f6fbfc 0%, var(--edu-bg) 42%, var(--edu-bg-deep) 100%) !important;
+    color: var(--edu-text) !important;
+  }
+
+  body.edu-refactor-body::before,
+  body.edu-refactor-body::after {
+    content: '';
+    position: fixed;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+    opacity: 0.6;
+  }
+
+  body.edu-refactor-body::before {
+    width: 240px;
+    height: 240px;
+    right: -40px;
+    top: 80px;
+    background: rgba(15, 157, 138, 0.14);
+  }
+
+  body.edu-refactor-body::after {
+    width: 180px;
+    height: 180px;
+    left: -20px;
+    bottom: 80px;
+    background: rgba(255, 157, 108, 0.16);
+  }
+
+  body.edu-refactor-body button,
+  body.edu-refactor-body input[type="button"],
+  body.edu-refactor-body input[type="submit"] {
+    border-radius: 16px !important;
+    border: 1px solid rgba(22, 101, 122, 0.16) !important;
+    box-shadow: 0 10px 24px rgba(33, 76, 111, 0.12) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #edf7f6 100%) !important;
+    color: var(--edu-text) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+  }
+
+  body.edu-refactor-body button:hover,
+  body.edu-refactor-body input[type="button"]:hover,
+  body.edu-refactor-body input[type="submit"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(33, 76, 111, 0.16) !important;
+    filter: saturate(1.04);
+  }
+
+  body.edu-refactor-body input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  body.edu-refactor-body select,
+  body.edu-refactor-body textarea {
+    border-radius: 14px !important;
+    border: 1px solid rgba(82, 119, 148, 0.26) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: var(--edu-text) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px rgba(42, 77, 105, 0.08) !important;
+  }
+
+  body.edu-refactor-body [class*="panel"],
+  body.edu-refactor-body [class*="Panel"],
+  body.edu-refactor-body [class*="card"],
+  body.edu-refactor-body [class*="Card"],
+  body.edu-refactor-body [class*="dialog"],
+  body.edu-refactor-body [class*="Dialog"],
+  body.edu-refactor-body [class*="controls"],
+  body.edu-refactor-body [class*="Controls"],
+  body.edu-refactor-body [class*="toolbar"],
+  body.edu-refactor-body [class*="Toolbar"],
+  body.edu-refactor-body [class*="sidebar"],
+  body.edu-refactor-body [class*="Sidebar"],
+  body.edu-refactor-body [class*="instruction"],
+  body.edu-refactor-body [class*="Instruction"],
+  body.edu-refactor-body [id*="panel"],
+  body.edu-refactor-body [id*="Panel"],
+  body.edu-refactor-body [id*="controls"],
+  body.edu-refactor-body [id*="Controls"] {
+    border-radius: 24px !important;
+    border: 1px solid var(--edu-line) !important;
+    box-shadow: var(--edu-shadow) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  body.edu-refactor-body .page-title,
+  body.edu-refactor-body .header h1,
+  body.edu-refactor-body .header h2,
+  body.edu-refactor-body .title,
+  body.edu-refactor-body .subtitle,
+  body.edu-refactor-body .teacher-text,
+  body.edu-refactor-body #step-indicator,
+  body.edu-refactor-body #narrative-text {
+    color: var(--edu-text) !important;
+    text-shadow: none !important;
+  }
+
+  body.edu-refactor-body .edu-brand-shell {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  body.edu-refactor-body .edu-brand-panel,
+  body.edu-refactor-body .edu-brand-guide {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 251, 0.92) 100%);
+    border: 1px solid rgba(89, 127, 156, 0.22);
+    box-shadow: var(--edu-shadow-strong);
+    backdrop-filter: blur(18px);
+    border-radius: 26px;
+  }
+
+  body.edu-refactor-body .edu-brand-panel {
+    max-width: min(720px, calc(100vw - 280px));
+    padding: 18px 22px 20px;
+  }
+
+  body.edu-refactor-body .edu-brand-guide {
+    width: 220px;
+    padding: 16px 18px;
+  }
+
+  body.edu-refactor-body .edu-brand-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(15, 157, 138, 0.10);
+    color: var(--edu-accent-deep);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  body.edu-refactor-body .edu-brand-title {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.08;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-copy {
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  body.edu-refactor-body .edu-brand-copy strong {
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-brand-shell {
+      flex-direction: column;
+      right: 12px;
+      left: 12px;
+      top: 12px;
+    }
+
+    body.edu-refactor-body .edu-brand-panel,
+    body.edu-refactor-body .edu-brand-guide {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
+
+
+  body.edu-refactor-body .edu-border-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 10001;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(89, 127, 156, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--edu-text, #1f2937);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  body.edu-refactor-body .edu-border-toggle:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  body.edu-refactor-body.edu-hide-brand-panels .edu-brand-shell {
+    display: none !important;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-border-toggle {
+      top: auto;
+      bottom: 12px;
+      right: 12px;
+    }
+  }
+
+</style>
+<!-- EDU_BRAND_STYLE_END -->
+
+
+</head>
+<body class="edu-refactor-body">
+<!-- EDU_BRAND_SHELL_START -->
+<div class="edu-brand-shell" data-brand-shell>
+  <section class="edu-brand-panel" aria-label="页面导语">
+    <div class="edu-brand-kicker">数形结合 · EDU STUDIO</div>
+    <h1 class="edu-brand-title">分数墙探索台</h1>
+    <div class="edu-brand-copy">
+      <div><strong>任务目标：</strong>用可视化分块比较不同分数的大小和等值关系。</div>
+      <div><strong>操作提示：</strong>拖动、对齐或切换分块数量，观察分数墙如何建立对应。</div>
+      <div><strong>理解重点：</strong>把分数放到同一面“墙”上，更容易看见通分、约分和大小比较。</div>
+    </div>
+</section>
+  <aside class="edu-brand-guide" aria-label="操作建议">
+    <h2>建议这样探索</h2>
+    <ul><li>先从单位“1”开始确认整体。</li><li>优先找能完全对齐的分块。</li><li>把相等的长度记成等值分数。</li></ul>
+  </aside>
+</div>
+<!-- EDU_BRAND_SHELL_END -->
+
+<button type="button" class="edu-border-toggle" id="edu-border-toggle" aria-pressed="false" aria-label="隐藏说明框" title="隐藏说明框">-</button>
+
+    <div class="game-title">分数墙配比工坊</div>
+    <canvas id="canvas"></canvas>
+    
+    <div id="numberPanel" class="number-panel">
+        <div class="panel-header">
+            <span class="panel-title-text">选择等分数量</span>
+            <button class="close-btn" id="closeBtn">×</button>
+        </div>
+        <div class="number-grid">
+            <button class="number-btn" data-value="2">2</button>
+            <button class="number-btn" data-value="3">3</button>
+            <button class="number-btn" data-value="4">4</button>
+            <button class="number-btn" data-value="5">5</button>
+            <button class="number-btn" data-value="6">6</button>
+            <button class="number-btn" data-value="7">7</button>
+            <button class="number-btn" data-value="8">8</button>
+            <button class="number-btn" data-value="9">9</button>
+            <button class="undo-btn" id="undoBtn">撤回一步</button>
+            <button class="number-btn" data-value="10">10</button>
+            <button class="number-btn" data-value="11">11</button>
+            <button class="ok-btn" id="okBtn">确认切分</button>
+        </div>
+    </div>
+    
+    <div class="control-panel">
+        <button class="swap-btn" id="swapBtn" title="番茄红配色">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+            </svg>
+        </button>
+        <div class="color-palette">
+            <div class="color-block color-white selected" data-color="#fffacd" title="芝士原味"></div>
+            <div class="color-block color-blue" data-color="#8b0000" title="辣味香肠"></div>
+            <div class="color-block color-green" data-color="#556b2f" title="青椒蔬菜"></div>
+            <div class="color-block color-orange" data-color="#d2691e" title="烤肉味"></div>
+            <div class="color-block color-red" data-color="#ff4500" title="番茄酱"></div>
+        </div>
+    </div>
+
+    <script>
+        class FractionBoard {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.numberPanel = document.getElementById('numberPanel');
+                this.rectangles = [];
+                this.selectedRect = null;
+                this.selectedParts = 1;
+                this.currentColor = '#fffacd';
+                this.colorMode = true; // 默认开启填充模式
+                this.swapMode = false; // 是否处于交换位置模式
+                this.animatingRect = null; // 正在动画的长方形
+                this.animationId = null; // 动画ID
+                this.lastAddedRect = null; // 记录最后添加的长方形，用于撤销
+                this.selectedForSwap = null; // 选中用于交换的长方形
+                this.swapAnimating = false; // 是否正在进行交换动画
+                this.tempHighlightedParts = new Map(); // 存储临时高亮的部分 {rectId: {partIndex: timeoutId}}
+                this.tempOriginalColors = new Map(); // 存储临时高亮前的原始颜色
+                
+                this.initCanvas();
+                this.createDefaultRectangle();
+                this.bindEvents();
+            }
+            
+            initCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                
+                window.addEventListener('resize', () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                    
+                    // 窗口大小改变时重新创建长方形以适应新的宽度
+                    this.rectangles = [];
+                    this.createDefaultRectangle();
+                });
+            }
+            
+            createDefaultRectangle() {
+                // 根据窗口宽度动态设置长方形宽度
+                let rectWidth;
+                if (this.canvas.width > 1000) {
+                    rectWidth = 800;
+                } else {
+                    rectWidth = this.canvas.width * 0.8;
+                }
+                
+                // 高度为浏览器高度的十五分之一
+                const rectHeight = this.canvas.height / 18;
+                
+                const rect = {
+                    x: this.canvas.width / 2 - rectWidth / 2,
+                    y: 100,
+                    width: rectWidth,
+                    height: rectHeight,
+                    parts: 1,
+                    colors: ['#fffacd'], // 默认芝士色
+                    id: Date.now(),
+                    isDefault: true // 标识这是默认的第一个长方形
+                };
+                this.rectangles.push(rect);
+                this.draw();
+            }
+            
+            // 判断颜色是否为非白色（需要使用白色文字）
+            isNonWhiteColor(color) {
+                return color !== '#fffacd' && color !== '#FFFACD' && color !== 'white' && color !== '#ffffff' && color !== '#FFFFFF';
+            }
+            
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                this.rectangles.forEach(rect => {
+                    this.drawRectangle(rect);
+                });
+            }
+            
+            drawRectangle(rect) {
+                const ctx = this.ctx;
+                
+                // 设置透明度 - 如果是选中用于交换的长方形，降低透明度
+                if (rect === this.selectedForSwap) {
+                    ctx.globalAlpha = 0.6;
+                } else {
+                    ctx.globalAlpha = 1.0;
+                }
+                
+                // 绘制外边框
+                ctx.strokeStyle = '#8b4513';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+                
+                // 填充背景（对所有长方形）
+                ctx.fillStyle = '#fffacd';
+                ctx.fillRect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4);
+                
+                if (rect.parts > 1) {
+                    // 绘制分割线和填充颜色
+                    const partWidth = rect.width / rect.parts;
+                    
+                    for (let i = 0; i < rect.parts; i++) {
+                        const partX = rect.x + i * partWidth;
+                        
+                        // 填充颜色
+                        if (rect.colors[i] !== '#fffacd') {
+                            ctx.fillStyle = rect.colors[i];
+                            ctx.fillRect(partX + 2, rect.y + 2, partWidth - 4, rect.height - 4);
+                        }
+                        
+                        // 绘制分割线（除了最后一个部分）
+                        if (i < rect.parts - 1) {
+                            ctx.strokeStyle = '#8b4513';
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.moveTo(partX + partWidth, rect.y);
+                            ctx.lineTo(partX + partWidth, rect.y + rect.height);
+                            ctx.stroke();
+                        }
+                    }
+                    
+                    // 绘制分数 - 在每个小块中显示对应的分数
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    for (let i = 0; i < rect.parts; i++) {
+                        const partX = rect.x + i * partWidth;
+                        const partCenterX = partX + partWidth / 2;
+                        const partCenterY = rect.y + rect.height / 2;
+                        
+                        // 根据当前部分的背景色决定文字颜色
+                        const partColor = rect.colors[i];
+                        const textColor = this.isNonWhiteColor(partColor) ? 'white' : '#000';
+                        ctx.fillStyle = textColor;
+                        
+                        // 动态计算字体大小，基于长方形高度
+                        // 分子和分母各占高度的约1/3，留出空间给分数线和间距
+                        const maxFontSize = Math.floor(rect.height * 0.4); // 最大字体大小为高度的25%
+                        const minFontSize = 14; // 最小字体大小
+                        const fontSize = Math.max(minFontSize, maxFontSize);
+                        
+                        // 计算分数线长度，基于字体大小
+                        const lineLength = fontSize;
+                        
+                        // 计算垂直间距，基于字体大小
+                        const verticalSpacing = fontSize * 0.6;
+                        
+                        // 分子
+                        ctx.font = `${fontSize}px Arial`;
+                        ctx.fillText('1', partCenterX, partCenterY - verticalSpacing + 2);
+                        
+                        // 分数线
+                        ctx.strokeStyle = textColor;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(partCenterX - lineLength/2, partCenterY);
+                        ctx.lineTo(partCenterX + lineLength/2, partCenterY);
+                        ctx.stroke();
+                        
+                        // 分母
+                        ctx.font = `${fontSize}px Arial`;
+                        ctx.fillText(rect.parts.toString(), partCenterX, partCenterY + verticalSpacing);
+                    }
+                } else {
+                    // 单个部分，显示数字1，字体大小也动态调整
+                    // 根据背景色决定文字颜色
+                    const backgroundColor = rect.colors[0];
+                    const textColor = this.isNonWhiteColor(backgroundColor) ? 'white' : '#000';
+                    ctx.fillStyle = textColor;
+                    
+                    // 动态计算字体大小，基于长方形高度
+                    const maxFontSize = Math.floor(rect.height); // 单个数字可以更大，占高度的60%
+                    const minFontSize = 14; // 最小字体大小
+                    const fontSize = Math.max(minFontSize, Math.min(maxFontSize, 36)); // 限制在14-36px之间
+                    
+                    ctx.font = `${fontSize}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('1', rect.x + rect.width / 2, rect.y + rect.height / 2);
+                }
+                
+                // 重置透明度
+                ctx.globalAlpha = 1.0;
+            }
+            
+            isPointInRectangle(x, y, rect) {
+                return x >= rect.x && x <= rect.x + rect.width &&
+                       y >= rect.y && y <= rect.y + rect.height;
+            }
+            
+            showNumberPanel(x, y, rect) {
+                this.selectedRect = rect;
+                this.numberPanel.style.left = (x-140) + 'px';
+                this.numberPanel.style.top = (y+20) + 'px';
+                this.numberPanel.style.display = 'block';
+                
+                // 确保面板不会超出屏幕
+                const panelRect = this.numberPanel.getBoundingClientRect();
+                if (panelRect.right > window.innerWidth) {
+                    this.numberPanel.style.left = (window.innerWidth - panelRect.width - 10) + 'px';
+                }
+                if (panelRect.bottom > window.innerHeight) {
+                    this.numberPanel.style.top = (window.innerHeight - panelRect.height - 10) + 'px';
+                }
+            }
+            
+            hideNumberPanel() {
+                this.numberPanel.style.display = 'none';
+                this.selectedRect = null;
+            }
+            
+            findNextPosition() {
+                // 找到所有长方形的最低位置
+                let maxY = 50; // 默认起始位置
+                this.rectangles.forEach(rect => {
+                    if (rect !== this.animatingRect) { // 排除正在动画的长方形
+                        maxY = Math.max(maxY, rect.y + rect.height);
+                    }
+                });
+                return maxY + 20; // 添加10px间距
+            }
+            
+            animateRectangle(rect, targetY) {
+                const startY = rect.y;
+                const distance = targetY - startY;
+                const duration = 1000; // 增加动画持续时间到1秒
+                const startTime = Date.now();
+                
+                const animate = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    // 使用更平滑的缓动函数（ease-in-out）
+                    const easeInOut = progress < 0.5 
+                        ? 2 * progress * progress 
+                        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+                    
+                    rect.y = startY + distance * easeInOut;
+                    
+                    this.draw();
+                    
+                    if (progress < 1) {
+                        this.animationId = requestAnimationFrame(animate);
+                    } else {
+                        // 动画完成
+                        this.animatingRect = null;
+                        this.animationId = null;
+                    }
+                };
+                
+                this.animatingRect = rect;
+                animate();
+            }
+             
+            divideRectangle(parts) {
+                if (this.selectedRect && parts > 0) {
+                    // 停止任何正在进行的动画
+                    if (this.animationId) {
+                        cancelAnimationFrame(this.animationId);
+                        this.animatingRect = null;
+                        this.animationId = null;
+                    }
+                    
+                    // 计算标准高度（与默认长方形一致）
+                    const standardHeight = this.canvas.height / 18;
+                    
+                    // 克隆当前长方形
+                    const newRect = {
+                        x: this.selectedRect.x,
+                        y: this.selectedRect.y, // 初始位置与原长方形相同
+                        width: this.selectedRect.width,
+                        height: standardHeight, // 使用标准高度
+                        parts: parts,
+                        colors: new Array(parts).fill('#fffacd'),
+                        id: Date.now()
+                        // 注意：克隆的长方形没有isDefault属性
+                    };
+                    
+                    // 记录最后添加的长方形
+                    this.lastAddedRect = newRect;
+                    
+                    // 添加到数组
+                    this.rectangles.push(newRect);
+                    
+                    // 计算目标位置并开始动画
+                    const targetY = this.findNextPosition();
+                    this.animateRectangle(newRect, targetY);
+                    
+                    // 隐藏数字面板
+                    this.hideNumberPanel();
+                }
+            }
+            
+            getPartIndex(x, y, rect) {
+                if (!this.isPointInRectangle(x, y, rect) || rect.parts <= 1) {
+                    return -1;
+                }
+                const partWidth = rect.width / rect.parts;
+                const relativeX = x - rect.x;
+                return Math.floor(relativeX / partWidth);
+            }
+            
+            fillPart(rect, partIndex, color) {
+                if (rect && rect.colors && partIndex >= 0 && partIndex < rect.parts) {
+                    // 如果当前部分已经是选中的颜色，则切换回白色
+                    if (rect.colors[partIndex] === color) {
+                        rect.colors[partIndex] = '#fffacd';
+                    } else {
+                        rect.colors[partIndex] = color;
+                    }
+                    this.draw();
+                }
+            }
+            
+            // 临时高亮部分（橙色填充，白色文字，3秒后恢复）
+            tempHighlightPart(rect, partIndex) {
+                if (!rect || !rect.colors || partIndex < 0 || partIndex >= rect.parts) {
+                    return;
+                }
+                
+                const rectId = rect.id;
+                const partKey = `${rectId}_${partIndex}`;
+                
+                // 如果这个部分已经在临时高亮中，清除之前的定时器
+                if (this.tempHighlightedParts.has(partKey)) {
+                    clearTimeout(this.tempHighlightedParts.get(partKey));
+                }
+                
+                // 保存原始颜色
+                this.tempOriginalColors.set(partKey, rect.colors[partIndex]);
+                
+                // 设置临时橙色
+                rect.colors[partIndex] = '#ff9800';
+                this.draw();
+                
+                // 设置3秒后恢复的定时器
+                const timeoutId = setTimeout(() => {
+                    // 恢复原始颜色
+                    const originalColor = this.tempOriginalColors.get(partKey);
+                    if (originalColor !== undefined && rect.colors) {
+                        rect.colors[partIndex] = originalColor;
+                        this.draw();
+                    }
+                    
+                    // 清理记录
+                    this.tempHighlightedParts.delete(partKey);
+                    this.tempOriginalColors.delete(partKey);
+                }, 3000);
+                
+                // 记录定时器ID
+                this.tempHighlightedParts.set(partKey, timeoutId);
+            }
+            
+            undoLastRectangle() {
+                if (this.lastAddedRect) {
+                    // 停止任何正在进行的动画
+                    if (this.animationId && this.animatingRect === this.lastAddedRect) {
+                        cancelAnimationFrame(this.animationId);
+                        this.animatingRect = null;
+                        this.animationId = null;
+                    }
+                    
+                    // 从数组中移除最后添加的长方形
+                    const index = this.rectangles.indexOf(this.lastAddedRect);
+                    if (index > -1) {
+                        this.rectangles.splice(index, 1);
+                    }
+                    
+                    // 清除记录
+                    this.lastAddedRect = null;
+                    
+                    // 重新绘制
+                    this.draw();
+                    
+                    // 隐藏数字面板
+                    this.hideNumberPanel();
+                }
+            }
+            
+            
+            swapRectangles(rect1, rect2) {
+                if (this.swapAnimating || !rect1 || !rect2 || rect1 === rect2) {
+                    return;
+                }
+                
+                this.swapAnimating = true;
+                
+                // 保存原始位置
+                const startY1 = rect1.y;
+                const startY2 = rect2.y;
+                const targetY1 = startY2;
+                const targetY2 = startY1;
+                
+                // 动画参数
+                let progress = 0;
+                const duration = 500; // 动画持续时间（毫秒）
+                const startTime = Date.now();
+                
+                const animate = () => {
+                    const currentTime = Date.now();
+                    progress = Math.min((currentTime - startTime) / duration, 1);
+                    
+                    // 使用缓动函数
+                    const easeProgress = 1 - Math.pow(1 - progress, 3);
+                    
+                    // 更新位置
+                    rect1.y = startY1 + (targetY1 - startY1) * easeProgress;
+                    rect2.y = startY2 + (targetY2 - startY2) * easeProgress;
+                    
+                    // 重新绘制
+                    this.draw();
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        // 动画完成，确保位置精确
+                        rect1.y = targetY1;
+                        rect2.y = targetY2;
+                        
+                        // 在rectangles数组中交换位置
+                        const index1 = this.rectangles.indexOf(rect1);
+                        const index2 = this.rectangles.indexOf(rect2);
+                        if (index1 !== -1 && index2 !== -1) {
+                            this.rectangles[index1] = rect2;
+                            this.rectangles[index2] = rect1;
+                        }
+                        
+                        this.swapAnimating = false;
+                        this.selectedForSwap = null;
+                        this.draw();
+                    }
+                };
+                
+                animate();
+            }
+            
+            bindEvents() {
+                // Canvas 点击和触摸事件
+                const handleInteraction = (e) => {
+                    // 防止默认行为和事件冒泡
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const rect = this.canvas.getBoundingClientRect();
+                    let x, y;
+                    
+                    // 处理触摸和鼠标事件
+                    if (e.type === 'touchstart' || e.type === 'touchend') {
+                        if (e.touches && e.touches.length > 0) {
+                            x = e.touches[0].clientX - rect.left;
+                            y = e.touches[0].clientY - rect.top;
+                        } else if (e.changedTouches && e.changedTouches.length > 0) {
+                            x = e.changedTouches[0].clientX - rect.left;
+                            y = e.changedTouches[0].clientY - rect.top;
+                        } else {
+                            return;
+                        }
+                    } else {
+                        x = e.clientX - rect.left;
+                        y = e.clientY - rect.top;
+                    }
+                    
+                    // 检查是否点击了某个长方形
+                    for (let rectangle of this.rectangles) {
+                        if (this.isPointInRectangle(x, y, rectangle)) {
+                            // 如果处于颜色模式且长方形已分割，则填充颜色
+                            if (this.colorMode && rectangle.parts > 1) {
+                                const partIndex = this.getPartIndex(x, y, rectangle);
+                                if (partIndex >= 0) {
+                                    this.fillPart(rectangle, partIndex, this.currentColor);
+                                }
+                            } 
+                            // 如果处于交换模式且是非默认长方形，处理选择和交换逻辑
+                            else if (this.swapMode && !rectangle.isDefault && !this.swapAnimating) {
+                                if (this.selectedForSwap === null) {
+                                    // 第一次点击，选中长方形
+                                    this.selectedForSwap = rectangle;
+                                    this.draw(); // 重新绘制以显示透明度变化
+                                } else if (this.selectedForSwap === rectangle) {
+                                    // 点击同一个长方形，取消选择
+                                    this.selectedForSwap = null;
+                                    this.draw();
+                                } else {
+                                    // 点击不同的长方形，执行交换
+                                    this.swapRectangles(this.selectedForSwap, rectangle);
+                                }
+                            }
+                            // 如果是默认长方形，显示数字面板
+                            else if (rectangle.isDefault) {
+                                this.showNumberPanel(e.clientX || e.changedTouches[0].clientX, 
+                                                   e.clientY || e.changedTouches[0].clientY, rectangle);
+                            }
+                            // 非交换状态，非填充颜色状态下，点击克隆平均分后的小块，实现临时填充橙色
+                            else if (!this.swapMode && !this.colorMode && rectangle.parts > 1 && !rectangle.isDefault) {
+                                const partIndex = this.getPartIndex(x, y, rectangle);
+                                if (partIndex >= 0) {
+                                    this.tempHighlightPart(rectangle, partIndex);
+                                }
+                            }
+                            return;
+                        }
+                    }
+                };
+                
+                // 绑定鼠标事件
+                this.canvas.addEventListener('click', handleInteraction);
+                
+                // 绑定触摸事件（移动端）
+                this.canvas.addEventListener('touchend', handleInteraction, { passive: false });
+                
+                // 防止触摸时的默认行为
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                }, { passive: false });
+                
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                }, { passive: false });
+                
+
+                
+                // 数字按钮点击事件处理函数
+                const handleNumberButtonClick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const value = e.target.getAttribute('data-value');
+                    if (value && value !== '') {
+                        this.selectedParts = parseInt(value);
+                        // 重置所有按钮的样式
+                        document.querySelectorAll('.number-btn').forEach(b => {
+                            b.style.background = '#fff';
+                            b.style.color = '#333';
+                        });
+                        // 高亮选中的按钮
+                        e.target.style.background = '#007acc';
+                        e.target.style.color = 'white';
+                    }
+                };
+                
+                // 为数字按钮绑定点击和触摸事件
+                document.querySelectorAll('.number-btn').forEach(btn => {
+                    // 鼠标点击事件
+                    btn.addEventListener('click', handleNumberButtonClick);
+                    
+                    // 触摸事件支持
+                    btn.addEventListener('touchend', (e) => {
+                        // 防止触摸后触发click事件导致重复执行
+                        e.preventDefault();
+                        handleNumberButtonClick(e);
+                    }, { passive: false });
+                    
+                    // 防止触摸时的默认行为
+                    btn.addEventListener('touchstart', (e) => {
+                        e.stopPropagation();
+                    }, { passive: false });
+                });
+                
+                // OK 按钮事件处理函数
+                const handleOkButtonClick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.divideRectangle(this.selectedParts);
+                };
+                
+                // 为OK按钮绑定点击和触摸事件
+                const okBtn = document.getElementById('okBtn');
+                okBtn.addEventListener('click', handleOkButtonClick);
+                okBtn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    handleOkButtonClick(e);
+                }, { passive: false });
+                okBtn.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                }, { passive: false });
+                
+                // 关闭按钮事件处理函数
+                const handleCloseButtonClick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.hideNumberPanel();
+                };
+                
+                // 为关闭按钮绑定点击和触摸事件
+                const closeBtn = document.getElementById('closeBtn');
+                closeBtn.addEventListener('click', handleCloseButtonClick);
+                closeBtn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    handleCloseButtonClick(e);
+                }, { passive: false });
+                closeBtn.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                }, { passive: false });
+                
+                // 撤销按钮事件处理函数
+                const handleUndoButtonClick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.undoLastRectangle();
+                };
+                
+                // 为撤销按钮绑定点击和触摸事件
+                const undoBtn = document.getElementById('undoBtn');
+                undoBtn.addEventListener('click', handleUndoButtonClick);
+                undoBtn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    handleUndoButtonClick(e);
+                }, { passive: false });
+                undoBtn.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                }, { passive: false });
+                
+                // 点击面板外部关闭面板
+                const handleOutsideClick = (e) => {
+                    // 防止在触摸设备上的重复触发
+                    if (e.type === 'touchend') {
+                        e.preventDefault();
+                    }
+                    
+                    if (!this.numberPanel.contains(e.target) && e.target !== this.canvas) {
+                        this.hideNumberPanel();
+                    }
+                };
+                
+                document.addEventListener('click', handleOutsideClick);
+                document.addEventListener('touchend', handleOutsideClick, { passive: false });
+                
+                // 交换按钮事件处理函数
+                const handleSwapButtonClick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // 切换交换模式
+                    this.swapMode = !this.swapMode;
+                    
+                    // 更新按钮样式
+                    const swapBtn = document.getElementById('swapBtn');
+                    if (this.swapMode) {
+                        swapBtn.classList.add('active');
+                        this.canvas.style.cursor = 'pointer';
+                        // 关闭颜色模式
+                        this.colorMode = false;
+                        // 移除所有颜色块的选中状态，不再默认选中白色
+                        document.querySelectorAll('.color-block').forEach(b => b.classList.remove('selected'));
+                        this.currentColor = 'white';
+                    } else {
+                        swapBtn.classList.remove('active');
+                        this.canvas.style.cursor = 'default';
+                        // 清除选中的交换长方形
+                        this.selectedForSwap = null;
+                        this.draw();
+                    }
+                };
+                
+                // 为交换按钮绑定点击和触摸事件
+                const swapBtn = document.getElementById('swapBtn');
+                swapBtn.addEventListener('click', handleSwapButtonClick);
+                swapBtn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    handleSwapButtonClick(e);
+                }, { passive: false });
+                swapBtn.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                }, { passive: false });
+                
+                // 颜色选择器事件处理函数
+                const handleColorBlockClick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // 检查当前点击的颜色块是否已经选中
+                    const isCurrentlySelected = e.target.classList.contains('selected');
+                    
+                    // 移除所有颜色块的选中状态
+                    document.querySelectorAll('.color-block').forEach(b => b.classList.remove('selected'));
+                    
+                    if (isCurrentlySelected) {
+                        // 如果当前颜色块已经选中，则取消选中状态
+                        this.colorMode = false;
+                        this.currentColor = null;
+                        // 恢复默认鼠标样式
+                        this.canvas.style.cursor = 'pointer';
+                    } else {
+                        // 如果当前颜色块未选中，则选中它
+                        e.target.classList.add('selected');
+                        // 更新当前颜色
+                        this.currentColor = e.target.getAttribute('data-color');
+                        // 启用颜色模式，关闭交换模式
+                        this.colorMode = true;
+                        this.swapMode = false;
+                        // 更新按钮状态
+                        document.getElementById('swapBtn').classList.remove('active');
+                        // 清除选中的交换长方形
+                        this.selectedForSwap = null;
+                        // 更新鼠标样式
+                        this.canvas.style.cursor = 'crosshair';
+                    }
+                    
+                    this.draw();
+                };
+                
+                // 为颜色选择器绑定点击和触摸事件
+                document.querySelectorAll('.color-block').forEach(block => {
+                    // 鼠标点击事件
+                    block.addEventListener('click', handleColorBlockClick);
+                    
+                    // 触摸事件支持
+                    block.addEventListener('touchend', (e) => {
+                        e.preventDefault();
+                        handleColorBlockClick(e);
+                    }, { passive: false });
+                    
+                    // 防止触摸时的默认行为
+                    block.addEventListener('touchstart', (e) => {
+                        e.stopPropagation();
+                    }, { passive: false });
+                });
+            }
+        }
+        
+        // 初始化应用
+        window.addEventListener('DOMContentLoaded', () => {
+            new FractionBoard();
+        });
+    </script>
+
+
+
+
+<script>
+(function () {
+  var storageKey = 'edu_hide_brand_panels';
+  var toggleButton = document.getElementById('edu-border-toggle');
+  if (!toggleButton || !document.body) {
+    return;
+  }
+
+  function applyState(hidden) {
+    document.body.classList.toggle('edu-hide-brand-panels', hidden);
+    toggleButton.textContent = hidden ? '+' : '-';
+    toggleButton.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    toggleButton.setAttribute('aria-label', hidden ? '显示说明框' : '隐藏说明框');
+    toggleButton.setAttribute('title', hidden ? '显示说明框' : '隐藏说明框');
+  }
+
+  var hiddenByDefault = false;
+  try {
+    hiddenByDefault = localStorage.getItem(storageKey) === '1';
+  } catch (e) {
+    hiddenByDefault = false;
+  }
+
+  applyState(hiddenByDefault);
+
+  toggleButton.addEventListener('click', function () {
+    var nextHidden = !document.body.classList.contains('edu-hide-brand-panels');
+    applyState(nextHidden);
+    try {
+      localStorage.setItem(storageKey, nextHidden ? '1' : '0');
+    } catch (e) {
+      // no-op
+    }
+  });
+})();
+</script>
+
+
+</body>
+</html>

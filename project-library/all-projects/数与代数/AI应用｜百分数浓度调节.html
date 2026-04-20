@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>魔法药水浓度模拟器 - 百分数的认识</title>
+    <link rel="icon" href="data:,">
+    <!-- 引入 React 和 ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- 引入 Babel 用于解析 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 引入 Tailwind CSS 用于快速布局 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* 自定义字体与全局样式 */
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f0f4f8;
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        h1, h2, .fun-font {
+            font-family: 'ZCOOL KuaiLe', cursive;
+        }
+
+        /* 烧杯样式 */
+        .beaker-container {
+            position: relative;
+            width: 180px;
+            height: 300px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.2);
+            border: 4px solid #4a5568;
+            border-top: none;
+            border-radius: 0 0 30px 30px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), inset 0 0 20px rgba(255, 255, 255, 0.5);
+            overflow: hidden; /* 保持液体在烧杯内 */
+            z-index: 10;
+        }
+
+        /* 刻度线 */
+        .measurement-lines {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 20;
+        }
+        .line {
+            position: absolute;
+            right: 0;
+            width: 15px;
+            height: 2px;
+            background: #718096;
+        }
+        .line-label {
+            position: absolute;
+            right: 20px;
+            font-size: 10px;
+            color: #718096;
+            transform: translateY(-50%);
+        }
+
+        /* 液体样式 */
+        .liquid {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            transition: height 0.5s ease-out, background-color 0.3s ease;
+            z-index: 5;
+        }
+
+        /* 液体表面的波浪动画 */
+        .wave {
+            position: absolute;
+            top: -10px;
+            left: 0;
+            width: 200%;
+            height: 20px;
+            background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1200 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><path d="M321.39 56.44c58-10.79 114.16-30.13 172-41.86 82.39-16.72 168.19-17.73 250.45-.39C823.78 31 906.67 72 985.66 92.83c70.05 18.48 146.53 26.09 214.34 3V0H0v27.35a600.21 600.21 0 00321.39 29.09z" fill="rgba(255,255,255,0.3)"/></svg>');
+            background-size: 50% 100%;
+            animation: wave-animation 3s linear infinite;
+            opacity: 0.6;
+        }
+
+        @keyframes wave-animation {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* 魔法粒子（气泡） */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 200, 0.8);
+            box-shadow: 0 0 5px gold;
+            bottom: -10px;
+            animation: floatUp 4s infinite linear;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateY(-300px) scale(1.2); opacity: 0; }
+        }
+
+        /* 滑块自定义样式 */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #667eea;
+            cursor: pointer;
+            margin-top: -8px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+        
+        .slider-fill-a::-webkit-slider-runnable-track { background: linear-gradient(to right, #4299e1, #667eea); }
+        .slider-fill-b::-webkit-slider-runnable-track { background: linear-gradient(to right, #ed64a6, #9f7aea); }
+
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const MagicPotionApp = () => {
+            // 状态管理
+            const [totalVolume, setTotalVolume] = useState(200); // 总量 ml
+            const [soluteVolume, setSoluteVolume] = useState(50); // 原液量 ml
+            
+            // 常量
+            const MAX_CAPACITY = 500;
+            const MIN_CAPACITY = 100;
+
+            // 处理总量变化
+            const handleTotalChange = (e) => {
+                const newTotal = parseInt(e.target.value);
+                setTotalVolume(newTotal);
+                // 物理约束：如果总量小于当前原液量，原液量被迫减少（溢出）
+                if (newTotal < soluteVolume) {
+                    setSoluteVolume(newTotal);
+                }
+            };
+
+            // 处理原液变化
+            const handleSoluteChange = (e) => {
+                const newSolute = parseInt(e.target.value);
+                // 物理约束：原液量不能超过总量
+                if (newSolute <= totalVolume) {
+                    setSoluteVolume(newSolute);
+                }
+            };
+
+            // 计算浓度 (0 - 1)
+            const concentrationRatio = totalVolume > 0 ? soluteVolume / totalVolume : 0;
+            const percentage = (concentrationRatio * 100).toFixed(1);
+
+            // 动态计算颜色
+            // 低浓度: 浅蓝 (Hue 190, Sat 70%, Light 90%)
+            // 高浓度: 深紫 (Hue 270, Sat 90%, Light 40%)
+            const liquidColor = useMemo(() => {
+                const h = 190 + (concentrationRatio * 80); // 190 -> 270
+                const s = 70 + (concentrationRatio * 20);  // 70% -> 90%
+                const l = 90 - (concentrationRatio * 50);  // 90% -> 40%
+                return `hsl(${h}, ${s}%, ${l}%)`;
+            }, [concentrationRatio]);
+
+            // 粒子系统：浓度越高，粒子越多，速度越快
+            const particles = useMemo(() => {
+                const count = Math.floor(concentrationRatio * 30) + 5; // 5 到 35 个粒子
+                return Array.from({ length: count }).map((_, i) => ({
+                    id: i,
+                    left: Math.random() * 100 + '%',
+                    delay: Math.random() * 2 + 's',
+                    duration: (4 - concentrationRatio * 2) + 's', // 浓度越高浮动越快
+                    size: (Math.random() * 6 + 4) + 'px'
+                }));
+            }, [concentrationRatio]);
+
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                    {/* 标题区 */}
+                    <header className="text-center mb-6">
+                        <h1 className="text-4xl md:text-5xl text-indigo-600 drop-shadow-sm fun-font mb-2">
+                            🧪 魔法药水浓度模拟器
+                        </h1>
+                        <p className="text-gray-500 text-lg">
+                            来调配你的专属魔力药水，学习百分数吧！
+                        </p>
+                    </header>
+
+                    <div className="flex flex-col lg:flex-row gap-8 items-center justify-center w-full max-w-5xl">
+                        
+                        {/* 1. 视觉展示区 (左侧/上方) */}
+                        <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm flex flex-col items-center transform transition-all hover:scale-105 duration-300">
+                            <h2 className="fun-font text-2xl text-gray-700 mb-6">药水反应堆</h2>
+                            
+                            <div className="beaker-container bg-gray-50">
+                                {/* 刻度线 */}
+                                <div className="measurement-lines">
+                                    {[100, 200, 300, 400, 500].map(val => (
+                                        <div key={val} style={{bottom: `${(val/MAX_CAPACITY)*100}%`}} className="w-full absolute">
+                                            <div className="line"></div>
+                                            <div className="line-label fun-font">{val}ml</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* 液体 */}
+                                <div 
+                                    className="liquid"
+                                    style={{
+                                        height: `${(totalVolume / MAX_CAPACITY) * 100}%`,
+                                        backgroundColor: liquidColor,
+                                        boxShadow: `0 0 20px ${liquidColor}`
+                                    }}
+                                >
+                                    <div className="wave"></div>
+                                    {/* 粒子效果 */}
+                                    {particles.map(p => (
+                                        <div 
+                                            key={p.id}
+                                            className="particle"
+                                            style={{
+                                                left: p.left,
+                                                width: p.size,
+                                                height: p.size,
+                                                animationDelay: p.delay,
+                                                animationDuration: p.duration
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            <div className="mt-4 text-center">
+                                <div className="inline-block px-4 py-2 rounded-full bg-gray-100 text-gray-600 font-bold">
+                                    当前颜色深度：{concentrationRatio > 0.8 ? "极浓" : concentrationRatio > 0.5 ? "浓郁" : concentrationRatio > 0.2 ? "适中" : "清淡"}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. 数据与控制区 (右侧/下方) */}
+                        <div className="flex flex-col gap-6 w-full max-w-lg">
+                            
+                            {/* 控制面板 */}
+                            <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-indigo-50">
+                                <h3 className="fun-font text-xl text-indigo-500 mb-4 flex items-center">
+                                    <span className="bg-indigo-100 p-2 rounded-lg mr-2">🎛️</span> 
+                                    配方控制
+                                </h3>
+
+                                {/* 滑块 A: 总量 */}
+                                <div className="mb-6">
+                                    <div className="flex justify-between mb-2">
+                                        <label className="font-bold text-gray-700">药水总量 (分母 B)</label>
+                                        <span className="font-mono text-blue-600 bg-blue-50 px-2 rounded">{totalVolume} ml</span>
+                                    </div>
+                                    <input 
+                                        type="range" 
+                                        min={MIN_CAPACITY} 
+                                        max={MAX_CAPACITY} 
+                                        step="10"
+                                        value={totalVolume}
+                                        onChange={handleTotalChange}
+                                        className="w-full slider-fill-a"
+                                    />
+                                </div>
+
+                                {/* 滑块 B: 原液量 */}
+                                <div>
+                                    <div className="flex justify-between mb-2">
+                                        <label className="font-bold text-gray-700">✨ 魔力原液 (分子 A)</label>
+                                        <span className="font-mono text-purple-600 bg-purple-50 px-2 rounded">{soluteVolume} ml</span>
+                                    </div>
+                                    <input 
+                                        type="range" 
+                                        min="0" 
+                                        max={totalVolume} 
+                                        step="5"
+                                        value={soluteVolume}
+                                        onChange={handleSoluteChange}
+                                        className="w-full slider-fill-b"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">* 原液量不能超过总量哦</p>
+                                </div>
+                            </div>
+
+                            {/* 数学分析面板 */}
+                            <div className="bg-yellow-50 p-6 rounded-3xl shadow-inner border-2 border-yellow-200 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-4 opacity-10 text-6xl">📝</div>
+                                <h3 className="fun-font text-xl text-yellow-700 mb-4 flex items-center relative z-10">
+                                    <span className="bg-yellow-200 p-2 rounded-lg mr-2">📊</span> 
+                                    浓度计算实验室
+                                </h3>
+
+                                <div className="space-y-4 relative z-10">
+                                    {/* 第一步：分数形式 */}
+                                    <div className="flex items-center bg-white p-3 rounded-xl shadow-sm">
+                                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600 mr-3">1</div>
+                                        <div className="flex-1">
+                                            <span className="text-gray-500 text-sm block">写成分数形式 (部分 ÷ 整体)</span>
+                                            <div className="flex items-center font-mono text-lg mt-1">
+                                                <div className="flex flex-col items-center mx-2">
+                                                    <span className="border-b-2 border-gray-400 px-1 text-purple-600 font-bold">{soluteVolume}</span>
+                                                    <span className="text-blue-600 font-bold">{totalVolume}</span>
+                                                </div>
+                                                <span className="text-gray-400 text-sm ml-2">(原液 / 总量)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 第二步：计算过程 */}
+                                    <div className="flex items-center bg-white p-3 rounded-xl shadow-sm">
+                                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600 mr-3">2</div>
+                                        <div className="flex-1">
+                                            <span className="text-gray-500 text-sm block">转化为小数并乘以 100</span>
+                                            <div className="font-mono text-lg mt-1 text-gray-700">
+                                                ( {soluteVolume} ÷ {totalVolume} ) × 100
+                                            </div>
+                                            <div className="text-sm text-gray-400 mt-1">
+                                                ≈ {concentrationRatio.toFixed(3)} × 100
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 第三步：结果 */}
+                                    <div className="bg-gradient-to-r from-purple-500 to-indigo-600 p-4 rounded-xl text-white shadow-md flex justify-between items-center">
+                                        <div>
+                                            <span className="block text-purple-100 text-sm mb-1">最终浓度 (百分数)</span>
+                                            <span className="text-4xl font-bold fun-font tracking-wider">
+                                                {percentage}<span className="text-2xl">%</span>
+                                            </span>
+                                        </div>
+                                        <div className="text-4xl animate-pulse">
+                                            {percentage > 50 ? '🔥' : '✨'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<MagicPotionApp />);
+    </script>
+</body>
+</html>

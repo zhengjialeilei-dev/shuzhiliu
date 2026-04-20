@@ -9,6 +9,7 @@ import PageHeader from '../components/PageHeader';
 import SearchBar from '../components/SearchBar';
 import FilterTabs from '../components/FilterTabs';
 import ResourceCard from '../components/ResourceCard';
+import { GAME_CATEGORY, TOOL_CATEGORY } from '../lib/resourceCategories';
 
 const CATEGORIES = [
   { id: 'all', label: '全部' },
@@ -64,7 +65,10 @@ const Home = () => {
   }, [activeCategory, activeGrade, debouncedSearch, setSearchParams]);
 
   const interactiveApps = useMemo(
-    () => allResources.filter((app) => app.category !== '赋能教学' && (app.route_path || app.file_path)),
+    () =>
+      allResources.filter(
+        (app) => app.category !== TOOL_CATEGORY && app.category !== GAME_CATEGORY && (app.route_path || app.file_path)
+      ),
     [allResources]
   );
 
@@ -110,7 +114,7 @@ const Home = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">
       <div className="flex flex-col gap-4 mb-6 sm:mb-10">
-        <PageHeader title="AI应用" subtitle="探索精彩的数学教学互动资源库" />
+        <PageHeader title="AI赋能" subtitle="探索精彩的数学教学互动资源库" />
 
         <div className="flex items-center gap-2 sm:gap-4 bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-white/50 shadow-sm w-full">
           <SearchBar

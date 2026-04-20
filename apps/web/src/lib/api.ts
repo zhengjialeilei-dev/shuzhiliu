@@ -2,20 +2,24 @@ import type { AdminSession, HealthCheck, Resource, TeachingResource } from './ty
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
-function buildUrl(path: string) {
+export function buildApiUrl(path: string) {
   if (!API_BASE_URL) return path;
   return `${API_BASE_URL}${path}`;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(buildUrl(path), {
+  const headers = new Headers(init?.headers);
+  headers.set('Accept', 'application/json');
+
+  const hasBody = init?.body !== undefined && init?.body !== null;
+  if (hasBody && !(init?.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const response = await fetch(buildApiUrl(path), {
     credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      ...(init?.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-      ...init?.headers,
-    },
     ...init,
+    headers,
   });
 
   if (!response.ok) {
@@ -28,6 +32,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function getResources() {
   return request<Resource[]>('/api/resources');
+}
+
+export function getResolvedHtmlResource(params: { path?: string | null; url?: string | null }) {
+  const searchParams = new URLSearchParams();
+
+  if (params.path) searchParams.set('path', params.path);
+  if (params.url) searchParams.set('url', params.url);
+
+  return request<Resource>(`/api/resources/resolve?${searchParams.toString()}`);
 }
 
 export function getTeachingResources() {

@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>比例的基本性质 - 交互实验室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: #a5b4fc;
+            --primary-bg: #eef2ff;
+            --accent: #f59e0b;
+            --accent-light: #fde68a;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-gray: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --radius: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .app-header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            padding: 20px 24px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+        }
+        .app-header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 2px; }
+        .app-header p { font-size: 0.9rem; opacity: 0.85; margin-top: 4px; }
+
+        .main-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px 16px 40px;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid #f1f5f9;
+            transition: box-shadow 0.3s;
+        }
+        .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-title i { font-size: 1.1rem; }
+
+        /* 比例展示 */
+        .proportion-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 2rem;
+            font-weight: 700;
+            padding: 24px;
+            background: var(--primary-bg);
+            border-radius: 12px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+        .num-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 64px;
+            border-radius: 12px;
+            font-size: 1.8rem;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .num-box.outer { background: #dbeafe; color: #1e40af; border: 2px solid #93c5fd; }
+        .num-box.inner { background: #fef3c7; color: #92400e; border: 2px solid #fcd34d; }
+        .num-box.highlight { transform: scale(1.15); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+        .op { font-size: 1.6rem; color: var(--text-gray); padding: 0 4px; }
+        .equals { font-size: 2rem; color: var(--text); padding: 0 8px; }
+
+        /* 线段标注 */
+        .cross-line {
+            position: absolute;
+            pointer-events: none;
+        }
+        .term-label {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .term-outer { background: #dbeafe; color: #1e40af; }
+        .term-inner { background: #fef3c7; color: #92400e; }
+
+        /* 乘积验证 */
+        .product-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            padding: 16px;
+            background: #f0fdf4;
+            border-radius: 12px;
+            border: 2px dashed #86efac;
+            margin-top: 16px;
+        }
+        .product-area.correct { border-color: var(--success); background: #dcfce7; }
+        .product-area .product-value {
+            font-size: 1.6rem;
+            color: var(--primary);
+            min-width: 40px;
+            text-align: center;
+        }
+
+        /* 滑块 */
+        .slider-group {
+            margin: 12px 0;
+        }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: var(--text-gray);
+            margin-bottom: 6px;
+        }
+        input[type=range] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(99,102,241,0.4);
+            transition: transform 0.15s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        /* 练习区 */
+        .quiz-question {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 12px 0;
+            border: 2px solid #e2e8f0;
+        }
+        .quiz-proportion {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin: 12px 0;
+        }
+        .quiz-input {
+            width: 72px;
+            height: 48px;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 600;
+            outline: none;
+            transition: border-color 0.3s;
+            background: white;
+        }
+        .quiz-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+        .quiz-input.correct { border-color: var(--success); background: #dcfce7; }
+        .quiz-input.wrong { border-color: var(--danger); background: #fef2f2; animation: shake 0.4s; }
+
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #4f46e5; transform: translateY(-1px); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-outline:hover { background: var(--primary-bg); }
+
+        .score-display {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+        .score-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* 结论卡 */
+        .conclusion {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border-radius: 14px;
+            padding: 20px 24px;
+            text-align: center;
+            font-size: 1.05rem;
+            line-height: 1.8;
+            box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+        }
+        .conclusion strong { color: #fde68a; }
+
+        /* 动画 */
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 640px) {
+            .proportion-display { font-size: 1.4rem; padding: 16px; gap: 4px; }
+            .num-box { width: 56px; height: 48px; font-size: 1.3rem; }
+            .quiz-proportion { font-size: 1.2rem; }
+            .quiz-input { width: 56px; height: 40px; font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1><i class="fas fa-balance-scale"></i> 比例的基本性质</h1>
+        <p>在比例里，两个外项的积等于两个内项的积</p>
+    </div>
+
+    <div class="main-container">
+        <!-- 探索区 -->
+        <div class="card fade-in">
+            <div class="card-title"><i class="fas fa-flask"></i> 动手探索</div>
+            <p style="color:var(--text-gray);margin-bottom:12px;">拖动滑块，观察比例中四个数的关系：</p>
+
+            <div class="slider-group">
+                <div class="slider-label"><span>第一个数 (a)</span><span id="val-a">2</span></div>
+                <input type="range" id="slider-a" min="1" max="20" value="2">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label"><span>第二个数 (b)</span><span id="val-b">3</span></div>
+                <input type="range" id="slider-b" min="1" max="20" value="3">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label"><span>第三个数 (c)</span><span id="val-c">4</span></div>
+                <input type="range" id="slider-c" min="1" max="20" value="4">
+            </div>
+
+            <div class="proportion-display" id="proportion-display">
+                <span class="num-box outer" id="box-a">2</span>
+                <span class="op">:</span>
+                <span class="num-box inner" id="box-b">3</span>
+                <span class="op" style="font-size:1.4rem;">=</span>
+                <span class="num-box inner" id="box-c">4</span>
+                <span class="op">:</span>
+                <span class="num-box outer" id="box-d">6</span>
+            </div>
+
+            <div style="text-align:center;margin:12px 0;">
+                <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
+                    <span class="term-label term-outer">外项</span>
+                    <span style="font-size:0.8rem;color:var(--text-gray);">← 蓝色 →</span>
+                    <span class="term-label term-inner">内项</span>
+                    <span style="font-size:0.8rem;color:var(--text-gray);">← 黄色 →</span>
+                </div>
+            </div>
+
+            <div class="product-area" id="product-area">
+                <span>外项之积：</span>
+                <span class="product-value" id="outer-product">12</span>
+                <span class="equals">=</span>
+                <span>内项之积：</span>
+                <span class="product-value" id="inner-product">12</span>
+            </div>
+
+            <div id="is-proportion" style="text-align:center;margin-top:12px;font-weight:600;font-size:1.1rem;"></div>
+        </div>
+
+        <!-- 结论 -->
+        <div class="conclusion fade-in" style="margin-bottom:20px;">
+            <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px;">📝 规律总结</div>
+            在比例 <strong>a : b = c : d</strong> 中：<br>
+            <strong>两个外项的积 = 两个内项的积</strong><br>
+            即 <strong>a × d = b × c</strong>
+        </div>
+
+        <!-- 练习区 -->
+        <div class="card fade-in">
+            <div class="card-title"><i class="fas fa-pencil-alt"></i> 巩固练习</div>
+            <p style="color:var(--text-gray);margin-bottom:12px;">利用比例的基本性质，求出未知数 x：</p>
+
+            <div id="quiz-container"></div>
+
+            <div style="display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="checkAnswers()"><i class="fas fa-check"></i> 检查答案</button>
+                <button class="btn btn-outline" onclick="newQuiz()"><i class="fas fa-redo"></i> 换一批</button>
+            </div>
+
+            <div class="score-display" id="score-display" style="display:none;">
+                <div class="score-item"><i class="fas fa-check-circle" style="color:var(--success)"></i> <span id="score-correct">0</span> 正确</div>
+                <div class="score-item"><i class="fas fa-times-circle" style="color:var(--danger)"></i> <span id="score-wrong">0</span> 错误</div>
+            </div>
+        </div>
+
+        <!-- 挑战 -->
+        <div class="card fade-in">
+            <div class="card-title"><i class="fas fa-star"></i> 挑战：判断能否组成比例</div>
+            <p style="color:var(--text-gray);margin-bottom:12px;">四个数能否组成比例？用基本性质验证！</p>
+
+            <div id="challenge-area" style="text-align:center;"></div>
+
+            <div style="display:flex;gap:12px;justify-content:center;margin-top:16px;">
+                <button class="btn btn-success" onclick="checkChallenge(true)"><i class="fas fa-thumbs-up"></i> 能组成</button>
+                <button class="btn btn-outline" onclick="checkChallenge(false)"><i class="fas fa-thumbs-down"></i> 不能组成</button>
+                <button class="btn btn-outline" onclick="newChallenge()"><i class="fas fa-forward"></i> 下一题</button>
+            </div>
+
+            <div id="challenge-result" style="text-align:center;margin-top:12px;font-weight:600;font-size:1.1rem;"></div>
+            <div class="score-display" id="challenge-score" style="display:none;margin-top:8px;">
+                <div class="score-item"><i class="fas fa-trophy" style="color:var(--accent)"></i> 连对 <span id="challenge-streak">0</span> 题</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === 探索区逻辑 ===
+        const sliderA = document.getElementById('slider-a');
+        const sliderB = document.getElementById('slider-b');
+        const sliderC = document.getElementById('slider-c');
+
+        function update() {
+            const a = +sliderA.value;
+            const b = +sliderB.value;
+            const c = +sliderC.value;
+            // d = b*c / a (保证是比例)
+            let d = (b * c) / a;
+            const isInteger = Number.isInteger(d);
+            d = Math.round(d * 100) / 100;
+
+            document.getElementById('val-a').textContent = a;
+            document.getElementById('val-b').textContent = b;
+            document.getElementById('val-c').textContent = c;
+
+            document.getElementById('box-a').textContent = a;
+            document.getElementById('box-b').textContent = b;
+            document.getElementById('box-c').textContent = c;
+            document.getElementById('box-d').textContent = d;
+
+            const outerP = a * d;
+            const innerP = b * c;
+            document.getElementById('outer-product').textContent = outerP;
+            document.getElementById('inner-product').textContent = innerP;
+
+            const area = document.getElementById('product-area');
+            const equal = Math.abs(outerP - innerP) < 0.01;
+            area.className = 'product-area' + (equal ? ' correct' : '');
+
+            const msg = document.getElementById('is-proportion');
+            if (isInteger && d > 0) {
+                msg.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> ' + a + ' : ' + b + ' = ' + c + ' : ' + d + ' 是比例</span>';
+            } else {
+                msg.innerHTML = '<span style="color:var(--text-gray)">调整滑块使 d 为整数…</span>';
+            }
+        }
+
+        sliderA.addEventListener('input', update);
+        sliderB.addEventListener('input', update);
+        sliderC.addEventListener('input', update);
+        update();
+
+        // === 练习区 ===
+        let quizData = [];
+
+        function generateQuiz() {
+            quizData = [];
+            for (let i = 0; i < 4; i++) {
+                const a = randInt(2, 12);
+                const b = randInt(2, 12);
+                const c = randInt(2, 12);
+                const d = a * c;
+                if (d % b !== 0) { i--; continue; }
+                const x = d / b;
+                // 随机隐藏一个位置
+                const hidePos = randInt(0, 3);
+                quizData.push({ a, b, c, d: x, hide: hidePos, answer: [a, b, c, x][hidePos] });
+            }
+        }
+
+        function renderQuiz() {
+            const container = document.getElementById('quiz-container');
+            container.innerHTML = '';
+            quizData.forEach((q, idx) => {
+                const nums = [q.a, q.b, q.c, q.d];
+                const labels = ['a', 'b', 'c', 'd'];
+                let html = '<div class="quiz-question"><div style="font-size:0.85rem;color:var(--text-gray);margin-bottom:8px;">第 ' + (idx+1) + ' 题</div><div class="quiz-proportion">';
+                for (let j = 0; j < 4; j++) {
+                    if (j === 1) html += '<span class="op">:</span>';
+                    if (j === 2) html += '<span class="op" style="font-size:1.2rem;margin:0 4px;">=</span>';
+                    if (j === 3) html += '<span class="op">:</span>';
+                    if (j === q.hide) {
+                        html += '<input class="quiz-input" id="quiz-' + idx + '" type="number" placeholder="?" autocomplete="off">';
+                    } else {
+                        html += '<span style="min-width:40px;text-align:center;">' + nums[j] + '</span>';
+                    }
+                }
+                html += '</div></div>';
+                container.innerHTML += html;
+            });
+        }
+
+        function checkAnswers() {
+            let correct = 0, wrong = 0;
+            quizData.forEach((q, idx) => {
+                const input = document.getElementById('quiz-' + idx);
+                const val = parseFloat(input.value);
+                input.classList.remove('correct', 'wrong');
+                if (val === q.answer) {
+                    input.classList.add('correct');
+                    correct++;
+                } else {
+                    input.classList.add('wrong');
+                    wrong++;
+                }
+            });
+            const display = document.getElementById('score-display');
+            display.style.display = 'flex';
+            document.getElementById('score-correct').textContent = correct;
+            document.getElementById('score-wrong').textContent = wrong;
+        }
+
+        function newQuiz() {
+            generateQuiz();
+            renderQuiz();
+            document.getElementById('score-display').style.display = 'none';
+        }
+
+        newQuiz();
+
+        // === 挑战区 ===
+        let challengeNums = [];
+        let challengeAnswer = false;
+        let challengeStreak = 0;
+
+        function newChallenge() {
+            document.getElementById('challenge-result').innerHTML = '';
+            // 50%概率生成能组成比例的
+            if (Math.random() < 0.5) {
+                const a = randInt(2, 10);
+                const b = randInt(2, 10);
+                const c = randInt(2, 10);
+                const k = a * c;
+                if (k % b !== 0) { newChallenge(); return; }
+                const d = k / b;
+                challengeNums = [a, b, c, d];
+                challengeAnswer = true;
+            } else {
+                const a = randInt(2, 10);
+                let b = randInt(2, 10);
+                let c = randInt(2, 10);
+                let d = randInt(2, 10);
+                // 确保不是比例
+                while (a * d === b * c) { d = randInt(2, 10); }
+                challengeNums = [a, b, c, d];
+                challengeAnswer = false;
+            }
+            renderChallenge();
+        }
+
+        function renderChallenge() {
+            const area = document.getElementById('challenge-area');
+            const [a, b, c, d] = challengeNums;
+            area.innerHTML = '<div style="font-size:2rem;font-weight:700;margin:16px 0;">' +
+                '<span style="color:#1e40af">' + a + '</span> : <span style="color:#92400e">' + b + '</span>' +
+                ' <span style="font-size:1.4rem;margin:0 8px;">和</span> ' +
+                '<span style="color:#92400e">' + c + '</span> : <span style="color:#1e40af">' + d + '</span></div>' +
+                '<div style="font-size:0.85rem;color:var(--text-gray);">外项之积 = ' + (challengeNums[0]*challengeNums[3]) + '，内项之积 = ' + (challengeNums[1]*challengeNums[2]) + '</div>';
+        }
+
+        function checkChallenge(userSays) {
+            const result = document.getElementById('challenge-result');
+            if (userSays === challengeAnswer) {
+                challengeStreak++;
+                result.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> 正确！' + (challengeAnswer ? '外项积=' + (challengeNums[0]*challengeNums[3]) + ' = 内项积=' + (challengeNums[1]*challengeNums[2]) : '外项积≠内项积，不能组成比例') + '</span>';
+            } else {
+                challengeStreak = 0;
+                result.innerHTML = '<span style="color:var(--danger)"><i class="fas fa-times-circle"></i> 再想想～' + (challengeAnswer ? '其实外项积=' + (challengeNums[0]*challengeNums[3]) + ' = 内项积=' + (challengeNums[1]*challengeNums[2]) : '外项积' + (challengeNums[0]*challengeNums[3]) + '≠内项积' + (challengeNums[1]*challengeNums[2])) + '</span>';
+            }
+            const score = document.getElementById('challenge-score');
+            score.style.display = 'flex';
+            document.getElementById('challenge-streak').textContent = challengeStreak;
+        }
+
+        newChallenge();
+
+        // === 工具函数 ===
+        function randInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打折的奥秘 - 全屏互动课件</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; overflow: hidden; }
+        /* 增加字体大小的基础设置，使其在大屏下更协调 */
+        .text-xl { font-size: 1.5rem; }
+        .text-lg { font-size: 1.25rem; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- 图标组件定义 ---
+        const IconBase = ({ size = 24, className = "", children }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
+        );
+
+        const ChevronRight = (props) => <IconBase {...props}><path d="m9 18 6-6-6-6"/></IconBase>;
+        const ChevronLeft = (props) => <IconBase {...props}><path d="m15 18-6-6 6-6"/></IconBase>;
+        const ShoppingCart = (props) => <IconBase {...props}><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></IconBase>;
+        const Tag = (props) => <IconBase {...props}><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></IconBase>;
+        const Calculator = (props) => <IconBase {...props}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></IconBase>;
+        const AlertTriangle = (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></IconBase>;
+        const Gift = (props) => <IconBase {...props}><polyline points="20 12 20 22 4 22 4 12"/><rect width="20" height="5" x="2" y="7"/><line x1="12" x2="12" y1="22" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></IconBase>;
+        const Brain = (props) => <IconBase {...props}><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-1.4 4.5 4.5 0 0 1-3 1.4"/><path d="M12 18h.01"/></IconBase>;
+        const BookOpen = (props) => <IconBase {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></IconBase>;
+
+        // --- 主组件 ---
+        const LessonSlides = () => {
+            const [currentSlide, setCurrentSlide] = useState(0);
+            const [showAnswer, setShowAnswer] = useState({});
+
+            const toggleAnswer = (slideIndex, key) => {
+                setShowAnswer(prev => ({
+                ...prev,
+                [`${slideIndex}-${key}`]: !prev[`${slideIndex}-${key}`]
+                }));
+            };
+
+            const slides = [
+                {
+                id: 0,
+                type: "cover",
+                content: (
+                    <div className="flex flex-col items-center justify-center h-full text-center space-y-8 animate-fade-in">
+                    <div className="bg-red-600 text-white p-6 rounded-full shadow-lg mb-4">
+                        <Tag size={80} />
+                    </div>
+                    <h1 className="text-7xl font-black text-red-600 tracking-tight">打折的奥秘</h1>
+                    <h2 className="text-4xl text-orange-500 font-bold">百分数在生活中的应用</h2>
+                    <div className="bg-yellow-100 border-2 border-yellow-400 p-8 rounded-xl transform rotate-1 shadow-md max-w-3xl">
+                        <p className="text-2xl text-gray-700 font-medium">人教版六年级下册《百分数（二）》第一课时</p>
+                        <p className="text-xl text-gray-500 mt-4">授课教师：郑老师</p>
+                    </div>
+                    <div className="absolute bottom-10 right-10 opacity-20">
+                        <ShoppingCart size={150} />
+                    </div>
+                    </div>
+                )
+                },
+                {
+                id: 1,
+                type: "content",
+                title: "1. 课前热身：你的“省钱”雷达灵吗？",
+                content: (
+                    <div className="flex flex-col items-center h-full justify-center space-y-10">
+                    <div className="relative w-full max-w-5xl h-80 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl shadow-inner flex items-center justify-center overflow-hidden">
+                        <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')]"></div>
+                        <div className="text-white text-center p-10 bg-black bg-opacity-30 rounded-xl backdrop-blur-sm transform hover:scale-105 transition-transform duration-300">
+                        <h3 className="text-6xl font-bold mb-4">全场八五折</h3>
+                        <p className="text-3xl">春节大促销</p>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-6xl">
+                        <div className="bg-white p-8 rounded-2xl shadow-md border-l-8 border-blue-500">
+                        <h4 className="font-bold text-2xl mb-4 text-blue-600 flex items-center gap-3">
+                            <Brain size={28}/> 核心提问
+                        </h4>
+                        <p className="text-gray-700 text-xl">“八五折”到底是什么意思？</p>
+                        </div>
+                        <div className="bg-white p-8 rounded-2xl shadow-md border-l-8 border-purple-500">
+                        <h4 className="font-bold text-2xl mb-4 text-purple-600 flex items-center gap-3">
+                            <Brain size={28}/> 思考一下
+                        </h4>
+                        <p className="text-gray-700 text-xl leading-relaxed">是把衣服剪掉一块卖给你吗？<br/>还是价格发生了变化？</p>
+                        </div>
+                    </div>
+                    </div>
+                )
+                },
+                {
+                id: 2,
+                type: "interaction",
+                title: "2. 角色扮演：小小收银员",
+                content: (
+                    <div className="flex flex-col h-full justify-center">
+                    <p className="text-2xl text-center mb-10 text-gray-600 font-medium">不看书，凭经验快速算出它们实际上要卖多少钱？</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto w-full">
+                        {[
+                        { name: "A商品", price: 100, discount: "九折", result: "90元", color: "blue" },
+                        { name: "B商品", price: 50, discount: "五折", result: "25元", color: "green" },
+                        { name: "C商品", price: 80, discount: "八八折", result: "70.4元", color: "orange" }
+                        ].map((item, idx) => (
+                        <div key={idx} className={`bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-${item.color}-100 hover:shadow-2xl transition-all transform hover:-translate-y-2`}>
+                            <div className={`bg-${item.color}-500 text-white p-6 text-center`}>
+                                <h3 className="text-3xl font-bold">{item.name}</h3>
+                            </div>
+                            <div className="p-8 text-center space-y-6">
+                            <div className="text-gray-500 line-through text-xl">原价：{item.price}元</div>
+                            <div className="text-4xl font-bold text-red-500 transform -rotate-6 border-4 border-red-500 inline-block px-4 py-2 rounded-xl">
+                                {item.discount}
+                            </div>
+                            <button 
+                                onClick={() => toggleAnswer(2, idx)}
+                                className="w-full mt-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 text-lg font-bold transition-colors"
+                            >
+                                {showAnswer[`2-${idx}`] ? "隐藏答案" : "点击揭晓现价"}
+                            </button>
+                            {showAnswer[`2-${idx}`] && (
+                                <div className="text-5xl font-black text-gray-800 animate-bounce mt-4">
+                                {item.result}
+                                </div>
+                            )}
+                            </div>
+                        </div>
+                        ))}
+                    </div>
+                    </div>
+                )
+                },
+                {
+                id: 3,
+                type: "content",
+                title: "3. 概念揭秘：数学里的“翻译官”",
+                content: (
+                    <div className="flex flex-col items-center justify-center h-full space-y-10">
+                    <div className="bg-yellow-50 p-8 rounded-2xl border border-yellow-200 w-full max-w-5xl text-center shadow-sm">
+                        <h3 className="text-3xl font-bold text-gray-800 mb-4">定义</h3>
+                        <p className="text-2xl text-gray-600">商店降价出售商品，叫做<span className="text-red-600 font-bold mx-3 text-4xl">“打折”</span>。</p>
+                    </div>
+
+                    <div className="w-full max-w-5xl bg-white p-10 rounded-3xl shadow-xl">
+                        <h3 className="text-2xl font-bold text-gray-500 mb-8 uppercase tracking-wide border-b pb-4">关键转化笔记</h3>
+                        
+                        <div className="space-y-8">
+                            <div className="flex items-center justify-between text-3xl font-medium p-6 bg-gray-50 rounded-xl">
+                                <span className="text-blue-600">“几折”</span>
+                                <span className="text-gray-400">➜</span>
+                                <span className="text-green-600">十分之几</span>
+                                <span className="text-gray-400">➜</span>
+                                <span className="text-purple-600">百分之几十</span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-4xl font-bold p-6 border-2 border-gray-100 rounded-xl hover:bg-red-50 transition-colors">
+                                <span className="text-gray-800 w-1/3">九折</span>
+                                <span className="text-gray-400">=</span>
+                                <span className="text-gray-800 w-1/3 text-center">9/10</span>
+                                <span className="text-gray-400">=</span>
+                                <span className="text-red-600 w-1/3 text-right">90%</span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-4xl font-bold p-6 border-2 border-gray-100 rounded-xl hover:bg-red-50 transition-colors">
+                                <span className="text-gray-800 w-1/3">八五折</span>
+                                <span className="text-gray-400">=</span>
+                                <span className="text-gray-800 w-1/3 text-center">8.5/10</span>
+                                <span className="text-gray-400">=</span>
+                                <span className="text-red-600 w-1/3 text-right">85%</span>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                )
+                },
+                {
+                id: 4,
+                type: "content",
+                title: "4. 核心公式：寻找“现价”",
+                content: (
+                    <div className="flex flex-col items-center justify-center h-full">
+                    <div className="bg-gray-900 text-white p-16 rounded-[3rem] shadow-2xl transform hover:scale-105 transition-transform duration-300 mb-16">
+                        <h2 className="text-6xl font-mono text-center flex items-center gap-6">
+                        <span className="text-green-400">现价</span>
+                        <span>=</span>
+                        <span className="text-blue-400">原价</span>
+                        <span className="text-gray-500">×</span>
+                        <span className="text-red-400">折扣</span>
+                        </h2>
+                    </div>
+
+                    <div className="bg-white p-10 rounded-2xl shadow-xl border-l-[12px] border-green-500 max-w-4xl w-full">
+                        <h3 className="text-3xl font-bold mb-6 flex items-center gap-4">
+                            <Calculator size={40} className="text-green-500" /> 举例验证
+                        </h3>
+                        <div className="text-3xl space-y-4 font-mono pl-4">
+                        <p>原价：<span className="font-bold">100</span> 元</p>
+                        <p>折扣：<span className="font-bold text-red-500">90%</span> (九折)</p>
+                        <hr className="border-gray-300 my-4"/>
+                        <p>计算：100 × 90% = <span className="font-bold text-green-600 text-5xl ml-4">90元</span></p>
+                        </div>
+                    </div>
+                    </div>
+                )
+                },
+                {
+                id: 5,
+                type: "content",
+                title: "5. 易错点警示：真的便宜了80%吗？",
+                content: (
+                    <div className="flex flex-col items-center justify-center h-full space-y-10">
+                    <div className="flex items-center gap-4 bg-red-100 text-red-700 px-8 py-4 rounded-full font-bold text-2xl animate-pulse shadow-sm">
+                        <AlertTriangle size={32} /> 重点辨析
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-12 w-full max-w-6xl">
+                        <div className="bg-blue-50 p-10 rounded-3xl border-4 border-blue-200 text-center shadow-lg">
+                            <h3 className="text-3xl font-bold text-blue-800 mb-6">打八折</h3>
+                            <div className="text-8xl font-black text-blue-600 mb-4">80%</div>
+                            <p className="text-gray-600 text-xl">意思是现价是原价的 80%</p>
+                            <p className="mt-6 text-lg bg-blue-200 inline-block px-4 py-2 rounded-lg font-bold text-blue-900">你需要支付的部分</p>
+                        </div>
+
+                        <div className="bg-green-50 p-10 rounded-3xl border-4 border-green-200 text-center shadow-lg">
+                            <h3 className="text-3xl font-bold text-green-800 mb-6">便宜了</h3>
+                            <div className="text-8xl font-black text-green-600 mb-4">20%</div>
+                            <p className="text-gray-600 text-xl">计算：1 - 80% = 20%</p>
+                            <p className="mt-6 text-lg bg-green-200 inline-block px-4 py-2 rounded-lg font-bold text-green-900">省下的钱</p>
+                        </div>
+                    </div>
+
+                    <div className="w-full max-w-6xl bg-yellow-50 p-8 rounded-2xl border-2 border-yellow-300 mt-6 shadow-md">
+                        <h4 className="font-bold text-2xl mb-4 text-yellow-800">避坑指南：计算“便宜了多少钱”</h4>
+                        <div className="grid grid-cols-2 gap-8 text-xl">
+                        <div className="bg-white p-6 rounded-xl shadow-sm text-center">方法一：原价 - 现价</div>
+                        <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-red-400 text-red-600 font-bold text-center">方法二：原价 × (1 - 折扣)</div>
+                        </div>
+                    </div>
+                    </div>
+                )
+                },
+                {
+                id: 6,
+                type: "interaction",
+                title: "6. 实战演练：谁是理财小能手？",
+                content: (
+                    <div className="flex gap-12 h-full items-center max-w-7xl mx-auto">
+                    <div className="w-1/3 flex flex-col items-center justify-center bg-gray-100 rounded-3xl p-10 shadow-inner h-[500px]">
+                        <div className="bg-white p-6 rounded-full shadow-lg mb-8 scale-125">
+                        {/* Simplified Bicycle Icon Representation */}
+                        <div className="w-32 h-32 relative">
+                            <div className="absolute bottom-0 left-0 w-12 h-12 border-4 border-gray-700 rounded-full"></div>
+                            <div className="absolute bottom-0 right-0 w-12 h-12 border-4 border-gray-700 rounded-full"></div>
+                            <div className="absolute bottom-6 left-6 w-20 h-1 bg-gray-700 transform -rotate-12"></div>
+                            <div className="absolute bottom-6 right-6 w-20 h-1 bg-gray-700 transform rotate-12"></div>
+                        </div>
+                        </div>
+                        <div className="text-center">
+                        <h3 className="text-3xl font-bold text-gray-800">山地自行车</h3>
+                        <div className="mt-6 space-y-3">
+                            <p className="text-gray-500 line-through text-2xl">原价：280元</p>
+                            <span className="bg-red-500 text-white px-6 py-2 rounded-full text-2xl font-bold inline-block shadow-md">八五折</span>
+                        </div>
+                        </div>
+                    </div>
+
+                    <div className="w-2/3 flex flex-col space-y-8 justify-center">
+                        <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-200">
+                        <h4 className="text-2xl font-bold mb-4 text-blue-700">问题 1：现在买这辆车要花多少钱？</h4>
+                        <button onClick={() => toggleAnswer(6, 'q1')} className="text-base bg-blue-100 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-200 mb-4 font-bold transition-colors">
+                            {showAnswer['6-q1'] ? '隐藏步骤' : '显示计算步骤'}
+                        </button>
+                        {showAnswer['6-q1'] && (
+                            <div className="mt-4 text-2xl animate-fade-in bg-blue-50 p-4 rounded-xl">
+                            <p>280 × 85% = <span className="font-bold text-3xl text-blue-600">238（元）</span></p>
+                            </div>
+                        )}
+                        </div>
+
+                        <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-200">
+                        <h4 className="text-2xl font-bold mb-4 text-green-700">问题 2：比原价便宜了多少钱？</h4>
+                        <button onClick={() => toggleAnswer(6, 'q2')} className="text-base bg-green-100 text-green-600 px-4 py-2 rounded-lg hover:bg-green-200 mb-4 font-bold transition-colors">
+                            {showAnswer['6-q2'] ? '隐藏步骤' : '显示计算步骤'}
+                        </button>
+                        {showAnswer['6-q2'] && (
+                            <div className="mt-4 text-2xl animate-fade-in space-y-4 bg-green-50 p-4 rounded-xl">
+                            <p>方法一：280 - 238 = 42（元）</p>
+                            <p>方法二：280 × (1 - 85%) = 280 × 15% = <span className="font-bold text-3xl text-green-600">42（元）</span></p>
+                            </div>
+                        )}
+                        </div>
+                    </div>
+                    </div>
+                )
+                },
+                {
+                id: 7,
+                type: "content",
+                title: "7. 进阶思考：打折 vs 满减",
+                content: (
+                    <div className="flex flex-col h-full items-center justify-center">
+                    <p className="text-3xl mb-10 font-medium">情境：郑老师看中一双 <span className="font-bold text-red-600 text-4xl">400元</span> 的鞋。</p>
+                    
+                    <div className="flex w-full max-w-6xl gap-8 mb-10">
+                        <div className="flex-1 bg-red-50 border-4 border-red-200 rounded-3xl p-8 text-center shadow-md">
+                            <h3 className="text-3xl font-bold text-red-700 mb-4">A 店</h3>
+                            <div className="text-white bg-red-500 inline-block px-6 py-2 rounded-full mb-6 text-xl">直接打六折</div>
+                            <p className="text-gray-600 mb-2 text-xl">计算：</p>
+                            <p className="text-3xl font-mono font-bold">400 × 60% = 240元</p>
+                        </div>
+
+                        <div className="flex items-center justify-center text-gray-400 font-bold text-3xl italic">VS</div>
+
+                        <div className="flex-1 bg-orange-50 border-4 border-orange-200 rounded-3xl p-8 text-center shadow-md">
+                            <h3 className="text-3xl font-bold text-orange-700 mb-4">B 店</h3>
+                            <div className="text-white bg-orange-500 inline-block px-6 py-2 rounded-full mb-6 text-xl">每满100减40</div>
+                            <p className="text-gray-600 mb-2 text-xl">计算：</p>
+                            <p className="text-3xl font-mono font-bold">400 - (4×40) = 240元</p>
+                        </div>
+                    </div>
+
+                    <div className="w-full max-w-6xl bg-purple-100 p-8 rounded-3xl border-2 border-purple-300 shadow-lg">
+                        <div className="flex items-start gap-6">
+                        <Brain size={48} className="text-purple-600 flex-shrink-0 mt-2" />
+                        <div className="flex-1">
+                            <h4 className="font-bold text-2xl text-purple-800 mb-3">深度追问</h4>
+                            <p className="text-2xl">如果原价是 <span className="font-bold text-red-600">450元</span> 呢？</p>
+                            <div className="mt-4 grid grid-cols-2 gap-8 text-xl">
+                            <p className="bg-white/50 p-2 rounded">A店：450 × 60% = <span className="font-bold text-purple-900">270元</span></p>
+                            <p className="bg-white/50 p-2 rounded">B店：450 - (4×40) = 450 - 160 = <span className="font-bold text-purple-900">290元</span></p>
+                            </div>
+                            <p className="mt-4 text-purple-800 text-xl font-bold bg-purple-200 p-4 rounded-xl text-center shadow-sm">发现：“满减”不计算零头，往往不如直接打折划算！</p>
+                        </div>
+                        </div>
+                    </div>
+                    </div>
+                )
+                },
+                {
+                id: 8,
+                type: "summary",
+                title: "8. 课堂总结与作业",
+                content: (
+                    <div className="flex flex-col h-full space-y-8 justify-center max-w-6xl mx-auto w-full">
+                    <div className="bg-white p-10 rounded-3xl shadow-lg border-t-8 border-blue-500">
+                        <h3 className="text-3xl font-bold mb-6 flex items-center gap-4 text-blue-700">
+                        <BookOpen size={32}/> 知识回顾
+                        </h3>
+                        <ul className="list-disc list-inside space-y-4 text-2xl text-gray-700 pl-4">
+                        <li><span className="font-bold">折扣意义：</span>几折 = 十分之几 = 百分之几十</li>
+                        <li><span className="font-bold">求现价：</span>现价 = 原价 × 折扣</li>
+                        <li><span className="font-bold">求优惠：</span>优惠 = 原价 × (1 - 折扣)</li>
+                        </ul>
+                    </div>
+
+                    <div className="bg-green-50 p-10 rounded-3xl border-4 border-green-200 dashed">
+                        <h3 className="text-2xl font-bold mb-4 flex items-center gap-4 text-green-700">
+                        <Gift size={32}/> 出门条 (Exit Ticket)
+                        </h3>
+                        <p className="text-2xl font-medium">“买一送一”相当于打几折？</p>
+                        <button 
+                        onClick={() => toggleAnswer(8, 'exit')}
+                        className="mt-4 text-lg text-green-600 underline hover:text-green-800 font-bold"
+                        >
+                        查看答案
+                        </button>
+                        {showAnswer[`8-exit`] && (
+                        <span className="ml-6 text-4xl font-bold text-green-700 animate-pulse">5折！</span>
+                        )}
+                    </div>
+
+                    <div className="bg-orange-50 p-8 rounded-3xl border-l-8 border-orange-400">
+                        <h3 className="text-2xl font-bold text-orange-800 mb-2">实践作业</h3>
+                        <p className="text-xl">回家找一件打折商品，算出它到底为你省了多少零花钱。</p>
+                    </div>
+                    </div>
+                )
+                }
+            ];
+
+            const nextSlide = () => {
+                if (currentSlide < slides.length - 1) {
+                    setCurrentSlide(curr => curr + 1);
+                    setShowAnswer({});
+                }
+            };
+
+            const prevSlide = () => {
+                if (currentSlide > 0) {
+                    setCurrentSlide(curr => curr - 1);
+                    setShowAnswer({});
+                }
+            };
+
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                if (e.key === 'ArrowRight') nextSlide();
+                if (e.key === 'ArrowLeft') prevSlide();
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [currentSlide]);
+
+            return (
+                <div className="w-full h-screen bg-gray-100 flex flex-col p-4 font-sans text-gray-800 box-border">
+                {/* 铺满全屏的主容器 */}
+                <div className="w-full h-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col relative border border-gray-200">
+                    
+                    {/* Header */}
+                    {currentSlide !== 0 && (
+                    <div className="bg-red-600 text-white px-8 py-5 flex justify-between items-center shadow-lg z-10 flex-shrink-0">
+                        <h2 className="text-2xl font-bold truncate">{slides[currentSlide].title}</h2>
+                        <div className="text-lg bg-red-700 px-4 py-1 rounded-full font-mono">
+                        {currentSlide} / {slides.length - 1}
+                        </div>
+                    </div>
+                    )}
+
+                    {/* Content Area */}
+                    <div className="flex-1 p-8 md:p-12 overflow-y-auto bg-slate-50 relative">
+                        {slides[currentSlide].content}
+                    </div>
+
+                    {/* Navigation Bar */}
+                    <div className="bg-white border-t border-gray-200 px-8 py-4 flex justify-between items-center flex-shrink-0">
+                    <button 
+                        onClick={prevSlide} 
+                        disabled={currentSlide === 0}
+                        className={`flex items-center gap-3 px-8 py-3 rounded-xl font-bold text-lg transition-all ${currentSlide === 0 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700 hover:scale-105'}`}
+                    >
+                        <ChevronLeft size={24} /> 上一页
+                    </button>
+
+                    <div className="flex gap-3">
+                        {slides.map((_, idx) => (
+                        <button 
+                            key={idx}
+                            onClick={() => {
+                            setCurrentSlide(idx);
+                            setShowAnswer({});
+                            }}
+                            className={`h-4 rounded-full transition-all duration-300 ${currentSlide === idx ? 'bg-red-600 w-12' : 'bg-gray-300 w-4 hover:bg-gray-400'}`}
+                        />
+                        ))}
+                    </div>
+
+                    <button 
+                        onClick={nextSlide} 
+                        disabled={currentSlide === slides.length - 1}
+                        className={`flex items-center gap-3 px-8 py-3 rounded-xl font-bold text-lg transition-all ${currentSlide === slides.length - 1 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-500 hover:scale-105'}`}
+                    >
+                        下一页 <ChevronRight size={24} />
+                    </button>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<LessonSlides />);
+    </script>
+</body>
+</html>

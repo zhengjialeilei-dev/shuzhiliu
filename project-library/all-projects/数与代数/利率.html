@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>六年级数学：小小理财家（利率模拟器）</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        /* 自定义字体和一些基础动画 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #E0F2FE; /* 柔和的浅蓝色背景 */
+            touch-action: manipulation; /* 优化触屏体验 */
+        }
+
+        /* 隐藏数字输入框的箭头 */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+        /* 更加可爱的滑块样式 */
+        input[type=range] {
+            -webkit-appearance: none; 
+            appearance: none;
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #F59E0B;
+            cursor: pointer;
+            margin-top: -10px; 
+            box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d; 
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #9CA3AF;
+            border-radius: 2px;
+        }
+
+        /* 动态高度过渡 */
+        .coin-stack {
+            transition: height 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* 弹跳动画 */
+        @keyframes bounce-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: bounce-in 0.4s ease-out;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col">
+
+    <div id="app" class="flex-grow flex flex-col p-4 max-w-6xl mx-auto w-full h-full">
+
+        <header class="flex justify-between items-center mb-4 bg-white p-4 rounded-2xl shadow-lg border-b-4 border-blue-200">
+            <h1 class="text-3xl font-bold text-blue-600 flex items-center gap-2">
+                🏦 小小理财家 <span class="text-sm bg-blue-100 text-blue-500 px-2 py-1 rounded-lg">六年级利率</span>
+            </h1>
+            <div class="flex gap-2">
+                <button 
+                    @click="mode = 'learn'" 
+                    :class="['px-6 py-2 rounded-xl font-bold text-xl transition-all duration-200 transform active:scale-95', mode === 'learn' ? 'bg-green-400 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200']">
+                    👀 演示模式
+                </button>
+                <button 
+                    @click="enterChallengeMode" 
+                    :class="['px-6 py-2 rounded-xl font-bold text-xl transition-all duration-200 transform active:scale-95', mode === 'challenge' ? 'bg-orange-400 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200']">
+                    🏆 挑战模式
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-grow bg-white rounded-3xl shadow-xl overflow-hidden relative border-4 border-white">
+            
+            <div v-if="mode === 'learn'" class="h-full flex flex-col md:flex-row p-6 gap-8 animate-pop">
+                
+                <div class="w-full md:w-1/2 flex flex-col justify-center space-y-8 bg-blue-50 p-6 rounded-2xl">
+                    
+                    <div class="space-y-2">
+                        <label class="flex justify-between text-xl font-bold text-gray-700">
+                            <span>💰 本金 (存入的钱)</span>
+                            <span class="text-blue-600">{{ formatCurrency(principal) }}</span>
+                        </label>
+                        <input type="range" min="1000" max="50000" step="1000" v-model.number="principal" class="w-full">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-400">手动输入</span>
+                            <input type="number" min="1000" max="50000" step="1000" v-model.number="principal"
+                                class="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-700 focus:outline-none focus:border-blue-400">
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-400">
+                            <span>1,000</span>
+                            <span>50,000</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="flex justify-between text-xl font-bold text-gray-700">
+                            <span>📈 年利率 (%)</span>
+                            <span class="text-orange-500">{{ rate }}%</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-400">手动输入</span>
+                            <input type="number" min="0" step="0.01" v-model.number="rate"
+                                class="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-700 focus:outline-none focus:border-orange-400">
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <button v-for="r in commonRates" :key="r" 
+                                @click="rate = r"
+                                :class="['px-3 py-1 rounded-lg border-2 font-bold', rate === r ? 'border-orange-400 bg-orange-100 text-orange-600' : 'border-gray-200 text-gray-400']">
+                                {{ r }}%
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="flex justify-between text-xl font-bold text-gray-700">
+                            <span>📅 存期 (年)</span>
+                            <span class="text-purple-600">{{ time }} 年</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-400">手动输入</span>
+                            <input type="number" min="1" step="1" v-model.number="time"
+                                class="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-700 focus:outline-none focus:border-purple-400">
+                        </div>
+                        <div class="flex gap-4">
+                            <button v-for="t in [1, 2, 3, 5]" :key="t"
+                                @click="time = t"
+                                :class="['flex-1 py-3 rounded-xl font-bold text-lg shadow-sm border-b-4 active:border-b-0 active:translate-y-1 transition-all', time === t ? 'bg-purple-500 border-purple-700 text-white' : 'bg-white border-gray-200 text-gray-600']">
+                                {{ t }}年
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-full md:w-1/2 flex flex-col items-center justify-end relative bg-gradient-to-b from-white to-gray-50 rounded-2xl border-2 border-dashed border-gray-200 p-4">
+                    
+                    <div class="absolute top-4 w-full text-center">
+                        <div class="inline-block bg-white px-6 py-4 rounded-xl shadow-lg border border-gray-100">
+                            <p class="text-gray-500 text-sm mb-1">利息计算公式：本金 × 利率 × 时间</p>
+                            <p class="text-2xl font-mono font-bold text-gray-800">
+                                {{ principal }} × {{ rate }}% × {{ time }} = 
+                                <span class="text-green-600 text-3xl">{{ formatNumber(interestAmount) }}</span>
+                                <span class="text-sm text-gray-400">元</span>
+                            </p>
+                            <div class="mt-2 pt-2 border-t border-gray-100">
+                                <p class="text-lg font-bold text-gray-600">
+                                    最后取回：<span class="text-blue-600">{{ formatNumber(totalAmount) }}</span> 元
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-end gap-8 w-full justify-center flex-1 mt-48 pb-2">
+                        <div class="flex flex-col items-center w-1/3 group h-full justify-end">
+                            <div class="text-xl font-bold text-blue-600 mb-2 opacity-0 group-hover:opacity-100 transition-opacity">本金</div>
+                            <div class="text-xs text-blue-500 font-bold mb-1">金额 {{ formatNumber(principal) }} 元</div>
+                            <div class="w-full bg-blue-200 rounded-t-xl relative coin-stack flex items-end justify-center overflow-hidden border-2 border-blue-300"
+                                 :style="{ height: principalHeight + '%' }">
+                                <span class="text-4xl absolute bottom-2">💰</span>
+                            </div>
+                            <div class="mt-2 font-bold text-gray-600">本金</div>
+                        </div>
+
+                        <div class="flex flex-col items-center w-1/3 group h-full justify-end">
+                            <div class="text-xl font-bold text-green-600 mb-2 opacity-0 group-hover:opacity-100 transition-opacity">利息</div>
+                            <div class="text-xs text-green-600 font-bold mb-1">金额 {{ formatNumber(interestAmount) }} 元</div>
+                            <div class="w-full bg-green-200 rounded-t-xl relative coin-stack flex items-end justify-center overflow-hidden border-2 border-green-300"
+                                 :style="{ height: interestHeight + '%' }">
+                                <div class="absolute bottom-0 w-full flex flex-col items-center pb-2">
+                                     <span class="text-2xl" v-for="n in Math.min(5, Math.ceil(interestAmount/500))" :key="n">🪙</span>
+                                </div>
+                            </div>
+                            <div class="mt-2 font-bold text-gray-600">利息</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="mode === 'challenge'" class="h-full flex flex-col items-center justify-center p-6 animate-pop bg-orange-50">
+                
+                <div class="max-w-2xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden">
+                    <div class="bg-orange-400 p-8 text-white text-center relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+CiAgPGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjIiIGZpbGw9IiNmZmYiLz4KPC9zdmc+')]"></div>
+                        <h2 class="text-3xl font-bold mb-4">挑战习题</h2>
+                        <p class="text-2xl leading-relaxed font-medium">
+                            {{ currentQuestion.text }}
+                        </p>
+                    </div>
+
+                    <div class="p-8 flex flex-col items-center gap-6">
+                        <div class="w-full">
+                            <label class="block text-gray-500 mb-2 text-lg font-bold text-center">请输入你的答案 (只填数字)</label>
+                            <input 
+                                ref="answerInput"
+                                type="number" 
+                                v-model="userAnswer" 
+                                @keyup.enter="checkAnswer"
+                                placeholder="例如: 150"
+                                class="w-full text-center text-4xl font-bold text-gray-700 border-b-4 border-gray-300 focus:border-orange-400 outline-none py-4 bg-transparent placeholder-gray-200 transition-colors">
+                        </div>
+
+                        <div v-if="feedback.show" :class="['text-xl font-bold px-6 py-2 rounded-full animate-bounce', feedback.isCorrect ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600']">
+                            {{ feedback.message }}
+                        </div>
+                        <div v-if="feedback.show && currentQuestion.explanation" class="w-full bg-orange-50 border border-orange-200 rounded-2xl px-6 py-4 text-gray-700">
+                            <div class="text-sm text-orange-500 font-bold mb-2">过程解析</div>
+                            <div class="text-base leading-relaxed">{{ currentQuestion.explanation }}</div>
+                        </div>
+
+                        <div class="flex gap-4 w-full">
+                            <button 
+                                @click="checkAnswer" 
+                                class="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-2xl font-bold py-4 rounded-xl shadow-lg border-b-4 border-orange-700 active:border-b-0 active:translate-y-1 transition-all">
+                                提交答案 ✨
+                            </button>
+                            <button 
+                                @click="generateQuestion" 
+                                class="w-24 bg-gray-200 hover:bg-gray-300 text-gray-600 text-xl font-bold rounded-xl flex items-center justify-center">
+                                ⏭
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+        
+        <footer class="mt-4 text-center text-gray-400 text-sm">
+            Designed for 郑老师的数学课堂 | 创意技术专家生成
+        </footer>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
+
+        createApp({
+            setup() {
+                // === 状态定义 ===
+                const mode = ref('learn'); // 当前模式：learn 或 challenge
+                
+                // 学习模式数据
+                const principal = ref(10000); // 本金
+                const rate = ref(1.75);       // 利率 (以 % 显示)
+                const time = ref(1);          // 时间 (年)
+                const commonRates = [1.35, 1.55, 1.75, 2.25, 2.75]; // 常用利率预设
+
+                // 挑战模式数据
+                const currentQuestion = ref({});
+                const userAnswer = ref('');
+                const feedback = ref({ show: false, isCorrect: false, message: '' });
+                const answerInput = ref(null);
+                const principalHeight = ref(0);
+                const interestHeight = ref(0);
+
+                // === 计算逻辑 ===
+                
+                // 计算利息：本金 * (利率/100) * 时间
+                const interestAmount = computed(() => {
+                    return (principal.value * (rate.value / 100) * time.value).toFixed(2);
+                });
+
+                // 计算本息和：本金 + 利息
+                const totalAmount = computed(() => {
+                    return (parseFloat(principal.value) + parseFloat(interestAmount.value)).toFixed(2);
+                });
+
+                // === 辅助函数 ===
+                const formatCurrency = (val) => {
+                    return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', maximumFractionDigits: 0 }).format(val);
+                };
+
+                const formatNumber = (val) => {
+                    return new Intl.NumberFormat('zh-CN').format(val);
+                };
+
+                // 可视化高度计算 (用于动态柱状图)
+                const updateChart = () => {
+                    const MAX_VAL = 60000;
+                    principalHeight.value = Math.min(Math.max((principal.value / MAX_VAL) * 100, 0), 100);
+                    const rawPercent = (parseFloat(interestAmount.value) / MAX_VAL) * 100;
+                    interestHeight.value = Math.min(Math.max(rawPercent, 0), 100);
+                };
+
+                // === 挑战模式逻辑 ===
+
+                const generateQuestion = () => {
+                    feedback.value.show = false;
+                    userAnswer.value = '';
+                    const questionBank = [
+                        {
+                            text: '（求利息）王奶奶把 50000 元存入银行，定期三年，年利率是 2.75%。到期时，王奶奶能拿到多少利息？',
+                            answer: 50000 * (2.75 / 100) * 3,
+                            explanation: '利息 = 本金 × 年利率 × 时间 = 50000 × 2.75% × 3 = 50000 × 0.0275 × 3 = 4125（元）'
+                        },
+                        {
+                            text: '（变式·求利息）王奶奶把 40000 元存入银行，定期两年，年利率是 2.75%。到期时能拿到多少利息？',
+                            answer: 40000 * (2.75 / 100) * 2,
+                            explanation: '利息 = 40000 × 2.75% × 2 = 40000 × 0.0275 × 2 = 2200（元）'
+                        },
+                        {
+                            text: '（变式·求利息）王奶奶把 50000 元存入银行，定期三年，年利率是 2.25%。到期时能拿到多少利息？',
+                            answer: 50000 * (2.25 / 100) * 3,
+                            explanation: '利息 = 50000 × 2.25% × 3 = 50000 × 0.0225 × 3 = 3375（元）'
+                        },
+                        {
+                            text: '（求本息和）张叔叔将 10000 元存入银行，定期两年，年利率是 2.10%。到期后，张叔叔连本带利一共可以取回多少钱？',
+                            answer: 10000 + 10000 * (2.1 / 100) * 2,
+                            explanation: '利息 = 10000 × 2.10% × 2 = 420（元），本息和 = 10000 + 420 = 10420（元）'
+                        },
+                        {
+                            text: '（变式·求本息和）张叔叔将 12000 元存入银行，定期两年，年利率是 2.10%。到期后一共可取回多少钱？',
+                            answer: 12000 + 12000 * (2.1 / 100) * 2,
+                            explanation: '利息 = 12000 × 2.10% × 2 = 504（元），本息和 = 12000 + 504 = 12504（元）'
+                        },
+                        {
+                            text: '（变式·求本息和）张叔叔将 10000 元存入银行，定期三年，年利率是 2.10%。到期后一共可取回多少钱？',
+                            answer: 10000 + 10000 * (2.1 / 100) * 3,
+                            explanation: '利息 = 10000 × 2.10% × 3 = 630（元），本息和 = 10000 + 630 = 10630（元）'
+                        },
+                        {
+                            text: '（生活大挑战）小刚想买一台 3200 元 的电脑。他手里有 3000 元压岁钱，存入银行定期一年，年利率 1.75%。一年后连本带利取出来，够买这台电脑吗？（写出计算过程）',
+                            answer: 3000 + 3000 * (1.75 / 100) * 1,
+                            explanation: '利息 = 3000 × 1.75% × 1 = 52.5（元），本息和 = 3000 + 52.5 = 3052.5（元）。3052.5 < 3200，不够买'
+                        },
+                        {
+                            text: '（变式·生活大挑战）小刚想买一台 3200 元的电脑。他手里有 3100 元，存入银行定期一年，年利率 1.75%。一年后够买吗？',
+                            answer: 3100 + 3100 * (1.75 / 100) * 1,
+                            explanation: '利息 = 3100 × 1.75% × 1 = 54.25（元），本息和 = 3154.25（元）。3154.25 < 3200，不够买'
+                        },
+                        {
+                            text: '（变式·生活大挑战）小刚想买一台 3200 元的电脑。他手里有 3000 元，存入银行定期一年，年利率 2.5%。一年后够买吗？',
+                            answer: 3000 + 3000 * (2.5 / 100) * 1,
+                            explanation: '利息 = 3000 × 2.5% × 1 = 75（元），本息和 = 3075（元）。3075 < 3200，不够买'
+                        },
+                        {
+                            text: '（时间陷阱）某理财产品的年利率是 3.6%。小赵存入 10000 元，但他只存了 6个月 就取出了。请问他能得到多少利息？（提示：6个月 = ___ 年）',
+                            answer: 10000 * (3.6 / 100) * 0.5,
+                            explanation: '6个月 = 0.5 年，利息 = 10000 × 3.6% × 0.5 = 10000 × 0.036 × 0.5 = 180（元）'
+                        },
+                        {
+                            text: '（变式·时间陷阱）年利率 3.6%，存入 8000 元，只存 6 个月就取出，利息是多少？',
+                            answer: 8000 * (3.6 / 100) * 0.5,
+                            explanation: '6个月 = 0.5 年，利息 = 8000 × 3.6% × 0.5 = 8000 × 0.036 × 0.5 = 144（元）'
+                        }
+                    ];
+
+                    const randomIndex = Math.floor(Math.random() * questionBank.length);
+                    const picked = questionBank[randomIndex];
+                    const answer = parseFloat(picked.answer.toFixed(2));
+
+                    currentQuestion.value = {
+                        text: picked.text,
+                        answer,
+                        explanation: picked.explanation
+                    };
+
+                    // 自动聚焦输入框
+                    nextTick(() => {
+                        if(answerInput.value) answerInput.value.focus();
+                    });
+                };
+
+                const enterChallengeMode = () => {
+                    mode.value = 'challenge';
+                    generateQuestion();
+                };
+
+                const checkAnswer = () => {
+                    if (userAnswer.value === '') return;
+
+                    const userVal = parseFloat(userAnswer.value);
+                    const correctVal = currentQuestion.value.answer;
+
+                    // 允许极小的误差
+                    if (Math.abs(userVal - correctVal) < 0.01) {
+                        feedback.value = { show: true, isCorrect: true, message: '🎉 太棒了！回答正确！' };
+                        fireConfetti();
+                    } else {
+                        feedback.value = { show: true, isCorrect: false, message: `😕 不对哦，再算算吧！(提示: ${correctVal})` };
+                    }
+                };
+
+                // 庆祝动画 (Gamification)
+                const fireConfetti = () => {
+                    const duration = 1000;
+                    const end = Date.now() + duration;
+
+                    (function frame() {
+                        confetti({
+                            particleCount: 5,
+                            angle: 60,
+                            spread: 55,
+                            origin: { x: 0 },
+                            colors: ['#FCD34D', '#F87171', '#60A5FA']
+                        });
+                        confetti({
+                            particleCount: 5,
+                            angle: 120,
+                            spread: 55,
+                            origin: { x: 1 },
+                            colors: ['#FCD34D', '#F87171', '#60A5FA']
+                        });
+
+                        if (Date.now() < end) {
+                            requestAnimationFrame(frame);
+                        }
+                    }());
+                };
+                
+                watch([principal, rate, time], () => {
+                    updateChart();
+                }, { immediate: true });
+
+                return {
+                    mode,
+                    principal,
+                    rate,
+                    time,
+                    commonRates,
+                    interestAmount,
+                    totalAmount,
+                    formatCurrency,
+                    formatNumber,
+                    principalHeight,
+                    interestHeight,
+                    updateChart,
+                    // Challenge related
+                    currentQuestion,
+                    userAnswer,
+                    feedback,
+                    checkAnswer,
+                    enterChallengeMode,
+                    generateQuestion,
+                    answerInput
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

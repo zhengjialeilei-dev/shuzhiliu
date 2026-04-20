@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>趣味方块搭建 - 三视图教学</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Varela+Round&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Varela Round', 'Microsoft YaHei', 'Comic Sans MS', sans-serif;
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            cursor: crosshair;
+        }
+        
+        #header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 30px;
+            border-radius: 50px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+            border: 4px solid #FFD700;
+            z-index: 100;
+            text-align: center;
+        }
+        h1 {
+            margin: 0;
+            color: #FF6B6B;
+            font-size: 24px;
+            text-shadow: 2px 2px 0px #fff;
+        }
+
+        #instructions {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            border: 3px solid #4facfe;
+            max-width: 220px;
+            transition: transform 0.3s ease;
+        }
+        #instructions:hover {
+            transform: scale(1.02);
+        }
+        h3 { 
+            margin: 0 0 15px 0; 
+            color: #4facfe; 
+            font-size: 18px; 
+            text-align: center;
+            border-bottom: 2px dashed #ddd;
+            padding-bottom: 10px;
+        }
+        .instruction-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            color: #555;
+            font-size: 15px;
+        }
+        .icon {
+            font-size: 24px;
+            margin-right: 10px;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        #ui-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 20px;
+            border-radius: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            border: 4px solid #fff;
+            outline: 4px solid #a18cd1;
+            z-index: 100;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            background: #f0f4f8;
+            padding: 8px;
+            border-radius: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            font-family: inherit;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        button:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+        
+        button:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background-color: #4facfe;
+            background-image: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: #a18cd1;
+            background-image: linear-gradient(to right, #a18cd1 0%, #fbc2eb 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: #ff9a9e;
+            background-image: linear-gradient(to right, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: #84fab0;
+            background-image: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
+            color: #2c3e50;
+        }
+
+        button.active {
+            outline: 3px solid #FFD700;
+            transform: scale(1.05);
+        }
+
+        #toast {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 200;
+        }
+        
+        /* Volume Control */
+        #volume-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+            font-size: 20px;
+        }
+
+        /* Color Picker */
+        #color-picker {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+        }
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: transform 0.2s, border-color 0.2s;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+        }
+        .color-swatch:hover {
+            transform: scale(1.1);
+        }
+        .color-swatch.active {
+            border-color: #333;
+            transform: scale(1.15);
+        }
+
+        /* 挑战模式样式 */
+        #mode-switch {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+        }
+
+        #challenge-panel {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+            border: 4px solid #ff9a9e;
+            z-index: 100;
+            display: none; /* 默认隐藏 */
+            flex-direction: column;
+            gap: 15px;
+            width: 220px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+        #challenge-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+        #challenge-panel::-webkit-scrollbar-thumb {
+            background-color: #ff9a9e;
+            border-radius: 10px;
+        }
+
+        .challenge-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px dashed #ddd;
+            padding-bottom: 10px;
+        }
+
+        .challenge-header h3 {
+            margin: 0;
+            border: none;
+            padding: 0;
+            color: #ff6b6b;
+        }
+
+        select {
+            padding: 5px 10px;
+            border-radius: 10px;
+            border: 2px solid #a18cd1;
+            font-family: inherit;
+            font-weight: bold;
+            outline: none;
+            width: 100%;
+        }
+
+        .grids-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .grid-wrapper h4 {
+            margin: 0 0 5px 0;
+            text-align: center;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .challenge-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 2px;
+            background: #ccc;
+            padding: 2px;
+            border-radius: 5px;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+        }
+
+        .grid-cell {
+            background: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .grid-cell:hover {
+            background: #e0f0ff;
+        }
+
+        .grid-cell.filled {
+            background: #4facfe;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.2);
+        }
+
+        .grid-cell.correct {
+            background: #84fab0;
+        }
+
+        .grid-cell.wrong {
+            background: #ff9a9e;
+        }
+
+        .challenge-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        .challenge-actions button {
+            width: 100%;
+            justify-content: center;
+        }
+    </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "@tweenjs/tween.js": "https://unpkg.com/@tweenjs/tween.js@23.1.1/dist/tween.esm.js"
+            }
+        }
+    </script>
+</head>
+<body>
+    <!-- 模式切换 -->
+    <div id="mode-switch">
+        <button class="btn-primary active" id="btn-build-mode" onclick="setMode('build')">🛠️ 自由搭建</button>
+        <button class="btn-danger" id="btn-challenge-mode" onclick="setMode('challenge')">⚔️ 挑战模式</button>
+    </div>
+
+    <div id="header">
+        <h1>🎲 趣味三视图搭建</h1>
+    </div>
+    
+    <div id="volume-btn" onclick="toggleMute()">🔊</div>
+
+    <!-- 颜色选择器 -->
+    <div id="color-picker">
+        <div class="color-swatch active" style="background-color: #ffcd3c" data-color="#ffcd3c"></div>
+        <div class="color-swatch" style="background-color: #ff6b6b" data-color="#ff6b6b"></div>
+        <div class="color-swatch" style="background-color: #4facfe" data-color="#4facfe"></div>
+        <div class="color-swatch" style="background-color: #84fab0" data-color="#84fab0"></div>
+        <div class="color-swatch" style="background-color: #a18cd1" data-color="#a18cd1"></div>
+    </div>
+
+    <div id="instructions">
+        <h3>✨ 小小建筑师指南</h3>
+        <div class="instruction-item"><span class="icon">🎯</span><span><strong>移动鼠标</strong><br>瞄准方块位置</span></div>
+        <div class="instruction-item"><span class="icon">🖱️</span><span><strong>左键点一下</strong><br>放置方块</span></div>
+        <div class="instruction-item"><span class="icon">✅</span><span><strong>再次点击</strong><br>确认固定</span></div>
+        <div class="instruction-item"><span class="icon">❌</span><span><strong>右键点击</strong><br>消除方块</span></div>
+    </div>
+
+    <!-- 挑战模式面板 -->
+    <div id="challenge-panel">
+        <div class="challenge-header">
+            <h3>立体几何挑战</h3>
+            <select id="difficulty-select" onchange="startNewChallenge()">
+                <option value="easy">🌟 简单 (入门级)</option>
+                <option value="medium">⭐ 中等 (进阶级)</option>
+                <option value="hard">🔥 困难 (挑战级)</option>
+            </select>
+        </div>
+        <div class="grids-container">
+            <div class="grid-wrapper">
+                <h4>正面视图 (从右下看)</h4>
+                <div class="challenge-grid" id="grid-front"></div>
+            </div>
+            <div class="grid-wrapper">
+                <h4>上面视图 (俯视)</h4>
+                <div class="challenge-grid" id="grid-top"></div>
+            </div>
+            <div class="grid-wrapper">
+                <h4>左侧视图 (从左下看)</h4>
+                <div class="challenge-grid" id="grid-left"></div>
+            </div>
+        </div>
+        <div class="challenge-actions">
+            <button class="btn-success" onclick="submitChallenge()">✅ 提交答案</button>
+            <button class="btn-secondary" onclick="startNewChallenge()">🔄 换一题</button>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+    <div id="toast"></div>
+
+    <div id="ui-panel">
+        <div class="btn-group">
+            <button class="btn-primary" onclick="setView('front')">🏠 正面</button>
+            <button class="btn-primary" onclick="setView('top')">🦅 上面</button>
+            <button class="btn-primary" onclick="setView('left')">👈 左边</button>
+        </div>
+        <div class="btn-group">
+            <button class="btn-secondary" onclick="setView('right')">👉 右边</button>
+            <button class="btn-secondary" onclick="setView('back')">🔙 后面</button>
+        </div>
+        <div class="btn-group">
+            <button class="btn-success" onclick="setView('iso')">👀 复位</button>
+            <button class="btn-danger" onclick="clearBlocks()">🗑️ 清空</button>
+            <button class="btn-secondary" onclick="runTests()" style="font-size: 12px; padding: 5px 10px;">🧪 测试</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import * as TWEEN from '@tweenjs/tween.js';
+
+        // Global Variables
+        let camera, scene, renderer, controls;
+        let plane;
+        let pointer, raycaster;
+        let rollOverMesh, cubeGeo, cubeMaterial;
+        let hoverCursor;
+        
+        const objects = [];
+        const blocks = [];
+        let previewPosition = null;
+        
+        let mouseDownPos = new THREE.Vector2();
+        let isDragging = false;
+        
+        // --- CONFIGURATION CHANGES ---
+        const GRID_SIZE = 8; // Reduced from 20 to 8
+        const VIEW_SIZE = 12; // Reduced view size to match grid
+        const ANIMATION_DURATION = 600; 
+
+        // Sound Context
+        let audioCtx;
+        let isMuted = false;
+
+        // Current Color
+        let currentColorHex = 0xffcd3c;
+
+        // Challenge Mode Variables
+        let isChallengeMode = false;
+        let expectedAnswers = { front: [], top: [], left: [] };
+        let userAnswers = { front: [], top: [], left: [] };
+        const gridSize = 4; // 4x4 for challenge grids
+
+        init();
+        animate();
+
+        function init() {
+            // Audio Init (on first interaction)
+            window.addEventListener('click', initAudio, { once: true });
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf5f7fa);
+            scene.fog = new THREE.Fog(0xf5f7fa, 20, 60); // Adjusted fog for smaller scene
+
+            // Camera
+            const aspect = window.innerWidth / window.innerHeight;
+            camera = new THREE.OrthographicCamera(
+                -VIEW_SIZE * aspect, VIEW_SIZE * aspect, 
+                VIEW_SIZE, -VIEW_SIZE, 
+                1, 1000
+            );
+            
+            camera.position.set(10, 10, 10); // Closer camera
+            camera.lookAt(0, 0, 0);
+
+            // Grid Helper - 8x8
+            const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x888888, 0xe0e0e0);
+            scene.add(gridHelper);
+
+
+
+            // Ground Plane
+            const geometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
+            geometry.rotateX(-Math.PI / 2);
+            plane = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ visible: false }));
+            scene.add(plane);
+            objects.push(plane);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffeba7, 2.5);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            // Hover Cursor
+            const cursorGeo = new THREE.BoxGeometry(1, 1, 1);
+            const cursorMat = new THREE.LineBasicMaterial({ color: 0x333333, linewidth: 2, transparent: true, opacity: 0.5 });
+            hoverCursor = new THREE.LineSegments(new THREE.EdgesGeometry(cursorGeo), cursorMat);
+            hoverCursor.visible = false;
+            scene.add(hoverCursor);
+
+            // Ghost Block
+            const rollOverGeo = new THREE.BoxGeometry(1, 1, 1);
+            const rollOverMat = new THREE.MeshBasicMaterial({ 
+                color: currentColorHex, 
+                opacity: 0.6, 
+                transparent: true 
+            });
+            rollOverMesh = new THREE.Mesh(rollOverGeo, rollOverMat);
+            rollOverMesh.visible = false;
+            scene.add(rollOverMesh);
+
+            // Real Block Base Material
+            cubeGeo = new THREE.BoxGeometry(1, 1, 1);
+            cubeMaterial = new THREE.MeshStandardMaterial({ 
+                color: currentColorHex, 
+                roughness: 0.1,
+                metalness: 0.0
+            });
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = false;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI;
+            controls.minZoom = 0.5;
+            controls.maxZoom = 4;
+
+            // Events
+            raycaster = new THREE.Raycaster();
+            pointer = new THREE.Vector2();
+            
+            document.addEventListener('pointerdown', onPointerDown);
+            document.addEventListener('pointerup', onPointerUp);
+            document.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('contextmenu', e => e.preventDefault());
+
+            // Color Picker Event Listeners
+            document.querySelectorAll('.color-swatch').forEach(swatch => {
+                swatch.addEventListener('click', (e) => {
+                    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    const colorStr = e.currentTarget.getAttribute('data-color');
+                    currentColorHex = parseInt(colorStr.replace('#', '0x'));
+                    
+                    // Update ghost block color
+                    rollOverMesh.material.color.setHex(currentColorHex);
+                });
+            });
+        }
+
+        // --- AUDIO SYSTEM ---
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (isMuted || !audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'pop') {
+                // High pitched pop
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'confirm') {
+                // Happy major chord
+                playTone(523.25, 0); // C5
+                playTone(659.25, 0.05); // E5
+                playTone(783.99, 0.1); // G5
+            } else if (type === 'delete') {
+                // Low pitched bloop
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.15);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            }
+        }
+
+        function playTone(freq, delay) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            
+            const now = audioCtx.currentTime + delay;
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+
+        window.toggleMute = function() {
+            isMuted = !isMuted;
+            document.getElementById('volume-btn').innerText = isMuted ? '🔇' : '🔊';
+        };
+
+        // --- PARTICLE SYSTEM ---
+        function spawnParticles(pos) {
+            const particleCount = 12;
+            const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+            const material = new THREE.MeshBasicMaterial({ color: currentColorHex }); // Match block color
+
+            for (let i = 0; i < particleCount; i++) {
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.copy(pos);
+                
+                // Random spread
+                mesh.position.x += (Math.random() - 0.5) * 0.5;
+                mesh.position.y += (Math.random() - 0.5) * 0.5;
+                mesh.position.z += (Math.random() - 0.5) * 0.5;
+
+                // Random velocity
+                const velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.2,
+                    (Math.random() * 0.3) + 0.1, // Upwards
+                    (Math.random() - 0.5) * 0.2
+                );
+
+                scene.add(mesh);
+
+                // Animate
+                new TWEEN.Tween(mesh.position)
+                    .to({
+                        x: mesh.position.x + velocity.x * 10,
+                        y: mesh.position.y + velocity.y * 10,
+                        z: mesh.position.z + velocity.z * 10
+                    }, 1000)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onComplete(() => scene.remove(mesh))
+                    .start();
+
+                new TWEEN.Tween(mesh.rotation)
+                    .to({
+                        x: Math.random() * 10,
+                        y: Math.random() * 10
+                    }, 1000)
+                    .start();
+                    
+                new TWEEN.Tween(mesh.scale)
+                    .to({ x: 0, y: 0, z: 0 }, 1000)
+                    .start();
+            }
+        }
+
+        function onWindowResize() {
+            const aspect = window.innerWidth / window.innerHeight;
+            camera.left = -VIEW_SIZE * aspect;
+            camera.right = VIEW_SIZE * aspect;
+            camera.top = VIEW_SIZE;
+            camera.bottom = -VIEW_SIZE;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function updatePointerFromEvent(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        }
+
+        function getSnappedVoxelPosition(intersect) {
+            const voxelPos = new THREE.Vector3().copy(intersect.point);
+            if (intersect.face && intersect.face.normal) {
+                voxelPos.addScaledVector(intersect.face.normal, 0.5);
+            }
+            voxelPos.floor().addScalar(0.5);
+            return voxelPos;
+        }
+
+        function isInsideGrid(voxelPos) {
+            const limit = GRID_SIZE / 2 - 0.5 + 1e-6;
+            return Math.abs(voxelPos.x) <= limit && Math.abs(voxelPos.z) <= limit;
+        }
+
+        function onPointerMove(event) {
+            updatePointerFromEvent(event);
+
+            if (isChallengeMode) {
+                hoverCursor.visible = false;
+                rollOverMesh.visible = false;
+                return;
+            }
+
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObjects(objects, false);
+
+            if (intersects.length === 0) {
+                hoverCursor.visible = false;
+                return;
+            }
+
+            const voxelPos = getSnappedVoxelPosition(intersects[0]);
+            if (!isInsideGrid(voxelPos)) {
+                hoverCursor.visible = false;
+                return;
+            }
+
+            hoverCursor.position.copy(voxelPos);
+            hoverCursor.visible = true;
+            hoverCursor.material.opacity = 0.5 + Math.sin(Date.now() * 0.01) * 0.2;
+        }
+
+        function onPointerDown(event) {
+            updatePointerFromEvent(event);
+            mouseDownPos.set(event.clientX, event.clientY);
+        }
+
+        function onPointerUp(event) {
+            if (event.target.closest('button') || event.target.closest('#instructions') || event.target.closest('#volume-btn') || event.target.closest('#challenge-panel') || event.target.closest('select')) return;
+
+            updatePointerFromEvent(event);
+
+            const mouseUpPos = new THREE.Vector2(event.clientX, event.clientY);
+            if (mouseUpPos.distanceTo(mouseDownPos) > 5) return;
+
+            if (isChallengeMode) return;
+
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObjects(objects, false);
+
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+
+                if (event.button === 2) {
+                    if (intersect.object !== plane) {
+                        removeBlock(intersect.object);
+                        playSound('delete');
+                    }
+                    return;
+                }
+
+                if (event.button === 0) {
+                    const voxelPos = getSnappedVoxelPosition(intersect);
+                    if (!isInsideGrid(voxelPos)) return;
+
+                    const isSameSpot = previewPosition && voxelPos.equals(previewPosition);
+
+                    if (isSameSpot) {
+                        createBlock(voxelPos);
+                        rollOverMesh.visible = false;
+                        previewPosition = null;
+                        showToast("✨ 搭建成功！");
+                        playSound('confirm');
+                        spawnParticles(voxelPos);
+                    } else {
+                        previewPosition = voxelPos;
+                        
+                        rollOverMesh.position.copy(voxelPos);
+                        rollOverMesh.scale.set(0.1, 0.1, 0.1);
+                        rollOverMesh.visible = true;
+                        playSound('pop');
+                        
+                        TWEEN.remove(rollOverMesh.scale);
+                        new TWEEN.Tween(rollOverMesh.scale)
+                            .to({ x: 1, y: 1, z: 1 }, 300)
+                            .easing(TWEEN.Easing.Back.Out)
+                            .start();
+                    }
+                }
+            }
+        }
+
+        function createBlock(position) {
+            // Clone material to allow independent colors for each block
+            const currentMat = cubeMaterial.clone();
+            currentMat.color.setHex(currentColorHex);
+            
+            const voxel = new THREE.Mesh(cubeGeo, currentMat);
+            voxel.position.copy(position);
+            // Shadow removed
+
+            const edges = new THREE.EdgesGeometry(cubeGeo);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x333333, linewidth: 2, opacity: 0.5, transparent: true }));
+            voxel.add(line);
+            
+            voxel.scale.set(0,0,0);
+            new TWEEN.Tween(voxel.scale)
+                .to({ x: 1, y: 1, z: 1 }, 600) // Slower, more bouncy
+                .easing(TWEEN.Easing.Elastic.Out)
+                .start();
+
+            scene.add(voxel);
+            objects.push(voxel);
+            blocks.push(voxel);
+        }
+
+        function removeBlock(block) {
+            new TWEEN.Tween(block.scale)
+                .to({ x: 0, y: 0, z: 0 }, 300)
+                .easing(TWEEN.Easing.Back.In)
+                .onComplete(() => {
+                    scene.remove(block);
+                    objects.splice(objects.indexOf(block), 1);
+                    blocks.splice(blocks.indexOf(block), 1);
+                    
+                    if (previewPosition && previewPosition.equals(block.position)) {
+                        rollOverMesh.visible = false;
+                        previewPosition = null;
+                    }
+                })
+                .start();
+        }
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+            TWEEN.update(time);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.setView = function(viewType) {
+            document.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            const targetPos = new THREE.Vector3();
+            let targetZoom = 1;
+            const d = 10; // Adjusted for new scale
+
+            // === 工程制图标准视图映射 ===
+            // 基于等轴测视图 (10, 10, 10) 的方向感知：
+            // - 正面：屏幕右侧的 +X 面 → 相机在 +X 轴
+            // - 左面：屏幕左侧的 +Z 面 → 相机在 +Z 轴
+            // - 右面：从右侧看 → 相机在 -Z 轴
+            // - 后面：从后面看 → 相机在 -X 轴
+            // - 上面：俯视图 → 相机在 +Y 轴
+            switch(viewType) {
+                case 'front': targetPos.set(d, 0, 0); targetZoom = 1.5; break; // 从 +X 看（等轴测右侧）
+                case 'back': targetPos.set(-d, 0, 0); targetZoom = 1.5; break; // 从 -X 看
+                // 为了防止 OrbitControls 万向节死锁并保持标准拖拽方向，俯视图/仰视图添加微小偏移，并保持默认 up(0,1,0)
+                case 'top': targetPos.set(0.001, d, 0); targetZoom = 1.5; break; // 俯视图
+                case 'bottom': targetPos.set(0.001, -d, 0); targetZoom = 1.5; break; // 仰视图
+                case 'left': targetPos.set(0, 0, d); targetZoom = 1.5; break; // 从 +Z 看（等轴测左侧）
+                case 'right': targetPos.set(0, 0, -d); targetZoom = 1.5; break; // 从 -Z 看
+                case 'iso': 
+                    targetPos.set(10, 10, 10); 
+                    targetZoom = 1;
+                    break;
+            }
+
+            // 禁用 OrbitControls 防止动画期间干扰
+            controls.enabled = false;
+            
+            // 计算目标旋转
+            // 创建一个临时相机来计算正确的目标四元数
+            const tempCamera = camera.clone();
+            tempCamera.position.copy(targetPos);
+            
+            // 始终保持标准的 up 向量，保证 OrbitControls 拖拽逻辑正常
+            tempCamera.up.set(0, 1, 0);
+            
+            tempCamera.lookAt(0, 0, 0);
+            const targetQuaternion = tempCamera.quaternion.clone();
+
+            // 位置动画
+            new TWEEN.Tween(camera.position)
+                .to(targetPos, ANIMATION_DURATION)
+                .easing(TWEEN.Easing.Cubic.InOut)
+                .start();
+
+            // 旋转动画
+            // TWEEN 无法直接动画化四元数，所以我们需要手动在 onUpdate 中插值
+            const currentQuaternion = camera.quaternion.clone();
+            const tweenObj = { t: 0 };
+            
+            new TWEEN.Tween(tweenObj)
+                .to({ t: 1 }, ANIMATION_DURATION)
+                .easing(TWEEN.Easing.Cubic.InOut)
+                .onUpdate(() => {
+                    camera.quaternion.slerpQuaternions(currentQuaternion, targetQuaternion, tweenObj.t);
+                })
+                .onComplete(() => {
+                    // 确保最终状态完全正确
+                    camera.up.copy(tempCamera.up);
+                    camera.lookAt(0, 0, 0);
+                    controls.target.set(0, 0, 0);
+                    controls.enabled = true;
+                    controls.update();
+                })
+                .start();
+
+            // 缩放动画
+            new TWEEN.Tween(camera)
+                .to({ zoom: targetZoom }, ANIMATION_DURATION)
+                .easing(TWEEN.Easing.Cubic.InOut)
+                .onUpdate(() => camera.updateProjectionMatrix())
+                .start();
+        };
+
+        window.clearBlocks = function() {
+            if(confirm('确定要清空所有方块重新开始吗？🤔')) {
+                playSound('delete');
+                blocks.forEach((block, index) => {
+                    new TWEEN.Tween(block.scale)
+                        .to({ x: 0, y: 0, z: 0 }, 300 + index * 50)
+                        .easing(TWEEN.Easing.Back.In)
+                        .onComplete(() => {
+                            scene.remove(block);
+                        })
+                        .start();
+                });
+                
+                setTimeout(() => {
+                    blocks.length = 0;
+                    objects.length = 0;
+                    objects.push(plane);
+                    rollOverMesh.visible = false;
+                    previewPosition = null;
+                    showToast("已清空！来盖新房子吧 🏠");
+                }, 1000);
+            }
+        };
+
+        // --- CHALLENGE SYSTEM ---
+        window.setMode = function(mode) {
+            isChallengeMode = (mode === 'challenge');
+            document.getElementById('btn-build-mode').classList.toggle('active', !isChallengeMode);
+            document.getElementById('btn-challenge-mode').classList.toggle('active', isChallengeMode);
+            
+            if (isChallengeMode) {
+                document.getElementById('instructions').style.display = 'none';
+                document.getElementById('color-picker').style.display = 'none';
+                document.getElementById('challenge-panel').style.display = 'flex';
+                // Clear current blocks silently
+                blocks.forEach(block => scene.remove(block));
+                blocks.length = 0;
+                objects.length = 0;
+                objects.push(plane);
+                if (rollOverMesh) rollOverMesh.visible = false;
+                previewPosition = null;
+                
+                startNewChallenge();
+                setView('iso');
+            } else {
+                document.getElementById('instructions').style.display = 'block';
+                document.getElementById('color-picker').style.display = 'flex';
+                document.getElementById('challenge-panel').style.display = 'none';
+                // Clear challenge blocks silently
+                blocks.forEach(block => scene.remove(block));
+                blocks.length = 0;
+                objects.length = 0;
+                objects.push(plane);
+                
+                setView('iso');
+            }
+        };
+
+        window.startNewChallenge = function() {
+            // Clear existing blocks
+            blocks.forEach(block => scene.remove(block));
+            blocks.length = 0;
+            objects.length = 0;
+            objects.push(plane);
+            
+            // Reset grids
+            userAnswers = { front: [], top: [], left: [] };
+            for(let i=0; i<gridSize*gridSize; i++) {
+                userAnswers.front.push(false);
+                userAnswers.top.push(false);
+                userAnswers.left.push(false);
+            }
+            
+            const difficulty = document.getElementById('difficulty-select').value;
+            let blockCount = 4;
+            let maxY = 1;
+            if (difficulty === 'medium') { blockCount = 6; maxY = 2; }
+            if (difficulty === 'hard') { blockCount = 8; maxY = 3; }
+            
+            const positions = new Set();
+            const posList = [];
+            
+            // Start at center bottom
+            const startPos = {x: 1, y: 0, z: 1};
+            positions.add(`${startPos.x},${startPos.y},${startPos.z}`);
+            posList.push(startPos);
+            
+            const dirs = [
+                {x: 1, y: 0, z: 0}, {x: -1, y: 0, z: 0},
+                {x: 0, y: 0, z: 1}, {x: 0, y: 0, z: -1},
+                {x: 0, y: 1, z: 0}
+            ];
+            
+            while(posList.length < blockCount) {
+                const base = posList[Math.floor(Math.random() * posList.length)];
+                const dir = dirs[Math.floor(Math.random() * dirs.length)];
+                const nx = base.x + dir.x;
+                const ny = base.y + dir.y;
+                const nz = base.z + dir.z;
+                
+                // Ensure within bounds and bottom-supported
+                if (nx >= 0 && nx < gridSize && ny >= 0 && ny < maxY && nz >= 0 && nz < gridSize) {
+                    // If it's above ground, ensure there's a block below it
+                    if (ny > 0 && !positions.has(`${nx},${ny-1},${nz}`)) continue;
+                    
+                    const key = `${nx},${ny},${nz}`;
+                    if (!positions.has(key)) {
+                        positions.add(key);
+                        posList.push({x: nx, y: ny, z: nz});
+                    }
+                }
+            }
+            
+            // Generate blocks in scene
+            posList.forEach(p => {
+                const worldPos = new THREE.Vector3(p.x - 1.5, p.y + 0.5, p.z - 1.5);
+                createBlockSilent(worldPos, p.y); 
+            });
+            
+            calculateExpectedAnswers(posList);
+            renderChallengeGrids();
+            showToast("✨ 新挑战已生成！");
+        };
+
+        function createBlockSilent(position, layer) {
+            const currentMat = cubeMaterial.clone();
+            const colors = [0x4facfe, 0x84fab0, 0xffcd3c, 0xff6b6b];
+            currentMat.color.setHex(colors[layer % colors.length]);
+            
+            const voxel = new THREE.Mesh(cubeGeo, currentMat);
+            voxel.position.copy(position);
+
+            const edges = new THREE.EdgesGeometry(cubeGeo);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x333333, linewidth: 2, opacity: 0.5, transparent: true }));
+            voxel.add(line);
+            
+            scene.add(voxel);
+            blocks.push(voxel);
+        }
+
+        function calculateExpectedAnswers(posList) {
+            expectedAnswers = { 
+                front: new Array(16).fill(false), 
+                top: new Array(16).fill(false), 
+                left: new Array(16).fill(false) 
+            };
+            
+            posList.forEach(p => {
+                let rFront = 3 - p.y;
+                let cFront = 3 - p.z;
+                expectedAnswers.front[rFront * 4 + cFront] = true;
+                
+                let rLeft = 3 - p.y;
+                let cLeft = 3 - p.x;
+                expectedAnswers.left[rLeft * 4 + cLeft] = true;
+                
+                let rTop = p.x;
+                let cTop = 3 - p.z;
+                expectedAnswers.top[rTop * 4 + cTop] = true;
+            });
+        }
+
+        function renderChallengeGrids() {
+            ['front', 'top', 'left'].forEach(view => {
+                const container = document.getElementById(`grid-${view}`);
+                container.innerHTML = '';
+                for(let i=0; i<16; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    if (userAnswers[view][i]) cell.classList.add('filled');
+                    cell.onclick = () => {
+                        userAnswers[view][i] = !userAnswers[view][i];
+                        cell.classList.toggle('filled', userAnswers[view][i]);
+                        cell.classList.remove('correct', 'wrong');
+                    };
+                    container.appendChild(cell);
+                }
+            });
+        }
+
+        window.submitChallenge = function() {
+            let allCorrect = true;
+            
+            ['front', 'top', 'left'].forEach(view => {
+                const container = document.getElementById(`grid-${view}`);
+                const cells = container.children;
+                for(let i=0; i<16; i++) {
+                    const expected = expectedAnswers[view][i];
+                    const actual = userAnswers[view][i];
+                    
+                    cells[i].classList.remove('correct', 'wrong');
+                    
+                    if (expected === actual) {
+                        if (actual) cells[i].classList.add('correct');
+                    } else {
+                        cells[i].classList.add('wrong');
+                        allCorrect = false;
+                    }
+                }
+            });
+            
+            if (allCorrect) {
+                showToast("🎉 太棒了！全部正确！");
+                playSound('confirm');
+            } else {
+                showToast("🤔 好像有点不对，再仔细看看红色的地方哦");
+                playSound('delete');
+            }
+        };
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.opacity = 1;
+            setTimeout(() => {
+                toast.style.opacity = 0;
+            }, 2000);
+        }
+
+        // --- TESTING SYSTEM ---
+        window.runTests = function() {
+            console.log("=== Running Integration Tests ===");
+            let passed = 0;
+            let failed = 0;
+            
+            function assert(condition, message) {
+                if (condition) {
+                    console.log(`✅ PASS: ${message}`);
+                    passed++;
+                } else {
+                    console.error(`❌ FAIL: ${message}`);
+                    failed++;
+                }
+            }
+
+            // Test 1: Renderer ShadowMap Disabled
+            assert(renderer.shadowMap.enabled === false, "Renderer shadowMap should be disabled.");
+            
+            // Test 2: Lights have no shadow casting
+            let lightsHaveNoShadow = true;
+            scene.traverse((obj) => {
+                if (obj.isLight && obj.castShadow) {
+                    lightsHaveNoShadow = false;
+                }
+            });
+            assert(lightsHaveNoShadow, "No lights should have castShadow enabled.");
+
+            // Test 3: Color Switching applies to new blocks immediately
+            const originalColor = currentColorHex;
+            
+            // Simulate color switch to Red
+            const testColor = 0xff6b6b;
+            currentColorHex = testColor;
+            rollOverMesh.material.color.setHex(testColor);
+            
+            // Simulate placing a block
+            const testPos = new THREE.Vector3(0.5, 0.5, 0.5);
+            createBlock(testPos);
+            
+            // Find the newly created block
+            const newBlock = blocks[blocks.length - 1];
+            assert(newBlock.material.color.getHex() === testColor, "New block should immediately reflect the selected color.");
+            assert(newBlock.castShadow === false, "New block should not cast shadows.");
+            assert(newBlock.receiveShadow === false, "New block should not receive shadows.");
+            
+            // Clean up test block
+            scene.remove(newBlock);
+            blocks.pop();
+            objects.pop();
+            
+            // Restore original state
+            currentColorHex = originalColor;
+            rollOverMesh.material.color.setHex(originalColor);
+            
+            console.log(`=== Tests Complete: ${passed} Passed, ${failed} Failed ===`);
+            if (failed === 0) {
+                showToast("✅ 所有测试通过！");
+            } else {
+                showToast("❌ 测试失败，请查看控制台！");
+            }
+        };
+    </script>
+</body>
+</html>

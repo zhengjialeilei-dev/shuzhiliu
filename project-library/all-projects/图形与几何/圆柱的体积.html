@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圆柱体积推导可视化 - 修复版</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- 使用 importmap 加载现代 Three.js 模块 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.152.2/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.152.2/examples/jsm/"
+            }
+        }
+    </script>
+    
+    <style>
+        body { margin: 0; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
+        canvas { display: block; }
+        .slider-accent { accent-color: #2563eb; }
+        /* 防止加载时的闪烁 */
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="app" class="flex flex-col md:flex-row h-screen">
+        <!-- 3D 场景容器 -->
+        <div id="canvas-container" class="flex-1 relative bg-[#f8fafc]">
+            <div id="loading-overlay" class="absolute inset-0 flex items-center justify-center bg-slate-50 z-50 transition-opacity duration-500">
+                <div class="text-center">
+                    <div class="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p class="text-slate-500 text-sm font-medium">正在加载 3D 场景...</p>
+                </div>
+            </div>
+            <div class="absolute top-6 left-6 pointer-events-none z-10">
+                <div class="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm text-sm font-medium text-slate-600 border border-slate-200">
+                    拖动鼠标旋转视角，滚轮缩放
+                </div>
+            </div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="w-full md:w-[400px] bg-white border-l border-slate-200 p-8 flex flex-col shadow-2xl z-20 overflow-y-auto">
+            <h1 class="text-3xl font-bold mb-2 text-slate-900 tracking-tight">圆柱体积推导</h1>
+            <p class="text-slate-500 mb-8 text-sm">通过极限思想将圆柱体转化为长方体</p>
+
+            <div class="space-y-6 mb-8">
+                <!-- N 控制 -->
+                <div>
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="block text-sm font-semibold text-slate-700">等分数量 (N)</label>
+                        <span id="n-value" class="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">16</span>
+                    </div>
+                    <input id="n-slider" type="range" min="4" max="64" step="2" value="16" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider-accent">
+                </div>
+
+                <!-- R 控制 -->
+                <div>
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="block text-sm font-semibold text-slate-700">底面半径 (r)</label>
+                        <span id="r-value" class="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">3</span>
+                    </div>
+                    <input id="r-slider" type="range" min="1" max="5" step="0.5" value="3" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider-accent">
+                </div>
+
+                <!-- H 控制 -->
+                <div>
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="block text-sm font-semibold text-slate-700">圆柱体高 (h)</label>
+                        <span id="h-value" class="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">4</span>
+                    </div>
+                    <input id="h-slider" type="range" min="2" max="8" step="0.5" value="4" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider-accent">
+                </div>
+
+                <!-- 进度控制 -->
+                <div class="pt-2">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="block text-sm font-semibold text-slate-700">展开进度</label>
+                        <span id="p-value" class="text-sm font-bold text-slate-600">0%</span>
+                    </div>
+                    <input id="p-slider" type="range" min="0" max="1" step="0.01" value="0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider-accent">
+                </div>
+
+                <!-- 理想长方体开关 -->
+                <div class="mt-4 flex items-center justify-between bg-amber-50 px-3 py-2 rounded-lg border border-amber-100">
+                    <label class="text-sm font-semibold text-amber-800 flex items-center cursor-pointer">
+                        <input id="ghost-toggle" type="checkbox" checked class="mr-2 w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500 cursor-pointer">
+                        显示理想长方体对比
+                    </label>
+                </div>
+
+                <!-- 播放控制 -->
+                <div class="flex space-x-3">
+                    <button id="play-btn" class="flex-1 flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl transition-all shadow-sm active:scale-95 font-medium">
+                        <i id="play-icon" data-lucide="play" class="w-5 h-5"></i>
+                        <span id="play-text">播放动画</span>
+                    </button>
+                    <button id="reset-btn" class="flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 px-4 rounded-xl transition-all active:scale-95">
+                        <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 推导说明 -->
+            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-5">
+                <h2 class="font-bold text-slate-800 flex items-center space-x-2">
+                    <span class="w-1.5 h-5 bg-blue-600 rounded-full inline-block"></span>
+                    <span>推导过程</span>
+                </h2>
+                <div id="ghost-hint" class="hidden bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-lg shadow-sm transition-all">
+                    <strong class="flex items-center mb-1">💡 教学观察</strong>
+                    随着 N 的增大，拼合体越贴合黄色理想长方体，这就是<strong>极限思想</strong>。
+                </div>
+                
+                <div class="pt-4 border-t border-slate-200 space-y-2 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-500">长方体的长 L</span>
+                        <span id="calc-l" class="font-medium text-slate-800 bg-white px-2 py-1 rounded border border-slate-100 shadow-sm">≈ πr</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-500">长方体的宽 W</span>
+                        <span id="calc-w" class="font-medium text-slate-800 bg-white px-2 py-1 rounded border border-slate-100 shadow-sm">≈ r</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-500">长方体的高 H</span>
+                        <span id="calc-h" class="font-medium text-slate-800 bg-white px-2 py-1 rounded border border-slate-100 shadow-sm">= h</span>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-200">
+                    <div class="bg-blue-600 text-white rounded-xl p-4 text-center shadow-inner">
+                        <p class="font-bold text-lg tracking-wider mb-1">V = πr²h</p>
+                        <p id="calc-v" class="text-blue-100 text-sm font-mono">V ≈ 0.00</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // 初始化 Lucide 图标
+        lucide.createIcons();
+
+        // --- 3D 场景设置 ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf8fafc);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 8, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.maxPolarAngle = Math.PI / 2 + 0.1;
+
+        // 灯光
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(10, 15, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+
+        // --- 状态变量 ---
+        let N = 16, R = 3, H = 4, progress = 0, isPlaying = false, showGhost = true;
+        let slices = [];
+        let ghostBox, ghostEdges;
+        let radiusLine, heightLine;
+
+        // --- 几何体创建函数 ---
+        function createSliceGeometry(r, h, theta, n) {
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 0);
+            shape.lineTo(r * Math.cos(-theta / 2), r * Math.sin(-theta / 2));
+            shape.absarc(0, 0, r, -theta / 2, theta / 2, false);
+            shape.lineTo(0, 0);
+
+            const extrudeSettings = {
+                depth: h,
+                bevelEnabled: false,
+                curveSegments: Math.max(2, Math.ceil(64 / n)),
+            };
+
+            const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geo.translate(0, 0, -h / 2);
+            geo.rotateX(-Math.PI / 2);
+            geo.rotateY(-Math.PI / 2);
+            return geo;
+        }
+
+        function updateScene() {
+            // 清理旧物体
+            slices.forEach(s => scene.remove(s));
+            slices = [];
+            if (ghostBox) scene.remove(ghostBox);
+            if (ghostEdges) scene.remove(ghostEdges);
+            if (radiusLine) scene.remove(radiusLine);
+            if (heightLine) scene.remove(heightLine);
+
+            const theta = (2 * Math.PI) / N;
+            const W = 2 * R * Math.sin(theta / 2);
+            const total_width = (N - 1) * (W / 2);
+
+            for (let i = 0; i < N; i++) {
+                const geo = createSliceGeometry(R, H, theta, N);
+                const isEven = i % 2 === 0;
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: isEven ? 0x3b82f6 : 0x10b981,
+                    roughness: 0.3,
+                    metalness: 0.1
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                
+                mesh.userData = {
+                    index: i,
+                    angle0: i * theta,
+                    x1: i * (W / 2) - total_width / 2,
+                    z1: isEven ? (-R * Math.cos(theta / 2)) / 2 : (R * Math.cos(theta / 2)) / 2,
+                    r1: isEven ? 0 : Math.PI
+                };
+                
+                scene.add(mesh);
+                slices.push(mesh);
+
+                const edges = new THREE.EdgesGeometry(geo);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: isEven ? 0x1e40af : 0x065f46 }));
+                mesh.add(line);
+            }
+
+            // 理想长方体
+            const gGeo = new THREE.BoxGeometry(Math.PI * R, H, R);
+            const gMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, transparent: true, opacity: 0 });
+            ghostBox = new THREE.Mesh(gGeo, gMat);
+            scene.add(ghostBox);
+
+            const gEdges = new THREE.EdgesGeometry(gGeo);
+            ghostEdges = new THREE.LineSegments(gEdges, new THREE.LineBasicMaterial({ color: 0xb45309, transparent: true, opacity: 0 }));
+            scene.add(ghostEdges);
+
+            // 标注线
+            const rPoints = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(R, 0, 0)];
+            const rGeo = new THREE.BufferGeometry().setFromPoints(rPoints);
+            radiusLine = new THREE.Line(rGeo, new THREE.LineBasicMaterial({ color: 0xef4444 }));
+            radiusLine.position.y = -H / 2;
+            scene.add(radiusLine);
+
+            const hPoints = [new THREE.Vector3(0, -H / 2, 0), new THREE.Vector3(0, H / 2, 0)];
+            const hGeo = new THREE.BufferGeometry().setFromPoints(hPoints);
+            heightLine = new THREE.Line(hGeo, new THREE.LineBasicMaterial({ color: 0x8b5cf6 }));
+            heightLine.position.x = R + 0.8;
+            scene.add(heightLine);
+
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('n-value').innerText = N;
+            document.getElementById('r-value').innerText = R;
+            document.getElementById('h-value').innerText = H;
+            document.getElementById('p-value').innerText = Math.round(progress * 100) + '%';
+            
+            document.getElementById('calc-l').innerText = `≈ πr ≈ ${(Math.PI * R).toFixed(2)}`;
+            document.getElementById('calc-w').innerText = `≈ r = ${R.toFixed(2)}`;
+            document.getElementById('calc-h').innerText = `= h = ${H.toFixed(2)}`;
+            document.getElementById('calc-v').innerText = `V ≈ ${(Math.PI * R).toFixed(2)} × ${R.toFixed(2)} × ${H.toFixed(2)} ≈ ${(Math.PI * R * R * H).toFixed(2)}`;
+
+            const hint = document.getElementById('ghost-hint');
+            if (showGhost && progress > 0.8) hint.classList.remove('hidden');
+            else hint.classList.add('hidden');
+
+            const playText = document.getElementById('play-text');
+            const playIcon = document.getElementById('play-icon');
+            if (isPlaying) {
+                playText.innerText = '暂停';
+                playIcon.setAttribute('data-lucide', 'pause');
+            } else {
+                playText.innerText = progress >= 1 ? '重新播放' : '播放动画';
+                playIcon.setAttribute('data-lucide', progress >= 1 ? 'rotate-ccw' : 'play');
+            }
+            lucide.createIcons();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            if (isPlaying) {
+                progress += 0.005;
+                if (progress >= 1) {
+                    progress = 1;
+                    isPlaying = false;
+                }
+                document.getElementById('p-slider').value = progress;
+                updateUI();
+            }
+
+            const ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+            const push = Math.sin(ease * Math.PI) * R * 1.5;
+
+            slices.forEach(mesh => {
+                const { angle0, x1, z1, r1 } = mesh.userData;
+                const curX = THREE.MathUtils.lerp(0, x1, ease) + Math.sin(angle0) * push;
+                const curZ = THREE.MathUtils.lerp(0, z1, ease) + Math.cos(angle0) * push;
+                
+                let r0 = angle0;
+                let diff = r1 - r0;
+                while (diff > Math.PI) diff -= 2 * Math.PI;
+                while (diff < -Math.PI) diff += 2 * Math.PI;
+                const curRot = r0 + diff * ease;
+
+                mesh.position.set(curX, 0, curZ);
+                mesh.rotation.y = curRot;
+            });
+
+            const targetOp = (showGhost && progress > 0.8) ? (progress - 0.8) * 5 : 0;
+            ghostBox.material.opacity = THREE.MathUtils.lerp(ghostBox.material.opacity, targetOp * 0.25, 0.1);
+            ghostEdges.material.opacity = THREE.MathUtils.lerp(ghostEdges.material.opacity, targetOp * 0.8, 0.1);
+            ghostBox.visible = ghostBox.material.opacity > 0.01;
+            ghostEdges.visible = ghostEdges.material.opacity > 0.01;
+
+            radiusLine.visible = progress < 0.1;
+            heightLine.visible = progress < 0.1;
+
+            renderer.render(scene, camera);
+        }
+
+        // --- 事件监听 ---
+        document.getElementById('n-slider').addEventListener('input', (e) => { N = parseInt(e.target.value); updateScene(); });
+        document.getElementById('r-slider').addEventListener('input', (e) => { R = parseFloat(e.target.value); updateScene(); });
+        document.getElementById('h-slider').addEventListener('input', (e) => { H = parseFloat(e.target.value); updateScene(); });
+        document.getElementById('p-slider').addEventListener('input', (e) => { progress = parseFloat(e.target.value); isPlaying = false; updateUI(); });
+        document.getElementById('ghost-toggle').addEventListener('change', (e) => { showGhost = e.target.checked; updateUI(); });
+        
+        document.getElementById('play-btn').addEventListener('click', () => {
+            if (progress >= 1) progress = 0;
+            isPlaying = !isPlaying;
+            updateUI();
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            progress = 0;
+            isPlaying = false;
+            document.getElementById('p-slider').value = 0;
+            updateUI();
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // 隐藏加载层并启动
+        window.addEventListener('load', () => {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.remove(), 500);
+            updateScene();
+            animate();
+        });
+    </script>
+</body>
+</html>

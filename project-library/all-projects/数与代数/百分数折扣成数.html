@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百分数(二)：多重折扣与陷阱演示</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        /* 锯齿边缘 */
+        .receipt-jagged {
+            background-image: linear-gradient(135deg, #ffffff 50%, transparent 50%),
+                              linear-gradient(45deg, #ffffff 50%, transparent 50%);
+            background-position: bottom;
+            background-repeat: repeat-x;
+            background-size: 20px 20px;
+        }
+
+        /* 选中动画 */
+        .selected-item {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            transform: scale(1.02);
+        }
+
+        /* 盖章动画 */
+        @keyframes stamp-in {
+            0% {
+                opacity: 0;
+                transform: scale(3) rotate(-15deg);
+            }
+            80% {
+                opacity: 1;
+                transform: scale(0.9) rotate(-15deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(-15deg);
+            }
+        }
+
+        .stamp-mark {
+            position: absolute;
+            top: 50%;
+            right: 10%;
+            border: 3px solid;
+            padding: 5px 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            animation: stamp-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            pointer-events: none;
+            z-index: 10;
+            mix-blend-mode: multiply;
+        }
+
+        .stamp-discount { color: #dc2626; border-color: #dc2626; }
+        .stamp-tax { color: #d97706; border-color: #d97706; }
+        .stamp-trap { color: #4b5563; border-color: #4b5563; }
+
+        /* 列表过渡 */
+        .list-enter-active,
+        .list-leave-active {
+            transition: all 0.4s ease;
+        }
+        .list-enter-from,
+        .list-leave-to {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-gray-800">
+
+    <div id="app" class="h-full flex flex-col">
+        
+        <!-- Header -->
+        <header class="bg-white shadow-sm z-10 p-4 flex justify-between items-center shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 text-white p-2 rounded-lg shadow-sm">
+                    <i class="fa-solid fa-calculator"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-gray-900">智能数学收银台 Pro</h1>
+                    <p class="text-xs text-gray-500">支持多重叠加与涨跌陷阱演示</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button @click="openChallenge" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                    <i class="fa-solid fa-trophy mr-1 text-yellow-300"></i> 挑战模式
+                </button>
+                <button @click="resetAll" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> 重置系统
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6 p-4 md:p-6 overflow-hidden">
+            
+            <!-- Left: Shelf (4 cols) -->
+            <section class="md:col-span-4 flex flex-col gap-4 overflow-y-auto pr-1">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-gray-700"><i class="fa-solid fa-store mr-2 text-indigo-500"></i>第一步：选商品</h2>
+                </div>
+                <div class="grid grid-cols-1 gap-3">
+                    <div v-for="item in items" :key="item.id" 
+                         @click="selectItem(item)"
+                         :class="{'selected-item ring-2 ring-indigo-400 shadow-md': currentItem && currentItem.id === item.id}"
+                         class="bg-white p-4 rounded-xl shadow-sm hover:shadow border border-gray-100 cursor-pointer transition-all flex items-center justify-between group h-24">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 bg-gray-50 rounded-lg flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                                {{ item.icon }}
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-800">{{ item.name }}</h3>
+                                <p class="text-xs text-gray-400 mt-1">{{ item.desc }}</p>
+                            </div>
+                        </div>
+                        <div class="text-xl font-bold font-mono text-gray-700">¥{{ item.price }}</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Middle: Controls (3 cols) -->
+            <section class="md:col-span-3 flex flex-col gap-4 overflow-y-auto">
+                <h2 class="text-lg font-bold text-gray-700"><i class="fa-solid fa-tags mr-2 text-red-500"></i>第二步：贴标签</h2>
+                
+                <!-- Disabled Overlay -->
+                <div v-if="!currentItem" class="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 p-6 text-center">
+                    <i class="fa-solid fa-hand-point-left text-3xl mb-3 animate-bounce"></i>
+                    <p>请先在左侧<br>选择一个商品</p>
+                </div>
+
+                <div v-else class="space-y-4">
+                    <!-- Standard Discounts -->
+                    <div class="space-y-2">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">常用折扣</p>
+                        <button v-for="mod in discounts" :key="mod.id" @click="addModifier(mod)"
+                            class="w-full bg-white hover:bg-red-50 border-b-2 border-red-100 p-3 rounded-lg shadow-sm flex justify-between items-center group transition-all active:scale-95">
+                            <span class="font-bold text-red-600 group-hover:pl-2 transition-all">{{ mod.label }}</span>
+                            <span class="bg-red-100 text-red-600 text-xs px-2 py-1 rounded font-mono">{{ mod.mathLabel }}</span>
+                        </button>
+                    </div>
+
+                    <!-- Taxes -->
+                    <div class="space-y-2">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">税费与成数</p>
+                        <div class="grid grid-cols-1 gap-2">
+                             <button v-for="mod in chengshu" :key="mod.id" @click="addModifier(mod)"
+                                class="bg-white hover:bg-green-50 border-b-2 border-green-100 p-3 rounded-lg shadow-sm flex justify-between items-center transition-all active:scale-95">
+                                <span class="font-bold text-green-700">{{ mod.label }}</span>
+                                <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-mono">{{ mod.mathLabel }}</span>
+                            </button>
+                            <button v-for="mod in taxes" :key="mod.id" @click="addModifier(mod)"
+                                class="bg-white hover:bg-orange-50 border-b-2 border-orange-100 p-3 rounded-lg shadow-sm flex justify-between items-center transition-all active:scale-95">
+                                <span class="font-bold text-orange-600">{{ mod.label }}</span>
+                                <span class="bg-orange-100 text-orange-600 text-xs px-2 py-1 rounded font-mono">{{ mod.mathLabel }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Math Trap Experiment -->
+                    <div class="bg-gray-100 p-3 rounded-xl border border-gray-200">
+                        <p class="text-xs font-bold text-gray-500 mb-2 flex items-center">
+                            <i class="fa-solid fa-flask mr-1"></i> 价格陷阱实验区
+                        </p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button @click="addModifier({id: 'trap_up', label: '涨价一成', value: 1.1, type: 'trap', mathLabel: '×1.1'})"
+                                class="bg-white hover:bg-gray-50 text-gray-700 p-2 rounded shadow-sm text-sm font-medium border border-gray-200 active:scale-95">
+                                📈 涨价10%
+                            </button>
+                            <button @click="addModifier({id: 'trap_down', label: '降价一成', value: 0.9, type: 'trap', mathLabel: '×0.9'})"
+                                class="bg-white hover:bg-gray-50 text-gray-700 p-2 rounded shadow-sm text-sm font-medium border border-gray-200 active:scale-95">
+                                📉 降价10%
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-2 leading-tight">
+                            提示：试着先涨后降，看看能不能回到原价？
+                        </p>
+                    </div>
+
+                    <button v-if="appliedModifiers.length > 0" @click="clearModifiers" class="w-full py-2 text-sm text-gray-400 hover:text-red-500 underline transition-colors">
+                        清除所有优惠券
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right: Receipt (5 cols) -->
+            <section class="md:col-span-5 flex flex-col h-full relative">
+                <h2 class="text-lg font-bold text-gray-700 mb-4"><i class="fa-solid fa-receipt mr-2 text-gray-600"></i>第三步：看账单</h2>
+                
+                <div class="bg-white shadow-2xl rounded-t-xl flex-1 flex flex-col relative overflow-hidden ring-1 ring-black/5">
+                    <!-- Top Stripe -->
+                    <div class="h-3 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48ZyBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0wIDQwaDQwVjBIMHoiIGZpbGw9IiMzYjgyZjYiLz48cGF0aCBkPSJNMCA0MGgyMFYyMEgwek0yMCAyMGgyMFYwSDIweiIgZmlsbD0iIzFkNGVkOCIvPjwvZz48L3N2Zz4=')] opacity-20"></div>
+
+                    <div class="p-6 flex-1 flex flex-col font-mono relative">
+                        
+                        <!-- Empty State -->
+                        <div v-if="!currentItem" class="absolute inset-0 flex flex-col items-center justify-center bg-white z-20">
+                            <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                <i class="fa-solid fa-cash-register text-3xl text-gray-300"></i>
+                            </div>
+                            <p class="text-gray-400">等待商品录入...</p>
+                        </div>
+
+                        <!-- Content -->
+                        <div v-else class="flex flex-col h-full relative z-10">
+                            
+                            <!-- Header Info -->
+                            <div class="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                <h3 class="text-xl font-bold text-gray-800">{{ currentItem.name }}</h3>
+                                <p class="text-xs text-gray-400">商品编号: #00{{ currentItem.id }}852</p>
+                            </div>
+
+                            <!-- 1. Original Price Line -->
+                            <div class="flex justify-between items-center py-2 text-lg">
+                                <span class="text-gray-600">原价 (Base)</span>
+                                <span :class="{'line-through text-gray-400 decoration-2 decoration-red-400': appliedModifiers.length > 0, 'font-bold': appliedModifiers.length === 0}">
+                                    ¥{{ currentItem.price.toFixed(2) }}
+                                </span>
+                            </div>
+
+                            <!-- 2. Dynamic Calculation Steps (Waterfall) -->
+                            <div class="flex-1 overflow-y-auto space-y-3 py-2">
+                                <transition-group name="list">
+                                    <div v-for="(step, index) in calculationSteps" :key="index" class="relative pl-4 border-l-2 border-gray-200 hover:border-blue-400 transition-colors">
+                                        
+                                        <!-- Step Indicator -->
+                                        <div class="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-gray-300"></div>
+
+                                        <!-- Line 1: Operation -->
+                                        <div class="flex justify-between text-sm items-center">
+                                            <span class="font-bold text-gray-700">
+                                                {{ index + 1 }}. {{ step.label }}
+                                                <span class="text-[10px] text-gray-400 font-normal ml-1">({{ step.mathLabel }})</span>
+                                            </span>
+                                            <span class="bg-gray-100 px-1 rounded text-gray-600 text-xs">
+                                                × {{ step.value }}
+                                            </span>
+                                        </div>
+
+                                        <!-- Line 2: Effect -->
+                                        <div class="flex justify-between items-center mt-1">
+                                            <span class="text-xs text-gray-400">
+                                                ({{ step.prevPrice.toFixed(2) }} × {{ step.value }})
+                                            </span>
+                                            <span :class="step.change < 0 ? 'text-red-500' : 'text-orange-500'" class="font-bold text-sm">
+                                                {{ step.formattedChange }}
+                                            </span>
+                                        </div>
+
+                                        <!-- Subtotal visual hint -->
+                                        <div class="text-right text-xs text-gray-400 mt-1 border-t border-dotted pt-1">
+                                            小计: ¥{{ step.newPrice.toFixed(2) }}
+                                        </div>
+
+                                        <!-- STAMP ANIMATION (Only for last item if added recently) -->
+                                        <div v-if="index === calculationSteps.length - 1" 
+                                             class="stamp-mark"
+                                             :class="{
+                                                 'stamp-discount': step.type === 'discount',
+                                                 'stamp-tax': step.type === 'tax',
+                                                 'stamp-trap': step.type === 'trap'
+                                             }">
+                                            {{ step.stampText }}
+                                        </div>
+                                    </div>
+                                </transition-group>
+                            </div>
+
+                            <!-- 3. Final Total -->
+                            <div class="mt-4 pt-4 border-t-2 border-gray-800">
+                                <div class="flex justify-between items-end">
+                                    <div class="text-sm text-gray-500">
+                                        共 {{ appliedModifiers.length }} 项调整
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm text-gray-500 mb-1">实付总额 Total</div>
+                                        <div class="text-4xl font-bold text-blue-700 tracking-tight">
+                                            ¥{{ finalPrice }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Jagged Footer -->
+                    <div class="h-4 w-full receipt-jagged bg-white"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Challenge Mode Modal -->
+        <div v-if="showChallenge" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-0 md:p-4 backdrop-blur-sm">
+            <div class="bg-white md:rounded-2xl shadow-2xl w-full h-full md:w-[95vw] md:h-[95vh] overflow-hidden flex flex-col transition-all duration-300">
+                <!-- Header -->
+                <div class="bg-indigo-600 p-4 md:p-6 flex justify-between items-center text-white shrink-0 shadow-md">
+                    <h3 class="font-bold text-lg md:text-2xl flex items-center gap-2 md:gap-3">
+                        <i class="fa-solid fa-trophy text-yellow-300 text-2xl md:text-3xl"></i>
+                        六年级数学挑战
+                    </h3>
+                    <button @click="closeChallenge" class="hover:bg-indigo-700 p-2 rounded-full transition transform hover:rotate-90">
+                        <i class="fa-solid fa-xmark text-2xl md:text-3xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 flex flex-col items-center justify-start md:justify-center bg-gray-50">
+                    <div class="w-full max-w-4xl mx-auto space-y-4 md:space-y-8">
+                        <!-- Progress/Score -->
+                        <div class="flex justify-between text-sm md:text-lg text-gray-600 bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-100">
+                            <span class="flex items-center gap-2"><i class="fa-solid fa-fire text-orange-500"></i> 当前连胜: <b class="text-green-600 text-lg md:text-2xl">{{ streak }}</b></span>
+                            <span class="flex items-center gap-2"><i class="fa-solid fa-layer-group text-indigo-500"></i> 难度: ⭐⭐⭐</span>
+                        </div>
+
+                        <!-- Question -->
+                        <div class="bg-white p-5 md:p-8 rounded-2xl shadow-lg border-l-4 md:border-l-8 border-indigo-500">
+                            <span class="inline-block bg-indigo-100 text-indigo-700 text-xs md:text-sm font-bold px-2 md:px-3 py-1 rounded-full mb-2 md:mb-4">
+                                {{ challengeData.typeLabel }}
+                            </span>
+                            <p class="text-xl md:text-3xl lg:text-4xl font-bold text-gray-800 leading-tight">
+                                {{ challengeData.question }}
+                            </p>
+                        </div>
+
+                        <!-- Input Area -->
+                        <div v-if="!challengeData.submitted" class="space-y-4 md:space-y-6 max-w-2xl mx-auto w-full">
+                            <div class="relative group">
+                                <span class="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xl md:text-2xl">¥</span>
+                                <input type="number" v-model="challengeData.userAnswer" 
+                                    @keyup.enter="submitAnswer"
+                                    placeholder="输入最终价格" 
+                                    class="w-full pl-10 md:pl-12 pr-4 md:pr-6 py-3 md:py-6 text-xl md:text-3xl font-bold border-2 border-gray-200 rounded-xl md:rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all font-mono shadow-sm group-hover:border-indigo-300">
+                            </div>
+                            <button @click="submitAnswer" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg md:text-xl py-3 md:py-6 rounded-xl md:rounded-2xl shadow-xl shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2">
+                                提交答案 <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </div>
+
+                        <!-- Result & Explanation -->
+                        <div v-else class="space-y-4 md:space-y-6 animate-fade-in max-w-3xl mx-auto w-full">
+                            <div :class="challengeData.isCorrect ? 'bg-green-50 border-green-200 ring-2 md:ring-4 ring-green-50' : 'bg-red-50 border-red-200 ring-2 md:ring-4 ring-red-50'" 
+                                 class="p-4 md:p-6 rounded-xl md:rounded-2xl border-2 flex items-center gap-4 md:gap-6 shadow-sm">
+                                <div :class="challengeData.isCorrect ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'"
+                                     class="w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl md:text-3xl shrink-0 shadow-inner">
+                                    <i :class="challengeData.isCorrect ? 'fa-solid fa-check' : 'fa-solid fa-xmark'"></i>
+                                </div>
+                                <div>
+                                    <h4 :class="challengeData.isCorrect ? 'text-green-800' : 'text-red-800'" class="font-bold text-xl md:text-3xl mb-1">
+                                        {{ challengeData.isCorrect ? '回答正确！' : '回答错误' }}
+                                    </h4>
+                                    <p v-if="!challengeData.isCorrect" class="text-base md:text-xl text-red-600">
+                                        正确答案是: <span class="font-mono font-bold bg-white px-2 rounded border border-red-100">¥{{ challengeData.correctAnswer }}</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="bg-blue-50 p-4 md:p-8 rounded-xl md:rounded-2xl border border-blue-100 text-base md:text-lg space-y-2 md:space-y-4 shadow-sm">
+                                <p class="font-bold text-blue-800 text-lg md:text-xl mb-2 md:mb-4 border-b border-blue-200 pb-2 flex items-center gap-2">
+                                    <i class="fa-solid fa-lightbulb text-yellow-500"></i> 解析过程：
+                                </p>
+                                <div v-for="(step, idx) in challengeData.explanation" :key="idx" class="flex gap-2 md:gap-4 text-gray-700 items-start">
+                                    <span class="bg-blue-200 text-blue-800 font-bold font-mono w-6 h-6 md:w-8 md:h-8 text-sm md:text-base rounded-full flex items-center justify-center shrink-0 mt-1">{{ idx + 1 }}</span>
+                                    <span v-html="step" class="leading-relaxed"></span>
+                                </div>
+                            </div>
+
+                            <button @click="nextQuestion" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold text-lg md:text-xl py-3 md:py-5 rounded-xl md:rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3">
+                                下一题 <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+
+        createApp({
+            setup() {
+                // Data
+                const items = ref([
+                    { id: 1, name: '纯棉T恤', price: 100, icon: '👕', desc: '¥100 整百好算' },
+                    { id: 2, name: '运动跑鞋', price: 200, icon: '👟', desc: '¥200 基础练习' },
+                    { id: 3, name: '游戏主机', price: 1000, icon: '🎮', desc: '¥1000 大额商品' },
+                    { id: 4, name: '一箱苹果', price: 50, icon: '🍎', desc: '¥50 适合讲成数' },
+                ]);
+
+                const discounts = [
+                    { id: 'd1', label: '八折优惠', value: 0.8, type: 'discount', mathLabel: '80%', stamp: 'SALE 80%' },
+                    { id: 'd2', label: '五折半价', value: 0.5, type: 'discount', mathLabel: '50%', stamp: '50% OFF' },
+                ];
+                
+                const chengshu = [
+                    { id: 'c1', label: '降价二成', value: 0.8, type: 'discount', mathLabel: '-20%', stamp: 'SAVE 20%' },
+                ];
+
+                const taxes = [
+                    { id: 't1', label: '消费税(+10%)', value: 1.1, type: 'tax', mathLabel: '×1.1', stamp: 'TAX ADDED' }
+                ];
+
+                const currentItem = ref(null);
+                const appliedModifiers = ref([]);
+
+                // Actions
+                const selectItem = (item) => {
+                    currentItem.value = item;
+                    appliedModifiers.value = []; // Reset on new item
+                };
+
+                const addModifier = (mod) => {
+                    // Create a copy to allow adding the same modifier multiple times (e.g., trap demonstration)
+                    appliedModifiers.value.push({ ...mod, uid: Date.now() });
+                };
+
+                const clearModifiers = () => {
+                    appliedModifiers.value = [];
+                };
+
+                const resetAll = () => {
+                    currentItem.value = null;
+                    appliedModifiers.value = [];
+                };
+
+                // Challenge Mode Logic
+                const showChallenge = ref(false);
+                const streak = ref(0);
+                const challengeData = ref({
+                    typeLabel: '',
+                    question: '',
+                    correctAnswer: 0,
+                    userAnswer: '',
+                    submitted: false,
+                    isCorrect: false,
+                    explanation: []
+                });
+
+                const generateRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+                const nextQuestion = () => {
+                    challengeData.value = {
+                        ...challengeData.value,
+                        userAnswer: '',
+                        submitted: false,
+                        isCorrect: false,
+                        explanation: []
+                    };
+                    
+                    const types = ['discount', 'chengshu', 'reverse', 'trap', 'double_discount', 'reverse_double', 'tax', 'profit'];
+                    const type = types[generateRandomInt(0, 7)];
+                    
+                    let price, rate, final, label, question, explanation = [];
+                    
+                    switch(type) {
+                        case 'discount': 
+                            price = generateRandomInt(1, 20) * 10; 
+                            rate = generateRandomInt(1, 9); 
+                            let discountText = '';
+                            let discountVal = 0;
+                            
+                            if (Math.random() > 0.5) {
+                                discountText = `${['一','二','三','四','五','六','七','八','九'][rate-1]}折`;
+                                discountVal = rate / 10;
+                            } else {
+                                rate = generateRandomInt(5, 9);
+                                discountText = `${['五','六','七','八','九'][rate-5]}五折`;
+                                discountVal = rate / 10 + 0.05;
+                            }
+                            
+                            final = price * discountVal;
+                            final = Math.round(final * 100) / 100;
+                            
+                            question = `一件商品原价 ${price} 元，现在商场搞活动打${discountText}出售。请问现在的售价是多少元？`;
+                            explanation.push(`原价 = ${price}元`);
+                            explanation.push(`折扣 = ${discountText} = ${Math.round(discountVal * 100)}%`);
+                            explanation.push(`公式：原价 × 折扣 = 现价`);
+                            explanation.push(`计算：${price} × ${discountVal} = ${final}元`);
+                            
+                            challengeData.value.typeLabel = '百分数应用：折扣';
+                            challengeData.value.correctAnswer = final;
+                            break;
+                            
+                        case 'chengshu':
+                            price = generateRandomInt(2, 50) * 10;
+                            rate = generateRandomInt(1, 4); 
+                            const chengText = ['一','二','三','四'][rate-1];
+                            
+                            question = `王叔叔家的果园今年丰收，苹果售价 ${price} 元一箱。为了促销，他决定"降价${chengText}成"出售。请问折后价格是多少？`;
+                            
+                            const reduction = price * (rate/10);
+                            final = price - reduction;
+                            
+                            explanation.push(`"成数"表示十分之几，${chengText}成 = ${rate*10}%`);
+                            explanation.push(`降价金额：${price} × ${rate/10} = ${reduction}元`);
+                            explanation.push(`最终价格：${price} - ${reduction} = ${final}元`);
+                            explanation.push(`或者：${price} × (1 - ${rate/10}) = ${final}元`);
+                            
+                            challengeData.value.typeLabel = '百分数应用：成数';
+                            challengeData.value.correctAnswer = final;
+                            break;
+                            
+                        case 'reverse': 
+                            const realPrice = generateRandomInt(2, 20) * 50; 
+                            rate = generateRandomInt(6, 9) / 10; 
+                            const discountName = (rate * 10) + '折';
+                            final = realPrice * rate;
+                            
+                            question = `一件运动服打${discountName}后的售价是 ${final} 元。请问这件运动服的原价是多少元？`;
+                            
+                            explanation.push(`已知现价 ${final} 元，折扣 ${rate*10}折(${rate*100}%)`);
+                            explanation.push(`公式：现价 ÷ 折扣 = 原价`);
+                            explanation.push(`计算：${final} ÷ ${rate} = ${realPrice}元`);
+                            explanation.push(`验算：${realPrice} × ${rate} = ${final}`);
+                            
+                            challengeData.value.typeLabel = '逆向思维：求原价';
+                            challengeData.value.correctAnswer = realPrice;
+                            break;
+                            
+                        case 'trap':
+                            price = generateRandomInt(1, 10) * 100;
+                            question = `一支股票当前价格 ${price} 元。先涨了 10%，后来又跌了 10%。请问现在的价格是多少？(是 ${price} 元吗？)`;
+                            
+                            const step1 = price * 1.1;
+                            final = step1 * 0.9;
+                            final = Math.round(final * 100) / 100;
+                            
+                            explanation.push(`初始价格：${price}元`);
+                            explanation.push(`涨 10% 后：${price} × (1 + 10%) = ${Math.round(step1 * 100) / 100}元`);
+                            explanation.push(`跌 10% 时是在 ${Math.round(step1 * 100) / 100} 的基础上跌的`);
+                            explanation.push(`跌 10% 后：${Math.round(step1 * 100) / 100} × 0.9 = ${final}元`);
+                            explanation.push(`结论：先涨后跌幅度相同，价格会比原价低！`);
+                            
+                            challengeData.value.typeLabel = '易错题：涨跌陷阱';
+                            challengeData.value.correctAnswer = final;
+                            break;
+
+                        case 'double_discount':
+                            price = generateRandomInt(10, 50) * 10; // 100 - 500
+                            const r1 = generateRandomInt(7, 9); // 7-9折
+                            const r2 = generateRandomInt(8, 9); // 8-9折
+                            
+                            const d1Name = ['七','八','九'][r1-7] + '折';
+                            const d2Name = ['八','九'][r2-8] + '折';
+                            
+                            const price1 = price * (r1/10);
+                            final = price1 * (r2/10);
+                            final = Math.round(final * 100) / 100;
+                            
+                            question = `商场店庆大促销！一件大衣原价 ${price} 元，先打${d1Name}，持有会员卡可以再打${d2Name}。请问最终到手价是多少元？`;
+                            
+                            explanation.push(`原价：${price}元`);
+                            explanation.push(`第一层折扣(${d1Name})：${price} × ${r1/10} = ${price1}元`);
+                            explanation.push(`第二层折扣(${d2Name})：${price1} × ${r2/10} = ${final}元`);
+                            explanation.push(`提示：折上折就是连续乘法。`);
+                            
+                            challengeData.value.typeLabel = '进阶：折上折';
+                            challengeData.value.correctAnswer = final;
+                            break;
+
+                        case 'reverse_double':
+                            const original = generateRandomInt(2, 20) * 100; // 200 - 2000
+                            const rd1 = generateRandomInt(8, 9) / 10;
+                            const rd2 = 0.9; // Fixed 9折 for simplicity or random
+                            
+                            const p1 = original * rd1;
+                            final = p1 * rd2;
+                            // Ensure final is clean? It should be if original is multiple of 100 usually
+                            // Let's make sure
+                            final = Math.round(final * 100) / 100;
+                            
+                            // Re-calculate original from final to avoid precision drift issues in question
+                            // Actually better to state final and ask original
+                            
+                            question = `一件家电在打${rd1*10}折的基础上，又打了9折，最终售价是 ${final} 元。请问这件家电的原价是多少元？`;
+                            
+                            explanation.push(`最终售价：${final}元`);
+                            explanation.push(`逆向思考：最后打了9折，所以打9折前的价格是 ${final} ÷ 0.9 = ${p1}元`);
+                            explanation.push(`再逆向：一开始打了${rd1*10}折，所以原价是 ${p1} ÷ ${rd1} = ${original}元`);
+                            explanation.push(`综合算式：${final} ÷ 0.9 ÷ ${rd1} = ${original}元`);
+                            
+                            challengeData.value.typeLabel = '挑战：折上折反推';
+                            challengeData.value.correctAnswer = original;
+                            break;
+
+                        case 'tax':
+                            price = generateRandomInt(1, 50) * 100;
+                            const taxRate = [5, 10, 13][generateRandomInt(0, 2)];
+                            
+                            const taxAmt = price * (taxRate / 100);
+                            final = price + taxAmt;
+                            
+                            question = `王先生购买了一台价值 ${price} 元的笔记本电脑，结账时需要额外支付 ${taxRate}% 的税费。请问他一共需要支付多少元？`;
+                            
+                            explanation.push(`商品原价：${price}元`);
+                            explanation.push(`税费：${price} × ${taxRate}% = ${taxAmt}元`);
+                            explanation.push(`总价：${price} + ${taxAmt} = ${final}元`);
+                            explanation.push(`或者：${price} × (1 + ${taxRate}%) = ${final}元`);
+                            
+                            challengeData.value.typeLabel = '生活应用：税费计算';
+                            challengeData.value.correctAnswer = final;
+                            break;
+
+                        case 'profit':
+                            const cost = generateRandomInt(5, 20) * 10; // 50 - 200
+                            const profitRate = generateRandomInt(2, 5) * 10; // 20% - 50%
+                            
+                            final = cost * (1 + profitRate/100);
+                            
+                            question = `文具店进了一批钢笔，进价是每支 ${cost} 元。老板希望获得 ${profitRate}% 的利润，请问每支钢笔应该定价多少元？`;
+                            
+                            explanation.push(`进价(成本)：${cost}元`);
+                            explanation.push(`期望利润率：${profitRate}%`);
+                            explanation.push(`利润金额：${cost} × ${profitRate}% = ${cost * profitRate/100}元`);
+                            explanation.push(`定价 = 进价 + 利润 = ${final}元`);
+                            
+                            challengeData.value.typeLabel = '商业思维：定价与利润';
+                            challengeData.value.correctAnswer = final;
+                            break;
+                    }
+                    challengeData.value.question = question;
+                    challengeData.value.explanation = explanation;
+                };
+
+                const openChallenge = () => {
+                    showChallenge.value = true;
+                    if(!challengeData.value.question) nextQuestion();
+                };
+
+                const closeChallenge = () => {
+                    showChallenge.value = false;
+                };
+
+                const submitAnswer = () => {
+                    if (challengeData.value.submitted) return;
+                    
+                    const userVal = parseFloat(challengeData.value.userAnswer);
+                    const correctVal = parseFloat(challengeData.value.correctAnswer);
+                    
+                    const isCorrect = Math.abs(userVal - correctVal) < 0.01;
+                    
+                    challengeData.value.isCorrect = isCorrect;
+                    challengeData.value.submitted = true;
+                    
+                    if(isCorrect) {
+                        streak.value++;
+                    } else {
+                        streak.value = 0;
+                    }
+                };
+
+                // Core Logic
+                const calculationSteps = computed(() => {
+                    if (!currentItem.value) return [];
+                    
+                    let currentPrice = currentItem.value.price;
+                    
+                    return appliedModifiers.value.map(mod => {
+                        const prevPrice = currentPrice;
+                        // Calculate new price
+                        let newPrice = prevPrice * mod.value;
+                        // Rounding to 2 decimals at each step to simulate real currency operations
+                        newPrice = Math.round(newPrice * 100) / 100;
+                        
+                        const change = newPrice - prevPrice;
+                        currentPrice = newPrice;
+
+                        // Determine Stamp Text
+                        let stampText = mod.stamp;
+                        if(mod.type === 'trap') {
+                            stampText = mod.value > 1 ? 'PRICE UP' : 'PRICE DOWN';
+                        }
+
+                        return {
+                            ...mod,
+                            prevPrice,
+                            newPrice,
+                            change,
+                            formattedChange: change > 0 ? `+${change.toFixed(2)}` : `${change.toFixed(2)}`,
+                            stampText
+                        };
+                    });
+                });
+
+                const finalPrice = computed(() => {
+                    if (calculationSteps.value.length === 0 && currentItem.value) {
+                        return currentItem.value.price.toFixed(2);
+                    }
+                    if (calculationSteps.value.length > 0) {
+                        return calculationSteps.value[calculationSteps.value.length - 1].newPrice.toFixed(2);
+                    }
+                    return "0.00";
+                });
+
+                return {
+                    items, discounts, chengshu, taxes,
+                    currentItem, appliedModifiers,
+                    selectItem, addModifier, clearModifiers, resetAll,
+                    calculationSteps, finalPrice,
+                    showChallenge, challengeData, openChallenge, closeChallenge, submitAnswer, nextQuestion, streak
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

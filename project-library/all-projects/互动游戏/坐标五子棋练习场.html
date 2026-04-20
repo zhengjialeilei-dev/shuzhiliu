@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>坐标五子棋练习场</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', 'Comic Sans MS', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: #e0e5ec;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            color: #333;
+            overflow: hidden;
+            /* 禁止右键菜单和文本选择 */
+            user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            /* 禁止触摸屏长按事件 */
+            touch-callout: none;
+            tap-highlight-color: transparent;
+        }
+        
+        .header {
+            text-align: center;
+            margin: 0;
+            width: 100%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .header:hover {
+            transform: scale(1.02);
+        }
+        
+        .header h2 {
+            color: #1e293b;
+            font-size: 2rem;
+            text-shadow: 2px 2px 0 rgba(255, 107, 107, 0.3), 
+                        4px 4px 0 rgba(78, 205, 196, 0.3);
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            color: #475569;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .instructions {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        .instructions.show {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .instructions-content {
+            background-color: #e8f4fc;
+            padding: 30px;
+            border-radius: 30px;
+            border: 3px dashed #6a11cb;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            animation: popIn 0.3s ease;
+        }
+        
+        .instructions-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #1a2980;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .instructions-close:hover {
+            background: rgba(26, 41, 128, 0.1);
+            border-radius: 50%;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .instructions h2 {
+            color: #1a2980;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.8rem;
+        }
+        
+        .instructions ul {
+            padding-left: 30px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+            line-height: 1.5;
+            font-size: 2rem;
+        }
+        
+        .game-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .player-input {
+            width: 180px;
+            padding: 15px;
+            border-radius: 30px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            margin: 0 15px;
+            border: 3px solid transparent;
+        }
+        
+        .player-black {
+            background: linear-gradient(135deg, #1a2980, #26d0ce);
+            color: white;
+        }
+        
+        .player-white {
+            background: linear-gradient(135deg, #ff6b6b, #ff9e6b);
+            color: white;
+        }
+        
+        .player-input h3 {
+            margin-bottom: 10px;
+            font-size: 1.4rem;
+            text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .coordinate-input {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 8px 0;
+        }
+        
+        .coordinate-input span {
+            font-size: 2.5rem;
+            margin: 0 3px;
+            font-weight: bold;
+        }
+        
+        .coordinate-input input {
+            width: 50px;
+            height: 55px;
+            text-align: center;
+            font-size: 2.5rem;
+            border: 1px dashed #ccc;
+            border-radius: 20px;
+            font-weight: bold;
+            background: transparent;
+            color: white;
+        }
+        
+        .coordinate-input input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 2rem;
+            font-style: italic;
+        }
+        
+        .coordinate-input input:focus {
+            outline: none;
+            border: 2px solid #ccc;
+            box-shadow: none;
+        }
+        
+        /* 隐藏number输入框的上下箭头 */
+        .coordinate-input input[type="number"]::outer-spin-button,
+        .coordinate-input input[type="number"]::inner-spin-button {
+            appearance: none;
+            margin: 0;
+        }
+        
+        .coordinate-input input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        
+        .board-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        
+        .board-frame {
+            border: 15px solid #81685d;
+            border-radius: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            padding: 30px 30px 50px 50px;
+            background: #e0b985;
+            margin: 0 20px 10px;
+        }
+        
+        .board-container {
+            position: relative;
+            width: 500px;
+            height: 500px;
+            background: #ffeed8;
+            border: 1px solid #8d6e63;
+            box-sizing: border-box;
+        }
+        
+        .grid-line {
+            position: absolute;
+            background-color: #8d6e63;
+        }
+        
+        .horizontal-line {
+            width: 100%;
+            height: 2px;
+        }
+        
+        .vertical-line {
+            width: 2px;
+            height: 100%;
+        }
+        
+        .intersection {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: #8d6e63;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+        
+        .piece {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        .black {
+            background: radial-gradient(circle at 30% 30%, #666, #000);
+        }
+        
+        .white {
+            background: radial-gradient(circle at 30% 30%, #fff, #ddd);
+        }
+        
+        button {
+            background: linear-gradient(to bottom, #ffd166, #ff9e6b);
+            color: #1a2980;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px auto;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:disabled {
+            background: linear-gradient(to bottom, #ffffff, #c5c5c5);
+            color: #555;
+            cursor: not-allowed;
+            opacity: 0.6;
+            transform: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        button.active-turn {
+            animation: breathe-button 2s ease-in-out infinite;
+        }
+        
+        @keyframes breathe-button {
+            0%, 100% {
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2), 0 0 20px rgba(255, 209, 102, 0.6);
+            }
+            50% {
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2), 0 0 30px rgba(255, 209, 102, 0.8);
+            }
+        }
+        
+        .player-input.active {
+            border: 4px solid #ffd166;
+            animation: breathe-border 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes breathe-border {
+            0%, 100% {
+                border-color: #ffd166;
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), 0 0 25px rgba(255, 209, 102, 0.8), 0 0 40px rgba(255, 209, 102, 0.4);
+            }
+            50% {
+                border-color: #ffeb3b;
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), 0 0 35px rgba(255, 235, 59, 1), 0 0 60px rgba(255, 235, 59, 0.6);
+            }
+        }
+        
+        .winner-badge {
+            position: absolute;
+            top: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #1a2980;
+            padding: 15px 25px;
+            border-radius: 30px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.4), 0 0 30px rgba(255, 215, 0, 0.6);
+            border: 3px solid #fff;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.5s ease;
+            z-index: 200;
+            animation: bounce 2s infinite;
+        }
+        
+        .winner-badge.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateX(-50%) translateY(0);
+            }
+            40% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+            60% {
+                transform: translateX(-50%) translateY(-5px);
+            }
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background-color: #f00;
+            animation: fall linear forwards;
+        }
+        
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        
+        .coordinate-number {
+            position: absolute;
+            font-weight: bold;
+            font-size: 30px;
+            color: #fff;
+            z-index: 3;
+            background: rgba(224, 185, 133, 0.8);
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .coordinate-number.highlight {
+            background: #ffd700;
+            color: #1a2980;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+            font-weight: 900;
+            font-size: 48px;
+        }
+        
+        .intersection-dot {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            /* 保持交点本身大小不变，只在悬停时放大 */
+        }
+        
+        .intersection-dot:hover {
+            background-color: #555 !important;
+            transform: translate(-50%, -50%) scale(1.5);
+        }
+        
+        .intersection-dot::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            transform: translate(-50%, -50%);
+            background: transparent;
+            border-radius: 50%;
+            z-index: 1;
+            pointer-events: auto;
+        }
+        
+        .column-number {
+            transform: translateX(-50%);
+            bottom: 5px;
+        }
+        
+        .row-number {
+            transform: translateY(-50%);
+            left: 5px;
+        }
+        
+        .origin-number {
+            transform: translate(-50%, 50%);
+            left: 0;
+            bottom: 0;
+            z-index: 10;
+        }
+        
+        .number-pad {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .number-row {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+        
+        .num-btn {
+            width: 45px;
+            height: 45px;
+            padding: 0;
+            margin: 0;
+            font-size: 1.4rem;
+            border-radius: 50%;
+            aspect-ratio: 1;
+            background: #e0e5ec;
+            color: #1a2980;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .num-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-2px) scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .num-btn:active {
+            transform: translateY(0) scale(0.95);
+        }
+        
+        /* 自定义弹窗样式 */
+        .custom-alert {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .custom-alert.show {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .alert-content {
+            background: white;
+            padding: 30px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            min-width: 300px;
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+        }
+        
+        .custom-alert.show .alert-content {
+            transform: scale(1);
+        }
+        
+        .alert-message {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        
+        .alert-button {
+            background: linear-gradient(to bottom, #ffd166, #ff9e6b);
+            color: #1a2980;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .alert-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+        canvas{z-index:999 !important;}
+    </style>
+<!-- EDU_BRAND_STYLE_START -->
+<style id="edu-brand-style">
+  :root {
+    --edu-bg: #eef5f7;
+    --edu-bg-deep: #dfeaf0;
+    --edu-surface: rgba(255, 255, 255, 0.82);
+    --edu-surface-strong: rgba(255, 255, 255, 0.94);
+    --edu-line: rgba(97, 132, 161, 0.24);
+    --edu-shadow: 0 18px 48px rgba(37, 78, 110, 0.12);
+    --edu-shadow-strong: 0 24px 56px rgba(24, 61, 90, 0.16);
+    --edu-text: #17324d;
+    --edu-text-soft: #4a647c;
+    --edu-accent: #0f9d8a;
+    --edu-accent-deep: #0d7b72;
+    --edu-warm: #ff9d6c;
+    --edu-warm-soft: #fff1e8;
+  }
+
+  body.edu-refactor-body {
+    background:
+      radial-gradient(circle at 12% 14%, rgba(15, 157, 138, 0.10), transparent 22%),
+      radial-gradient(circle at 88% 16%, rgba(255, 157, 108, 0.18), transparent 20%),
+      radial-gradient(circle at 50% 100%, rgba(81, 122, 164, 0.10), transparent 28%),
+      linear-gradient(180deg, #f6fbfc 0%, var(--edu-bg) 42%, var(--edu-bg-deep) 100%) !important;
+    color: var(--edu-text) !important;
+  }
+
+  body.edu-refactor-body::before,
+  body.edu-refactor-body::after {
+    content: '';
+    position: fixed;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+    opacity: 0.6;
+  }
+
+  body.edu-refactor-body::before {
+    width: 240px;
+    height: 240px;
+    right: -40px;
+    top: 80px;
+    background: rgba(15, 157, 138, 0.14);
+  }
+
+  body.edu-refactor-body::after {
+    width: 180px;
+    height: 180px;
+    left: -20px;
+    bottom: 80px;
+    background: rgba(255, 157, 108, 0.16);
+  }
+
+  body.edu-refactor-body button,
+  body.edu-refactor-body input[type="button"],
+  body.edu-refactor-body input[type="submit"] {
+    border-radius: 16px !important;
+    border: 1px solid rgba(22, 101, 122, 0.16) !important;
+    box-shadow: 0 10px 24px rgba(33, 76, 111, 0.12) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #edf7f6 100%) !important;
+    color: var(--edu-text) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+  }
+
+  body.edu-refactor-body button:hover,
+  body.edu-refactor-body input[type="button"]:hover,
+  body.edu-refactor-body input[type="submit"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(33, 76, 111, 0.16) !important;
+    filter: saturate(1.04);
+  }
+
+  body.edu-refactor-body input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  body.edu-refactor-body select,
+  body.edu-refactor-body textarea {
+    border-radius: 14px !important;
+    border: 1px solid rgba(82, 119, 148, 0.26) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: var(--edu-text) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px rgba(42, 77, 105, 0.08) !important;
+  }
+
+  body.edu-refactor-body [class*="panel"],
+  body.edu-refactor-body [class*="Panel"],
+  body.edu-refactor-body [class*="card"],
+  body.edu-refactor-body [class*="Card"],
+  body.edu-refactor-body [class*="dialog"],
+  body.edu-refactor-body [class*="Dialog"],
+  body.edu-refactor-body [class*="controls"],
+  body.edu-refactor-body [class*="Controls"],
+  body.edu-refactor-body [class*="toolbar"],
+  body.edu-refactor-body [class*="Toolbar"],
+  body.edu-refactor-body [class*="sidebar"],
+  body.edu-refactor-body [class*="Sidebar"],
+  body.edu-refactor-body [class*="instruction"],
+  body.edu-refactor-body [class*="Instruction"],
+  body.edu-refactor-body [id*="panel"],
+  body.edu-refactor-body [id*="Panel"],
+  body.edu-refactor-body [id*="controls"],
+  body.edu-refactor-body [id*="Controls"] {
+    border-radius: 24px !important;
+    border: 1px solid var(--edu-line) !important;
+    box-shadow: var(--edu-shadow) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  body.edu-refactor-body .page-title,
+  body.edu-refactor-body .header h1,
+  body.edu-refactor-body .header h2,
+  body.edu-refactor-body .title,
+  body.edu-refactor-body .subtitle,
+  body.edu-refactor-body .teacher-text,
+  body.edu-refactor-body #step-indicator,
+  body.edu-refactor-body #narrative-text {
+    color: var(--edu-text) !important;
+    text-shadow: none !important;
+  }
+
+  body.edu-refactor-body .edu-brand-shell {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  body.edu-refactor-body .edu-brand-panel,
+  body.edu-refactor-body .edu-brand-guide {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 251, 0.92) 100%);
+    border: 1px solid rgba(89, 127, 156, 0.22);
+    box-shadow: var(--edu-shadow-strong);
+    backdrop-filter: blur(18px);
+    border-radius: 26px;
+  }
+
+  body.edu-refactor-body .edu-brand-panel {
+    max-width: min(720px, calc(100vw - 280px));
+    padding: 18px 22px 20px;
+  }
+
+  body.edu-refactor-body .edu-brand-guide {
+    width: 220px;
+    padding: 16px 18px;
+  }
+
+  body.edu-refactor-body .edu-brand-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(15, 157, 138, 0.10);
+    color: var(--edu-accent-deep);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  body.edu-refactor-body .edu-brand-title {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.08;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-copy {
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  body.edu-refactor-body .edu-brand-copy strong {
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-brand-shell {
+      flex-direction: column;
+      right: 12px;
+      left: 12px;
+      top: 12px;
+    }
+
+    body.edu-refactor-body .edu-brand-panel,
+    body.edu-refactor-body .edu-brand-guide {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
+
+
+  body.edu-refactor-body .edu-border-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 10001;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(89, 127, 156, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--edu-text, #1f2937);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  body.edu-refactor-body .edu-border-toggle:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  body.edu-refactor-body.edu-hide-brand-panels .edu-brand-shell {
+    display: none !important;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-border-toggle {
+      top: auto;
+      bottom: 12px;
+      right: 12px;
+    }
+  }
+
+</style>
+<!-- EDU_BRAND_STYLE_END -->
+
+
+</head>
+<body class="edu-refactor-body">
+<!-- EDU_BRAND_SHELL_START -->
+<div class="edu-brand-shell" data-brand-shell>
+  <section class="edu-brand-panel" aria-label="页面导语">
+    <div class="edu-brand-kicker">坐标表达 · EDU STUDIO</div>
+    <h1 class="edu-brand-title">坐标五子棋练习场</h1>
+    <div class="edu-brand-copy">
+      <div><strong>任务目标：</strong>把五子棋落点和数对表达对应起来，训练坐标定位。</div>
+      <div><strong>操作提示：</strong>在棋盘中落子后，对照行列位置和数对表示。</div>
+      <div><strong>理解重点：</strong>坐标不是额外负担，它只是把“先横后纵”的位置描述标准化。</div>
+    </div>
+</section>
+  <aside class="edu-brand-guide" aria-label="操作建议">
+    <h2>建议这样探索</h2>
+    <ul><li>先确认横轴和纵轴的读法。</li><li>每次落子都说出坐标。</li><li>连子时注意比较多个点位。</li></ul>
+  </aside>
+</div>
+<!-- EDU_BRAND_SHELL_END -->
+
+<button type="button" class="edu-border-toggle" id="edu-border-toggle" aria-pressed="false" aria-label="隐藏说明框" title="隐藏说明框">-</button>
+
+    <div class="header" onclick="toggleInstructions()">
+        <h2>坐标对弈练习场</h2>
+        <div class="subtitle">一边下棋，一边练习用数对表达位置。点击查看玩法说明</div>
+    </div>
+    
+    <div class="container">
+        <div class="instructions">
+            <div class="instructions-content">
+                <button class="instructions-close" onclick="toggleInstructions()">&times;</button>
+                <h2>玩法说明</h2>
+                <ul>
+                    <li>先手（黑棋）和后手（白棋）轮流在棋盘上放置棋子。</li>
+                    <li>每次落子都用数对表示位置，例如 (5,4) 表示第 5 列第 4 行。</li>
+                    <li>棋子落在横线与竖线的交点上。</li>
+                    <li>当一方有 5 颗棋子连成一条直线时获胜，可以是横向、纵向或斜向。</li>
+                </ul>
+            </div>
+        </div>
+        <div class="game-container">
+            <div class="player-input player-black" style="position: relative;">
+                <div class="winner-badge" id="black-winner-badge">🎉 先手获胜！🎉</div>
+                <h3>先手（黑棋）</h3>
+                <div class="input-group">
+                    <div class="coordinate-input">
+                        <span>(</span>
+                        <input type="number" id="black-x" min="0" max="10" placeholder="行">
+                        <span>,</span>
+                        <input type="number" id="black-y" min="0" max="10" placeholder="行">
+                        <span>)</span>
+                    </div>
+                </div>
+                <button id="black-btn">落下黑棋</button>
+                <div class="number-pad">
+                    <div class="number-row">
+                        <button class="num-btn" data-target="black" data-value="1">1</button>
+                        <button class="num-btn" data-target="black" data-value="2">2</button>
+                        <button class="num-btn" data-target="black" data-value="3">3</button>
+                    </div>
+                    <div class="number-row">
+                        <button class="num-btn" data-target="black" data-value="4">4</button>
+                        <button class="num-btn" data-target="black" data-value="5">5</button>
+                        <button class="num-btn" data-target="black" data-value="6">6</button>
+                    </div>
+                    <div class="number-row">
+                        <button class="num-btn" data-target="black" data-value="7">7</button>
+                        <button class="num-btn" data-target="black" data-value="8">8</button>
+                        <button class="num-btn" data-target="black" data-value="9">9</button>
+                    </div>
+                    <div class="number-row">
+                        <button class="num-btn" data-target="black" data-value="0">0</button>
+                        <button class="num-btn" data-target="black" data-value="10">10</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="board-wrapper">
+                <div class="board-frame">
+                    <div class="board-container" id="board-container">
+                        <!-- 棋盘将通过JavaScript生成 -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="player-input player-white" style="position: relative;">
+                <div class="winner-badge" id="white-winner-badge">🎉 后手获胜！🎉</div>
+                <h3>后手（白棋）</h3>
+                <div class="input-group">
+                    <div class="coordinate-input">
+                        <span>(</span>
+                        <input type="number" id="white-x" min="0" max="10" placeholder="列">
+                        <span>,</span>
+                        <input type="number" id="white-y" min="0" max="10" placeholder="行">
+                        <span>)</span>
+                    </div>
+                </div>
+                <button id="white-btn">落下白棋</button>
+                <div class="number-pad">
+                    <div class="number-row">
+                        <button class="num-btn" data-target="white" data-value="1">1</button>
+                        <button class="num-btn" data-target="white" data-value="2">2</button>
+                        <button class="num-btn" data-target="white" data-value="3">3</button>
+                    </div>
+                    <div class="number-row">
+                        <button class="num-btn" data-target="white" data-value="4">4</button>
+                        <button class="num-btn" data-target="white" data-value="5">5</button>
+                        <button class="num-btn" data-target="white" data-value="6">6</button>
+                    </div>
+                    <div class="number-row">
+                        <button class="num-btn" data-target="white" data-value="7">7</button>
+                        <button class="num-btn" data-target="white" data-value="8">8</button>
+                        <button class="num-btn" data-target="white" data-value="9">9</button>
+                    </div>
+                    <div class="number-row">
+                        <button class="num-btn" data-target="white" data-value="0">0</button>
+                        <button class="num-btn" data-target="white" data-value="10">10</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <button id="restart-btn" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: none;">重新开局</button>
+    
+    <!-- 自定义弹窗 -->
+    <div class="custom-alert" id="custom-alert">
+        <div class="alert-content">
+            <div class="alert-message" id="alert-message"></div>
+            <button class="alert-button" id="alert-button">知道了</button>
+        </div>
+    </div>
+    <script>
+!function(t,e){!function t(e,n,a,i){var o=!!(e.Worker&&e.Blob&&e.Promise&&e.OffscreenCanvas&&e.OffscreenCanvasRenderingContext2D&&e.HTMLCanvasElement&&e.HTMLCanvasElement.prototype.transferControlToOffscreen&&e.URL&&e.URL.createObjectURL);function r(){}function l(t){var a=n.exports.Promise,i=void 0!==a?a:e.Promise;return"function"==typeof i?new i(t):(t(r,r),null)}var c,s,u,d,f,h,m,g,b,v=(u=Math.floor(1e3/60),d={},f=0,"function"==typeof requestAnimationFrame&&"function"==typeof cancelAnimationFrame?(c=function(t){var e=Math.random();return d[e]=requestAnimationFrame((function n(a){f===a||f+u-1<a?(f=a,delete d[e],t()):d[e]=requestAnimationFrame(n)})),e},s=function(t){d[t]&&cancelAnimationFrame(d[t])}):(c=function(t){return setTimeout(t,u)},s=function(t){return clearTimeout(t)}),{frame:c,cancel:s}),p=(g={},function(){if(h)return h;if(!a&&o){var e=["var CONFETTI, SIZE = {}, module = {};","("+t.toString()+")(this, module, true, SIZE);","onmessage = function(msg) {","  if (msg.data.options) {","    CONFETTI(msg.data.options).then(function () {","      if (msg.data.callback) {","        postMessage({ callback: msg.data.callback });","      }","    });","  } else if (msg.data.reset) {","    CONFETTI.reset();","  } else if (msg.data.resize) {","    SIZE.width = msg.data.resize.width;","    SIZE.height = msg.data.resize.height;","  } else if (msg.data.canvas) {","    SIZE.width = msg.data.canvas.width;","    SIZE.height = msg.data.canvas.height;","    CONFETTI = module.exports.create(msg.data.canvas);","  }","}"].join("\n");try{h=new Worker(URL.createObjectURL(new Blob([e])))}catch(t){return void 0!==typeof console&&"function"==typeof console.warn&&console.warn("🎊 Could not load worker",t),null}!function(t){function e(e,n){t.postMessage({options:e||{},callback:n})}t.init=function(e){var n=e.transferControlToOffscreen();t.postMessage({canvas:n},[n])},t.fire=function(n,a,i){if(m)return e(n,null),m;var o=Math.random().toString(36).slice(2);return m=l((function(a){function r(e){e.data.callback===o&&(delete g[o],t.removeEventListener("message",r),m=null,i(),a())}t.addEventListener("message",r),e(n,o),g[o]=r.bind(null,{data:{callback:o}})}))},t.reset=function(){for(var e in t.postMessage({reset:!0}),g)g[e](),delete g[e]}}(h)}return h}),y={particleCount:50,angle:90,spread:45,startVelocity:45,decay:.9,gravity:1,drift:0,ticks:200,x:.5,y:.5,shapes:["square","circle"],zIndex:100,colors:["#26ccff","#a25afd","#ff5e7e","#88ff5a","#fcff42","#ffa62d","#ff36ff"],disableForReducedMotion:!1,scalar:1};function M(t,e,n){return function(t,e){return e?e(t):t}(t&&null!=t[e]?t[e]:y[e],n)}function w(t){return t<0?0:Math.floor(t)}function x(t){return parseInt(t,16)}function C(t){return t.map(k)}function k(t){var e=String(t).replace(/[^0-9a-f]/gi,"");return e.length<6&&(e=e[0]+e[0]+e[1]+e[1]+e[2]+e[2]),{r:x(e.substring(0,2)),g:x(e.substring(2,4)),b:x(e.substring(4,6))}}function I(t){t.width=document.documentElement.clientWidth,t.height=document.documentElement.clientHeight}function S(t){var e=t.getBoundingClientRect();t.width=e.width,t.height=e.height}function T(t,e,n,o,r){var c,s,u=e.slice(),d=t.getContext("2d"),f=l((function(e){function l(){c=s=null,d.clearRect(0,0,o.width,o.height),r(),e()}c=v.frame((function e(){!a||o.width===i.width&&o.height===i.height||(o.width=t.width=i.width,o.height=t.height=i.height),o.width||o.height||(n(t),o.width=t.width,o.height=t.height),d.clearRect(0,0,o.width,o.height),u=u.filter((function(t){return function(t,e){e.x+=Math.cos(e.angle2D)*e.velocity+e.drift,e.y+=Math.sin(e.angle2D)*e.velocity+e.gravity,e.wobble+=e.wobbleSpeed,e.velocity*=e.decay,e.tiltAngle+=.1,e.tiltSin=Math.sin(e.tiltAngle),e.tiltCos=Math.cos(e.tiltAngle),e.random=Math.random()+2,e.wobbleX=e.x+10*e.scalar*Math.cos(e.wobble),e.wobbleY=e.y+10*e.scalar*Math.sin(e.wobble);var n=e.tick++/e.totalTicks,a=e.x+e.random*e.tiltCos,i=e.y+e.random*e.tiltSin,o=e.wobbleX+e.random*e.tiltCos,r=e.wobbleY+e.random*e.tiltSin;return t.fillStyle="rgba("+e.color.r+", "+e.color.g+", "+e.color.b+", "+(1-n)+")",t.beginPath(),"circle"===e.shape?t.ellipse?t.ellipse(e.x,e.y,Math.abs(o-a)*e.ovalScalar,Math.abs(r-i)*e.ovalScalar,Math.PI/10*e.wobble,0,2*Math.PI):function(t,e,n,a,i,o,r,l,c){t.save(),t.translate(e,n),t.rotate(o),t.scale(a,i),t.arc(0,0,1,r,l,c),t.restore()}(t,e.x,e.y,Math.abs(o-a)*e.ovalScalar,Math.abs(r-i)*e.ovalScalar,Math.PI/10*e.wobble,0,2*Math.PI):(t.moveTo(Math.floor(e.x),Math.floor(e.y)),t.lineTo(Math.floor(e.wobbleX),Math.floor(i)),t.lineTo(Math.floor(o),Math.floor(r)),t.lineTo(Math.floor(a),Math.floor(e.wobbleY))),t.closePath(),t.fill(),e.tick<e.totalTicks}(d,t)})),u.length?c=v.frame(e):l()})),s=l}));return{addFettis:function(t){return u=u.concat(t),f},canvas:t,promise:f,reset:function(){c&&v.cancel(c),s&&s()}}}function E(t,n){var a,i=!t,r=!!M(n||{},"resize"),c=M(n,"disableForReducedMotion",Boolean),s=o&&!!M(n||{},"useWorker")?p():null,u=i?I:S,d=!(!t||!s)&&!!t.__confetti_initialized,f="function"==typeof matchMedia&&matchMedia("(prefers-reduced-motion)").matches;function h(e,n,i){for(var o,r,l,c,s,d=M(e,"particleCount",w),f=M(e,"angle",Number),h=M(e,"spread",Number),m=M(e,"startVelocity",Number),g=M(e,"decay",Number),b=M(e,"gravity",Number),v=M(e,"drift",Number),p=M(e,"colors",C),y=M(e,"ticks",Number),x=M(e,"shapes"),k=M(e,"scalar"),I=function(t){var e=M(t,"origin",Object);return e.x=M(e,"x",Number),e.y=M(e,"y",Number),e}(e),S=d,E=[],F=t.width*I.x,N=t.height*I.y;S--;)E.push((o={x:F,y:N,angle:f,spread:h,startVelocity:m,color:p[S%p.length],shape:x[(c=0,s=x.length,Math.floor(Math.random()*(s-c))+c)],ticks:y,decay:g,gravity:b,drift:v,scalar:k},r=void 0,l=void 0,r=o.angle*(Math.PI/180),l=o.spread*(Math.PI/180),{x:o.x,y:o.y,wobble:10*Math.random(),wobbleSpeed:Math.min(.11,.1*Math.random()+.05),velocity:.5*o.startVelocity+Math.random()*o.startVelocity,angle2D:-r+(.5*l-Math.random()*l),tiltAngle:(.5*Math.random()+.25)*Math.PI,color:o.color,shape:o.shape,tick:0,totalTicks:o.ticks,decay:o.decay,drift:o.drift,random:Math.random()+2,tiltSin:0,tiltCos:0,wobbleX:0,wobbleY:0,gravity:3*o.gravity,ovalScalar:.6,scalar:o.scalar}));return a?a.addFettis(E):(a=T(t,E,u,n,i)).promise}function m(n){var o=c||M(n,"disableForReducedMotion",Boolean),m=M(n,"zIndex",Number);if(o&&f)return l((function(t){t()}));i&&a?t=a.canvas:i&&!t&&(t=function(t){var e=document.createElement("canvas");return e.style.position="fixed",e.style.top="0px",e.style.left="0px",e.style.pointerEvents="none",e.style.zIndex=t,e}(m),document.body.appendChild(t)),r&&!d&&u(t);var g={width:t.width,height:t.height};function b(){if(s){var e={getBoundingClientRect:function(){if(!i)return t.getBoundingClientRect()}};return u(e),void s.postMessage({resize:{width:e.width,height:e.height}})}g.width=g.height=null}function v(){a=null,r&&e.removeEventListener("resize",b),i&&t&&(document.body.removeChild(t),t=null,d=!1)}return s&&!d&&s.init(t),d=!0,s&&(t.__confetti_initialized=!0),r&&e.addEventListener("resize",b,!1),s?s.fire(n,g,v):h(n,g,v)}return m.reset=function(){s&&s.reset(),a&&a.reset()},m}function F(){return b||(b=E(null,{useWorker:!0,resize:!0})),b}n.exports=function(){return F().apply(this,arguments)},n.exports.reset=function(){F().reset()},n.exports.create=E}(function(){return void 0!==t?t:"undefined"!=typeof self?self:this||{}}(),e,!1),t.confetti=e.exports}(window,{});
+    </script>
+    <script>
+        let confettiInterval = null;
+        function showConfetti() {
+                        const duration = 3000;
+                const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+                
+                function randomInRange(min, max) {
+                    return Math.random() * (max - min) + min;
+                }
+                
+                confettiInterval = setInterval(function() {
+                    const particleCount = 50;
+                    
+                    // 从左右两侧发射
+                    confetti(Object.assign({}, defaults, { 
+                        particleCount, 
+                        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } 
+                    }));
+                    confetti(Object.assign({}, defaults, { 
+                        particleCount, 
+                        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } 
+                    }));
+                }, 250);
+       }
+        // 禁止右键菜单和长按事件
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        document.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        document.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // 禁止触摸屏长按和多点触控
+        let touchStartTime = 0;
+        document.addEventListener('touchstart', function(e) {
+            touchStartTime = Date.now();
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('touchend', function(e) {
+            const touchDuration = Date.now() - touchStartTime;
+            // 如果长按超过500ms，阻止默认行为
+            if (touchDuration > 500) {
+                e.preventDefault();
+            }
+        });
+        
+        // 禁止长按选择文本
+        document.addEventListener('touchmove', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const boardContainer = document.getElementById('board-container');
+            const blackXInput = document.getElementById('black-x');
+            const blackYInput = document.getElementById('black-y');
+            const whiteXInput = document.getElementById('white-x');
+            const whiteYInput = document.getElementById('white-y');
+            const blackBtn = document.getElementById('black-btn');
+            const whiteBtn = document.getElementById('white-btn');
+            const blackWinnerBadge = document.getElementById('black-winner-badge');
+            const whiteWinnerBadge = document.getElementById('white-winner-badge');
+            const restartBtn = document.getElementById('restart-btn');
+
+            
+            // 游戏状态
+            let currentPlayer = 'black'; // 'black' 或 'white'
+            let gameOver = false;
+            let board = Array(11).fill().map(() => Array(11).fill(null));
+            
+            // 自定义弹窗功能
+            function showCustomAlert(message) {
+                const alertElement = document.getElementById('custom-alert');
+                const messageElement = document.getElementById('alert-message');
+                const buttonElement = document.getElementById('alert-button');
+                
+                messageElement.textContent = message;
+                alertElement.classList.add('show');
+                
+                // 确定按钮点击事件
+                const closeAlert = () => {
+                    alertElement.classList.remove('show');
+                    buttonElement.removeEventListener('click', closeAlert);
+                    alertElement.removeEventListener('click', outsideClickHandler);
+                };
+                
+                // 点击空白处关闭
+                const outsideClickHandler = (e) => {
+                    if (e.target === alertElement) {
+                        closeAlert();
+                    }
+                };
+                
+                buttonElement.addEventListener('click', closeAlert);
+                alertElement.addEventListener('click', outsideClickHandler);
+            }
+            
+            // 切换说明显示/隐藏
+            window.toggleInstructions = function() {
+                const instructions = document.querySelector('.instructions');
+                instructions.classList.toggle('show');
+            };
+            
+            // 高亮坐标数字
+            function highlightCoordinates(x, y) {
+                // 清除所有高亮
+                document.querySelectorAll('.coordinate-number.highlight').forEach(el => {
+                    el.classList.remove('highlight');
+                });
+                
+                // 高亮对应的列坐标（底部数字）
+                const columnNumbers = document.querySelectorAll('.column-number');
+                columnNumbers.forEach(num => {
+                    if (parseInt(num.textContent) === x) {
+                        num.classList.add('highlight');
+                    }
+                });
+                
+                // 高亮对应的行坐标（左侧数字）
+                const rowNumbers = document.querySelectorAll('.row-number');
+                rowNumbers.forEach(num => {
+                    if (parseInt(num.textContent) === y) {
+                        num.classList.add('highlight');
+                    }
+                });
+                
+                // 3秒后自动取消高亮
+                setTimeout(() => {
+                    document.querySelectorAll('.coordinate-number.highlight').forEach(el => {
+                        el.classList.remove('highlight');
+                    });
+                }, 3000);
+            }
+            
+            // 初始化棋盘
+            function initChessboard() {
+                boardContainer.innerHTML = '';
+                
+                const boardSize = 500;
+                const cellSize = boardSize / 10;
+                
+                // 创建10x10的小正方形网格
+                for (let row = 0; row < 10; row++) {
+                    for (let col = 0; col < 10; col++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('grid-cell');
+                        cell.style.position = 'absolute';
+                        cell.style.left = `${col * cellSize}px`;
+                        cell.style.top = `${row * cellSize}px`;
+                        cell.style.width = `${cellSize}px`;
+                        cell.style.height = `${cellSize}px`;
+                        cell.style.border = '1px solid #8d6e63';
+                        cell.style.boxSizing = 'border-box';
+                        boardContainer.appendChild(cell);
+                    }
+                }
+                
+                // 添加交点小黑点 (11x11个交点)
+                for (let row = 0; row <= 10; row++) {
+                    for (let col = 0; col <= 10; col++) {
+                        const dot = document.createElement('div');
+                        dot.classList.add('intersection-dot');
+                        dot.style.position = 'absolute';
+                        dot.style.left = `${col * cellSize}px`;
+                        dot.style.top = `${row * cellSize}px`;
+                        dot.style.width = '5px';
+                        dot.style.height = '5px';
+                        dot.style.backgroundColor = '#333';
+                        dot.style.borderRadius = '50%';
+                        dot.style.transform = 'translate(-50%, -50%)';
+                        dot.style.zIndex = '2';
+                        dot.dataset.x = col;
+                        dot.dataset.y = 10 - row; // 坐标系从下往上
+                        
+                        boardContainer.appendChild(dot);
+                    }
+                }
+                
+                // 为整个棋盘添加点击事件监听器，实现智能交点识别
+                boardContainer.addEventListener('click', function(e) {
+                    const rect = boardContainer.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    
+                    // 计算最近的交点坐标
+                    const nearestCol = Math.round(clickX / cellSize);
+                    const nearestRow = Math.round(clickY / cellSize);
+                    
+                    // 确保坐标在有效范围内
+                    if (nearestCol >= 0 && nearestCol <= 10 && nearestRow >= 0 && nearestRow <= 10) {
+                        const gameY = 10 - nearestRow; // 转换为游戏坐标系
+                        highlightCoordinates(nearestCol, gameY);
+                        
+                        // 添加视觉反馈：临时高亮点击的交点
+                        const targetDot = document.querySelector(`[data-x="${nearestCol}"][data-y="${gameY}"]`);
+                        if (targetDot) {
+                            targetDot.style.backgroundColor = '#ff6b6b';
+                            targetDot.style.transform = 'translate(-50%, -50%) scale(2)';
+                            setTimeout(() => {
+                                targetDot.style.backgroundColor = '#333';
+                                targetDot.style.transform = 'translate(-50%, -50%) scale(1)';
+                            }, 300);
+                        }
+                    }
+                });
+                
+                // 添加底部坐标数字 (0-10)
+                for (let x = 0; x <= 10; x++) {
+                    const number = document.createElement('div');
+                    number.classList.add('coordinate-number', 'column-number');
+                    number.textContent = x;
+                    number.style.left = `${x * cellSize}px`;
+                    number.style.bottom = '-40px';
+                    number.style.transform = 'translateX(-50%)';
+                    // 隐藏第一个数字0
+                    if (x === 0) {
+                        number.style.display = 'none';
+                    }
+                    boardContainer.appendChild(number);
+                }
+                
+                // 添加左侧坐标数字 (0-10)
+                for (let y = 0; y <= 10; y++) {
+                    const number = document.createElement('div');
+                    number.classList.add('coordinate-number', 'row-number');
+                    number.textContent = y;
+                    number.style.top = `${(10 - y) * cellSize}px`;
+                    number.style.left = '-40px';
+                    number.style.transform = 'translateY(-50%)';
+                    // 给第一个数字0添加下移样式
+                    if (y === 0) {
+                        number.style.transform = 'translateY(-10%)';
+                    }
+                    boardContainer.appendChild(number);
+                }
+            }
+            
+            // 放置棋子
+            function placePiece(x, y, color) {
+                if (gameOver) return false;
+                if (x < 0 || x > 10 || y < 0 || y > 10) {
+                    showCustomAlert('坐标超出范围，请输入0-10之间的数字');
+                    return false;
+                }
+                if (board[y][x] !== null) {
+                    showCustomAlert('该位置已有棋子，请选择其他位置');
+                    return false;
+                }
+                
+                board[y][x] = color;
+                
+                const cellSize = 500 / 10;
+                const piece = document.createElement('div');
+                piece.classList.add('piece', color);
+                // 棋子放置在交点位置
+                piece.style.left = `${x * cellSize}px`;
+                piece.style.top = `${(10 - y) * cellSize}px`;
+                boardContainer.appendChild(piece);
+                
+                // 添加放置动画
+                piece.style.transform = 'translate(-50%, -50%) scale(0)';
+                setTimeout(() => {
+                    piece.style.transform = 'translate(-50%, -50%) scale(1)';
+                }, 10);
+                
+                // 检查胜利条件
+                if (checkWin(x, y, color)) {
+                    gameOver = true;
+                    showVictory(color === 'black' ? '先手' : '后手');
+                    return true;
+                }
+                
+                // 切换玩家
+                currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+                resetInputSequence(); // 重置输入序列
+                updateActivePlayer();
+                
+                return true;
+            }
+            
+            // 检查是否获胜
+            function checkWin(x, y, color) {
+                // 检查方向: 水平、垂直、对角线
+                const directions = [
+                    [{x: 1, y: 0}, {x: -1, y: 0}],   // 水平
+                    [{x: 0, y: 1}, {x: 0, y: -1}],   // 垂直
+                    [{x: 1, y: 1}, {x: -1, y: -1}],  // 对角线 /
+                    [{x: 1, y: -1}, {x: -1, y: 1}]   // 对角线 \
+                ];
+                
+                for (const direction of directions) {
+                    let count = 1; // 包括当前棋子
+                    
+                    // 检查两个相反方向
+                    for (const dir of direction) {
+                        let dx = x + dir.x;
+                        let dy = y + dir.y;
+                        
+                        while (dx >= 0 && dx < 11 && dy >= 0 && dy < 11 && board[dy][dx] === color) {
+                            count++;
+                            dx += dir.x;
+                            dy += dir.y;
+                        }
+                    }
+                    
+                    if (count >= 5) return true;
+                }
+                
+                return false;
+            }
+            
+            // 显示胜利标记
+            function showVictory(winner) {
+                if (winner === '先手') {
+                    blackWinnerBadge.classList.add('show');
+                } else {
+                    whiteWinnerBadge.classList.add('show');
+                }
+                
+                // 显示重新开始按钮
+                restartBtn.style.display = 'block';
+                
+                // 添加庆祝效果
+                showConfetti();
+            }
+
+            // 更新当前玩家显示
+            function updateActivePlayer() {
+                const blackInput = document.querySelector('.player-black');
+                const whiteInput = document.querySelector('.player-white');
+                
+                blackInput.classList.remove('active');
+                whiteInput.classList.remove('active');
+                
+                if (currentPlayer === 'black') {
+                    blackInput.classList.add('active');
+                } else {
+                    whiteInput.classList.add('active');
+                }
+                
+                // 更新按钮状态
+                updateButtonStates();
+            }
+            
+            // 更新按钮状态
+            function updateButtonStates() {
+                const blackX = blackXInput.value.trim();
+                const blackY = blackYInput.value.trim();
+                const whiteX = whiteXInput.value.trim();
+                const whiteY = whiteYInput.value.trim();
+                
+                // 重置按钮状态
+                blackBtn.classList.remove('active-turn');
+                whiteBtn.classList.remove('active-turn');
+                blackBtn.disabled = true;
+                whiteBtn.disabled = true;
+                
+                if (currentPlayer === 'black' && blackX !== '' && blackY !== '') {
+                    blackBtn.disabled = false;
+                    blackBtn.classList.add('active-turn');
+                } else if (currentPlayer === 'white' && whiteX !== '' && whiteY !== '') {
+                    whiteBtn.disabled = false;
+                    whiteBtn.classList.add('active-turn');
+                }
+            }
+            
+            // 重新开始游戏
+            function restartGame() {
+                // 清除烟花特效
+                if (confettiInterval) {
+                    clearInterval(confettiInterval);
+                    confettiInterval = null;
+                }
+                board = Array(11).fill().map(() => Array(11).fill(null));
+                currentPlayer = 'black';
+                gameOver = false;
+                
+                // 隐藏获胜标记和重新开始按钮
+                blackWinnerBadge.classList.remove('show');
+                whiteWinnerBadge.classList.remove('show');
+                restartBtn.style.display = 'none';
+                
+                // 清空输入框
+                blackXInput.value = '';
+                blackYInput.value = '';
+                whiteXInput.value = '';
+                whiteYInput.value = '';
+                
+                updateActivePlayer();
+                
+                // 清空棋盘上的棋子
+                const pieces = document.querySelectorAll('.piece');
+                pieces.forEach(piece => piece.remove());
+                
+                // 重新初始化棋盘
+                initChessboard();
+            }
+            
+            // 数字键盘功能
+            let inputSequence = {}; // 记录每个玩家的输入顺序
+            inputSequence.black = 0; // 0表示下一个输入X坐标，1表示下一个输入Y坐标
+            inputSequence.white = 0;
+            let activeInput = null; // 当前激活的输入框
+            
+            // 为输入框添加焦点事件和输入监听
+            [blackXInput, blackYInput, whiteXInput, whiteYInput].forEach(input => {
+                input.addEventListener('focus', function() {
+                    activeInput = this;
+                });
+                input.addEventListener('blur', function() {
+                    // 延迟清除，避免点击数字按钮时立即清除
+                    setTimeout(() => {
+                        if (document.activeElement !== this) {
+                            activeInput = null;
+                        }
+                    }, 100);
+                });
+                
+                // 监听输入变化，更新按钮状态
+                input.addEventListener('input', function() {
+                    updateButtonStates();
+                });
+                
+                // 禁用上下箭头键改变数值
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                    }
+                });
+            });
+            
+            // 数字键盘点击事件
+            document.querySelectorAll('.num-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const target = this.dataset.target;
+                    const value = this.dataset.value;
+                    
+                    // 如果有激活的输入框，优先填入激活的输入框
+                    if (activeInput) {
+                        // 检查激活的输入框是否属于当前玩家
+                        const isBlackInput = activeInput === blackXInput || activeInput === blackYInput;
+                        const isWhiteInput = activeInput === whiteXInput || activeInput === whiteYInput;
+                        
+                        if ((target === 'black' && isBlackInput && currentPlayer === 'black') ||
+                            (target === 'white' && isWhiteInput && currentPlayer === 'white')) {
+                            activeInput.value = value;
+                            return;
+                        }
+                    }
+                    
+                    // 否则按照默认顺序填入
+                    if ((target === 'black' && currentPlayer === 'black') || 
+                        (target === 'white' && currentPlayer === 'white')) {
+                        
+                        if (target === 'black') {
+                            if (inputSequence.black === 0) {
+                                // 填入X坐标
+                                blackXInput.value = value;
+                                inputSequence.black = 1;
+                            } else {
+                                // 填入Y坐标
+                                blackYInput.value = value;
+                                inputSequence.black = 0; // 重置为下次填入X坐标
+                            }
+                        } else if (target === 'white') {
+                            if (inputSequence.white === 0) {
+                                // 填入X坐标
+                                whiteXInput.value = value;
+                                inputSequence.white = 1;
+                            } else {
+                                // 填入Y坐标
+                                whiteYInput.value = value;
+                                inputSequence.white = 0; // 重置为下次填入X坐标
+                            }
+                        }
+                        
+                        // 更新按钮状态
+                        updateButtonStates();
+                    }
+                });
+            });
+            
+            // 重置输入序列当玩家切换时
+            function resetInputSequence() {
+                inputSequence.black = 0;
+                inputSequence.white = 0;
+            }
+            
+            // 事件监听
+            blackBtn.addEventListener('click', function() {
+                if (currentPlayer !== 'black') {
+                    showCustomAlert('现在不是你的回合！');
+                    return;
+                }
+                
+                const x = parseInt(blackXInput.value);
+                const y = parseInt(blackYInput.value);
+                
+                if (isNaN(x) || isNaN(y)) {
+                    showCustomAlert('请输入有效的坐标数字！');
+                    return;
+                }
+                
+                console.log(`先手落子在 (${x}, ${y})`);
+                placePiece(x, y, 'black');
+            });
+            
+            whiteBtn.addEventListener('click', function() {
+                if (currentPlayer !== 'white') {
+                    showCustomAlert('现在不是你的回合！');
+                    return;
+                }
+                
+                const x = parseInt(whiteXInput.value);
+                const y = parseInt(whiteYInput.value);
+                
+                if (isNaN(x) || isNaN(y)) {
+                    showCustomAlert('请输入有效的坐标数字！');
+                    return;
+                }
+                
+                console.log(`后手落子在 (${x}, ${y})`);
+                placePiece(x, y, 'white');
+            });
+            
+            restartBtn.addEventListener('click', restartGame);
+            
+            // 初始化游戏
+            initChessboard();
+            updateActivePlayer();
+            
+            // 初始化按钮状态
+            blackBtn.disabled = true;
+            whiteBtn.disabled = true;
+        });
+    </script>
+
+
+
+
+<script>
+(function () {
+  var storageKey = 'edu_hide_brand_panels';
+  var toggleButton = document.getElementById('edu-border-toggle');
+  if (!toggleButton || !document.body) {
+    return;
+  }
+
+  function applyState(hidden) {
+    document.body.classList.toggle('edu-hide-brand-panels', hidden);
+    toggleButton.textContent = hidden ? '+' : '-';
+    toggleButton.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    toggleButton.setAttribute('aria-label', hidden ? '显示说明框' : '隐藏说明框');
+    toggleButton.setAttribute('title', hidden ? '显示说明框' : '隐藏说明框');
+  }
+
+  var hiddenByDefault = false;
+  try {
+    hiddenByDefault = localStorage.getItem(storageKey) === '1';
+  } catch (e) {
+    hiddenByDefault = false;
+  }
+
+  applyState(hiddenByDefault);
+
+  toggleButton.addEventListener('click', function () {
+    var nextHidden = !document.body.classList.contains('edu-hide-brand-panels');
+    applyState(nextHidden);
+    try {
+      localStorage.setItem(storageKey, nextHidden ? '1' : '0');
+    } catch (e) {
+      // no-op
+    }
+  });
+})();
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>华容道 - 经典版</title>
+    <style>
+        :root {
+            --cell-size: 100px;
+            --gap: 0px; 
+            --board-padding: 8px;
+            --board-bg: #111111; 
+            --bg-color: #f4e8d8; 
+            --text-color: #3e2723; 
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+            background-size: 30px 30px;
+            color: var(--text-color);
+            font-family: 'Kaiti', 'STKaiti', '楷体', serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .header-container {
+            width: 100%;
+            max-width: calc(var(--cell-size) * 4 + var(--board-padding) * 2 + 28px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 25px 0 15px;
+            position: relative;
+            padding: 0 10px;
+            box-sizing: border-box;
+        }
+
+        .eop-text {
+            font-family: 'Times New Roman', serif;
+            font-size: 26px;
+            color: #888;
+            letter-spacing: 2px;
+            width: 80px;
+        }
+
+        .title-text {
+            font-size: 52px;
+            margin: 0;
+            letter-spacing: 12px;
+            color: #1a1a1a;
+            font-weight: normal;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .step-text {
+            font-size: 18px;
+            color: #5c4033;
+            font-weight: bold;
+            width: 80px;
+            text-align: right;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+            justify-content: center;
+        }
+
+        select, button {
+            background: linear-gradient(to bottom, #faebd7, #e6c280);
+            border: 2px solid #5c4033;
+            color: #3e2723;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.8), 1px 2px 4px rgba(0,0,0,0.2);
+            font-family: 'Kaiti', 'STKaiti', '楷体', serif;
+            outline: none;
+        }
+
+        select:active, button:active {
+            transform: translateY(2px);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2), 0 1px 1px rgba(0,0,0,0.2);
+        }
+
+        .board-container {
+            position: relative;
+            /* 修正宽度和高度计算，保持内边距包裹，但是作为容器的基准 */
+            width: calc(var(--cell-size) * 4 + var(--board-padding) * 2);
+            height: calc(var(--cell-size) * 5 + var(--board-padding) * 2);
+            background-color: var(--board-bg);
+            border-top: 14px solid #1a1a1a;
+            border-left: 14px solid #1a1a1a;
+            border-right: 14px solid #1a1a1a;
+            border-bottom: none;
+            /* 关键修改：取消内边距，利用纯绝对定位，将边框的内部视为纯净网格区 */
+            padding: 0;
+            /* 修正容器本身的宽高：不需要再加上 padding 了 */
+            width: calc(var(--cell-size) * 4);
+            height: calc(var(--cell-size) * 5);
+            box-sizing: content-box;
+            margin-bottom: 30px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+        }
+
+        /* 模拟底部带缺口的边框 */
+        .bottom-border-left, .bottom-border-right {
+            position: absolute;
+            bottom: -14px;
+            height: 14px;
+            background: #1a1a1a;
+            width: calc(var(--cell-size) + 14px);
+        }
+        .bottom-border-left { left: -14px; }
+        .bottom-border-right { right: -14px; }
+
+        .cao-camp {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(var(--cell-size) * 2);
+            height: var(--cell-size);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333333;
+            font-size: 46px;
+            font-weight: bold;
+            letter-spacing: 25px;
+            text-indent: 25px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .piece {
+            position: absolute;
+            border: 3px solid #1a1a1a;
+            display: flex;
+            color: #1a1a1a;
+            cursor: grab;
+            z-index: 10;
+            /* 关键修改：使用 border-box 确保边框计算在宽度内，且不影响定位 */
+            box-sizing: border-box;
+            transition: transform 0.15s ease-out;
+            font-weight: bold;
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            /* 移除 background-clip 避免边框渲染异常 */
+        }
+
+        .piece.dragging {
+            cursor: grabbing;
+            z-index: 20;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+            transition: none;
+            opacity: 0.95;
+            transform: scale(1.01);
+        }
+
+        /* 竖排文字 (四将) */
+        .piece-v {
+            writing-mode: vertical-lr;
+            letter-spacing: 12px;
+            padding: 12px 10px;
+            font-size: 32px;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+
+        /* 横排文字 (关羽) */
+        .piece-h {
+            writing-mode: horizontal-tb;
+            letter-spacing: 15px;
+            font-size: 36px;
+            align-items: center;
+            justify-content: center;
+            text-indent: 15px; /* 修正字间距导致的整体偏移 */
+        }
+
+        /* 大方块竖排文字 (曹操) */
+        .piece-big {
+            writing-mode: vertical-lr;
+            letter-spacing: 12px;
+            padding: 15px 15px;
+            font-size: 40px;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+
+        /* 小方块文字 (兵) */
+        .piece-small {
+            writing-mode: horizontal-tb;
+            padding: 8px 10px;
+            font-size: 28px;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(3px);
+        }
+
+        .modal-content {
+            background: #e6ceac;
+            border: 4px solid #5c4033;
+            border-radius: 12px;
+            padding: 40px 60px;
+            text-align: center;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal h2 { font-size: 50px; color: #5c4033; margin: 0 0 15px 0; }
+        .modal p { font-size: 28px; color: #3e2723; margin: 0 0 30px 0; }
+
+        @media (max-width: 600px) {
+            :root {
+                --cell-size: 80px;
+                --board-padding: 6px;
+            }
+            .title-text { font-size: 42px; letter-spacing: 8px; }
+            .eop-text { font-size: 22px; width: 60px; }
+            .step-text { font-size: 16px; width: 60px; }
+            .piece-v { font-size: 28px; padding: 10px 8px; letter-spacing: 10px; }
+            .piece-h { font-size: 32px; letter-spacing: 12px; text-indent: 12px; }
+            .piece-big { font-size: 34px; padding: 12px 12px; }
+            .piece-small { font-size: 24px; padding: 6px 8px; }
+            select, button { font-size: 16px; padding: 6px 12px; }
+            .cao-camp { font-size: 36px; letter-spacing: 15px; text-indent: 15px; }
+            .board-container { border-width: 10px; }
+            .bottom-border-left, .bottom-border-right { height: 10px; bottom: -10px; }
+            .bottom-border-left { left: -10px; width: calc(var(--cell-size) + 10px); }
+            .bottom-border-right { right: -10px; width: calc(var(--cell-size) + 10px); }
+        }
+
+        @media (max-width: 450px) {
+            :root {
+                --cell-size: 70px;
+                --board-padding: 4px;
+            }
+            .header-container { margin: 15px 0 10px; padding: 0 5px; }
+            .title-text { font-size: 36px; letter-spacing: 6px; }
+            .eop-text { font-size: 18px; width: 50px;}
+            .step-text { font-size: 14px; width: 50px;}
+            .piece-v { font-size: 24px; padding: 8px 6px; letter-spacing: 8px; }
+            .piece-h { font-size: 28px; letter-spacing: 10px; text-indent: 10px; }
+            .piece-big { font-size: 30px; padding: 10px 10px; }
+            .piece-small { font-size: 20px; padding: 4px 6px; }
+            .cao-camp { font-size: 30px; letter-spacing: 10px; text-indent: 10px; }
+            .board-container { border-width: 8px; }
+            .bottom-border-left, .bottom-border-right { height: 8px; bottom: -8px; }
+            .bottom-border-left { left: -8px; width: calc(var(--cell-size) + 8px); }
+            .bottom-border-right { right: -8px; width: calc(var(--cell-size) + 8px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <div class="eop-text">EOP</div>
+        <h1 class="title-text">华容道</h1>
+        <div class="step-text">步数：<span id="step-count">0</span></div>
+    </div>
+
+    <div class="controls">
+        <select id="level-select">
+            <option value="0">横刀立马 (★★)</option>
+            <option value="1">层层设防 (★★★)</option>
+            <option value="2">兵分三路 (★★★★)</option>
+            <option value="3">插翅难飞 (★★★★)</option>
+            <option value="4">近在咫尺 (★★★★★)</option>
+        </select>
+        <button id="reset-btn">重新开始</button>
+    </div>
+
+    <div class="board-container" id="board-container">
+        <!-- 内部由JS动态生成 -->
+    </div>
+
+    <div class="modal" id="win-modal">
+        <div class="modal-content">
+            <h2>恭喜过关！</h2>
+            <p>总共移动了 <span id="final-steps">0</span> 步</p>
+            <button id="play-again-btn">再玩一次</button>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            cols: 4,
+            rows: 5,
+            cellSize: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')),
+            gap: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap')),
+            padding: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--board-padding'))
+        };
+
+        const COLORS = {
+            '曹操': '#ffcdd2', // 浅粉
+            '关羽': '#c8e6c9', // 浅绿
+            '张飞': '#b2dfdb', // 薄荷绿
+            '赵云': '#b3e5fc', // 浅蓝
+            '马超': '#b2ebf2', // 浅青
+            '黄忠': '#e1bee7', // 浅紫
+            '兵': '#ffecb3'   // 淡黄
+        };
+
+        const LEVELS = [
+            {
+                name: '横刀立马',
+                layout: [
+                    { id: 1, name: '曹操', w: 2, h: 2, type: 'big', x: 1, y: 0 },
+                    { id: 2, name: '关羽', w: 2, h: 1, type: 'h', x: 1, y: 2 },
+                    { id: 3, name: '张飞', w: 1, h: 2, type: 'v', x: 0, y: 2 },
+                    { id: 4, name: '赵云', w: 1, h: 2, type: 'v', x: 0, y: 0 },
+                    { id: 5, name: '马超', w: 1, h: 2, type: 'v', x: 3, y: 0 },
+                    { id: 6, name: '黄忠', w: 1, h: 2, type: 'v', x: 3, y: 2 },
+                    { id: 7, name: '兵', w: 1, h: 1, type: 'small', x: 1, y: 3 },
+                    { id: 8, name: '兵', w: 1, h: 1, type: 'small', x: 2, y: 3 },
+                    { id: 9, name: '兵', w: 1, h: 1, type: 'small', x: 0, y: 4 },
+                    { id: 10, name: '兵', w: 1, h: 1, type: 'small', x: 3, y: 4 }
+                ]
+            },
+            {
+                name: '层层设防',
+                layout: [
+                    { id: 1, name: '曹操', w: 2, h: 2, type: 'big', x: 1, y: 0 },
+                    { id: 2, name: '关羽', w: 2, h: 1, type: 'h', x: 1, y: 2 },
+                    { id: 3, name: '张飞', w: 1, h: 2, type: 'v', x: 0, y: 0 },
+                    { id: 4, name: '赵云', w: 1, h: 2, type: 'v', x: 3, y: 0 },
+                    { id: 5, name: '马超', w: 1, h: 2, type: 'v', x: 0, y: 3 },
+                    { id: 6, name: '黄忠', w: 1, h: 2, type: 'v', x: 3, y: 3 },
+                    { id: 7, name: '兵', w: 1, h: 1, type: 'small', x: 1, y: 3 },
+                    { id: 8, name: '兵', w: 1, h: 1, type: 'small', x: 2, y: 3 },
+                    { id: 9, name: '兵', w: 1, h: 1, type: 'small', x: 1, y: 4 },
+                    { id: 10, name: '兵', w: 1, h: 1, type: 'small', x: 2, y: 4 }
+                ]
+            },
+            {
+                name: '兵分三路',
+                layout: [
+                    { id: 1, name: '曹操', w: 2, h: 2, type: 'big', x: 1, y: 0 },
+                    { id: 2, name: '张飞', w: 1, h: 2, type: 'v', x: 0, y: 1 },
+                    { id: 3, name: '赵云', w: 1, h: 2, type: 'v', x: 3, y: 1 },
+                    { id: 4, name: '关羽', w: 2, h: 1, type: 'h', x: 1, y: 2 },
+                    { id: 5, name: '马超', w: 1, h: 2, type: 'v', x: 0, y: 3 },
+                    { id: 6, name: '黄忠', w: 1, h: 2, type: 'v', x: 3, y: 3 },
+                    { id: 7, name: '兵', w: 1, h: 1, type: 'small', x: 0, y: 0 },
+                    { id: 8, name: '兵', w: 1, h: 1, type: 'small', x: 3, y: 0 },
+                    { id: 9, name: '兵', w: 1, h: 1, type: 'small', x: 1, y: 3 },
+                    { id: 10, name: '兵', w: 1, h: 1, type: 'small', x: 2, y: 3 }
+                ]
+            },
+            {
+                name: '插翅难飞',
+                layout: [
+                    { id: 1, name: '曹操', w: 2, h: 2, type: 'big', x: 1, y: 0 },
+                    { id: 2, name: '赵云', w: 1, h: 2, type: 'v', x: 0, y: 0 },
+                    { id: 3, name: '黄忠', w: 1, h: 2, type: 'v', x: 3, y: 0 },
+                    { id: 4, name: '马超', w: 1, h: 2, type: 'v', x: 0, y: 2 },
+                    { id: 5, name: '张飞', w: 1, h: 2, type: 'v', x: 3, y: 2 },
+                    { id: 6, name: '关羽', w: 2, h: 1, type: 'h', x: 1, y: 3 },
+                    { id: 7, name: '兵', w: 1, h: 1, type: 'small', x: 1, y: 2 },
+                    { id: 8, name: '兵', w: 1, h: 1, type: 'small', x: 2, y: 2 },
+                    { id: 9, name: '兵', w: 1, h: 1, type: 'small', x: 0, y: 4 },
+                    { id: 10, name: '兵', w: 1, h: 1, type: 'small', x: 3, y: 4 }
+                ]
+            },
+            {
+                name: '近在咫尺',
+                layout: [
+                    { id: 1, name: '曹操', w: 2, h: 2, type: 'big', x: 1, y: 0 },
+                    { id: 2, name: '关羽', w: 2, h: 1, type: 'h', x: 1, y: 3 },
+                    { id: 3, name: '张飞', w: 1, h: 2, type: 'v', x: 0, y: 0 },
+                    { id: 4, name: '赵云', w: 1, h: 2, type: 'v', x: 3, y: 0 },
+                    { id: 5, name: '马超', w: 1, h: 2, type: 'v', x: 0, y: 2 },
+                    { id: 6, name: '黄忠', w: 1, h: 2, type: 'v', x: 3, y: 2 },
+                    { id: 7, name: '兵', w: 1, h: 1, type: 'small', x: 1, y: 2 },
+                    { id: 8, name: '兵', w: 1, h: 1, type: 'small', x: 2, y: 2 },
+                    { id: 9, name: '兵', w: 1, h: 1, type: 'small', x: 1, y: 4 },
+                    { id: 10, name: '兵', w: 1, h: 1, type: 'small', x: 2, y: 4 }
+                ]
+            }
+        ];
+
+        let pieces = [];
+        let board = Array(CONFIG.rows).fill().map(() => Array(CONFIG.cols).fill(0));
+        let steps = 0;
+        let isGameOver = false;
+
+        let activePiece = null;
+        let startPos = { x: 0, y: 0 };
+        let currentTranslate = { x: 0, y: 0 };
+        let dragBounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+        let dragAxis = null;
+
+        const container = document.getElementById('board-container');
+        const stepEl = document.getElementById('step-count');
+        const modal = document.getElementById('win-modal');
+        const levelSelect = document.getElementById('level-select');
+
+        function loadLevel() {
+            updateConfig();
+            
+            const levelIdx = parseInt(levelSelect.value);
+            pieces = JSON.parse(JSON.stringify(LEVELS[levelIdx].layout));
+            
+            pieces.forEach(p => p.color = COLORS[p.name]);
+
+            steps = 0;
+            isGameOver = false;
+            stepEl.textContent = steps;
+            modal.style.display = 'none';
+            
+            // 重建棋盘基础元素
+            container.innerHTML = `
+                <div class="cao-camp">曹 营</div>
+                <div class="bottom-border-left"></div>
+                <div class="bottom-border-right"></div>
+            `;
+
+            updateBoardGrid();
+            renderPieces();
+        }
+
+        function init() {
+            window.addEventListener('resize', () => {
+                updateConfig();
+                if (pieces.length > 0) {
+                    pieces.forEach(p => {
+                        if (p.el) {
+                            p.el.style.width = `calc(${CONFIG.cellSize * p.w}px + ${CONFIG.gap * (p.w - 1)}px)`;
+                            p.el.style.height = `calc(${CONFIG.cellSize * p.h}px + ${CONFIG.gap * (p.h - 1)}px)`;
+                            updatePieceTransform(p);
+                        }
+                    });
+                }
+            });
+            loadLevel();
+        }
+
+        function updateConfig() {
+            const root = document.documentElement;
+            CONFIG.cellSize = parseInt(getComputedStyle(root).getPropertyValue('--cell-size'));
+            CONFIG.gap = parseInt(getComputedStyle(root).getPropertyValue('--gap'));
+            CONFIG.padding = parseInt(getComputedStyle(root).getPropertyValue('--board-padding'));
+        }
+
+        function updateBoardGrid() {
+            board = Array(CONFIG.rows).fill().map(() => Array(CONFIG.cols).fill(0));
+            pieces.forEach(p => {
+                for (let r = p.y; r < p.y + p.h; r++) {
+                    for (let c = p.x; c < p.x + p.w; c++) {
+                        board[r][c] = p.id;
+                    }
+                }
+            });
+        }
+
+        function renderPieces() {
+            pieces.forEach(p => {
+                const el = document.createElement('div');
+                el.className = `piece piece-${p.type}`;
+                el.textContent = p.name;
+                el.style.backgroundColor = p.color;
+                el.style.width = `calc(${CONFIG.cellSize * p.w}px + ${CONFIG.gap * (p.w - 1)}px)`;
+                el.style.height = `calc(${CONFIG.cellSize * p.h}px + ${CONFIG.gap * (p.h - 1)}px)`;
+                
+                p.el = el;
+                updatePieceTransform(p);
+
+                el.addEventListener('pointerdown', (e) => onPointerDown(e, p));
+                
+                container.appendChild(el);
+            });
+        }
+
+        function updatePieceTransform(p) {
+            // 这里移除了 padding 带来的多余偏移
+            const px = p.x * (CONFIG.cellSize + CONFIG.gap);
+            const py = p.y * (CONFIG.cellSize + CONFIG.gap);
+            p.el.style.transform = `translate(${px}px, ${py}px)`;
+        }
+
+        function calculateBounds(p) {
+            let left = 0, right = 0, up = 0, down = 0;
+
+            for (let c = p.x - 1; c >= 0; c--) {
+                let canMove = true;
+                for (let r = p.y; r < p.y + p.h; r++) {
+                    if (board[r][c] !== 0) { canMove = false; break; }
+                }
+                if (canMove) left++; else break;
+            }
+
+            for (let c = p.x + p.w; c < CONFIG.cols; c++) {
+                let canMove = true;
+                for (let r = p.y; r < p.y + p.h; r++) {
+                    if (board[r][c] !== 0) { canMove = false; break; }
+                }
+                if (canMove) right++; else break;
+            }
+
+            for (let r = p.y - 1; r >= 0; r--) {
+                let canMove = true;
+                for (let c = p.x; c < p.x + p.w; c++) {
+                    if (board[r][c] !== 0) { canMove = false; break; }
+                }
+                if (canMove) up++; else break;
+            }
+
+            for (let r = p.y + p.h; r < CONFIG.rows; r++) {
+                let canMove = true;
+                for (let c = p.x; c < p.x + p.w; c++) {
+                    if (board[r][c] !== 0) { canMove = false; break; }
+                }
+                if (canMove) down++; else break;
+            }
+
+            const stepSize = CONFIG.cellSize + CONFIG.gap;
+            return {
+                minX: -left * stepSize,
+                maxX: right * stepSize,
+                minY: -up * stepSize,
+                maxY: down * stepSize
+            };
+        }
+
+        function onPointerDown(e, p) {
+            if (isGameOver) return;
+            if (e.button !== 0 && e.type.startsWith('mouse')) return; 
+            
+            e.preventDefault();
+            activePiece = p;
+            activePiece.el.classList.add('dragging');
+            activePiece.el.style.transition = 'none';
+
+            startPos = { x: e.clientX, y: e.clientY };
+            currentTranslate = { x: 0, y: 0 };
+            dragBounds = calculateBounds(p);
+            dragAxis = null;
+
+            window.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('pointerup', onPointerUp);
+            window.addEventListener('pointercancel', onPointerUp);
+        }
+
+        function onPointerMove(e) {
+            if (!activePiece) return;
+            e.preventDefault();
+
+            let dx = e.clientX - startPos.x;
+            let dy = e.clientY - startPos.y;
+
+            if (!dragAxis && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    if (dragBounds.minX === 0 && dragBounds.maxX === 0) {
+                        dragAxis = 'y';
+                    } else {
+                        dragAxis = 'x';
+                    }
+                } else {
+                    if (dragBounds.minY === 0 && dragBounds.maxY === 0) {
+                        dragAxis = 'x';
+                    } else {
+                        dragAxis = 'y';
+                    }
+                }
+            }
+
+            if (dragAxis === 'x') {
+                dy = 0;
+                dx = Math.max(dragBounds.minX, Math.min(dragBounds.maxX, dx));
+            } else if (dragAxis === 'y') {
+                dx = 0;
+                dy = Math.max(dragBounds.minY, Math.min(dragBounds.maxY, dy));
+            } else {
+                dx = 0;
+                dy = 0;
+            }
+
+            currentTranslate = { x: dx, y: dy };
+            
+            // 同样在移动时也要移除 padding 的影响
+            const basePx = activePiece.x * (CONFIG.cellSize + CONFIG.gap);
+            const basePy = activePiece.y * (CONFIG.cellSize + CONFIG.gap);
+            
+            activePiece.el.style.transform = `translate(${basePx + dx}px, ${basePy + dy}px)`;
+        }
+
+        function onPointerUp(e) {
+            if (!activePiece) return;
+            
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerUp);
+
+            activePiece.el.classList.remove('dragging');
+            activePiece.el.style.transition = 'transform 0.15s ease-out';
+
+            const stepSize = CONFIG.cellSize + CONFIG.gap;
+            
+            let deltaCellsX = Math.round(currentTranslate.x / stepSize);
+            let deltaCellsY = Math.round(currentTranslate.y / stepSize);
+
+            if (deltaCellsX !== 0 || deltaCellsY !== 0) {
+                activePiece.x += deltaCellsX;
+                activePiece.y += deltaCellsY;
+                steps++;
+                stepEl.textContent = steps;
+                updateBoardGrid();
+                checkWin();
+            }
+
+            updatePieceTransform(activePiece);
+            activePiece = null;
+        }
+
+        function checkWin() {
+            const caocao = pieces.find(p => p.id === 1);
+            if (caocao.x === 1 && caocao.y === 3) {
+                isGameOver = true;
+                setTimeout(() => {
+                    document.getElementById('final-steps').textContent = steps;
+                    modal.style.display = 'flex';
+                }, 300);
+            }
+        }
+
+        levelSelect.addEventListener('change', loadLevel);
+        document.getElementById('reset-btn').addEventListener('click', loadLevel);
+        document.getElementById('play-again-btn').addEventListener('click', loadLevel);
+
+        init();
+
+    </script>
+</body>
+</html>

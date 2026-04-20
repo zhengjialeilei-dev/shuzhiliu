@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>同一个圆柱的展开图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #ffffff; font-family: 'Georgia', 'Times New Roman', serif; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        
+        .header-text {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            color: #333;
+            text-align: center;
+            z-index: 10;
+            white-space: nowrap;
+            letter-spacing: 2px;
+        }
+
+        #ui-container { 
+            position: absolute; 
+            bottom: 40px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 24px 40px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            min-width: 450px;
+            border: 1px solid #eee;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .cut-btn { 
+            flex: 1;
+            padding: 10px 0; 
+            border: 2px solid #7bc0b5; 
+            border-radius: 8px; 
+            color: #7bc0b5; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            background: transparent;
+            font-size: 16px;
+        }
+        .cut-btn:hover { background: rgba(123, 192, 181, 0.1); }
+        .cut-btn.active { background: #7bc0b5; color: white; box-shadow: 0 4px 10px rgba(123, 192, 181, 0.4); }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            color: #666;
+            font-weight: bold;
+        }
+        
+        input[type=range] {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #7bc0b5;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        #toggle-btn {
+            padding: 12px 36px;
+            background: #7bc0b5;
+            color: white;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 18px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(123, 192, 181, 0.4);
+            transition: all 0.3s;
+        }
+        #toggle-btn:hover { background: #65a89d; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(123, 192, 181, 0.5); }
+        #toggle-btn:active { transform: translateY(0); }
+    </style>
+</head>
+<body>
+    <div class="header-text">下面是同一个圆柱的展开图，说一说每个图是怎样展开的。</div>
+    
+    <div id="canvas-container"></div>
+    
+    <div id="ui-container">
+        <div class="btn-group">
+            <button class="cut-btn active" data-type="rectangle">垂直剪开 (矩形)</button>
+            <button class="cut-btn" data-type="curve">曲线剪开 (不规则)</button>
+            <button class="cut-btn" data-type="parallelogram">斜线剪开 (平行四边形)</button>
+        </div>
+        
+        <div class="slider-container">
+            <span>圆柱</span>
+            <input type="range" id="slider" min="0" max="1" step="0.001" value="0">
+            <span>展开图</span>
+        </div>
+        
+        <button id="toggle-btn">自动演示展开</button>
+    </div>
+
+    <script>
+        // --- 核心参数 ---
+        const R = 1.5; // 圆柱半径
+        const H = 4.0; // 圆柱高度
+        const C = 2 * Math.PI * R; // 周长 (展开后的宽度)
+        
+        let currentType = 'rectangle'; // 'rectangle', 'parallelogram', 'curve'
+        let animProgress = 0; // 0 = 卷起, 1 = 展开
+
+        // --- Three.js 初始化 ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 3, 14);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 5;
+        controls.maxDistance = 30;
+
+        // --- 灯光 ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        dirLight.position.set(5, 10, 7);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+        
+        const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+        dirLight2.position.set(-5, 5, -7);
+        scene.add(dirLight2);
+
+        // --- 材质 (主题色 #7bc0b5) ---
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x7bc0b5,
+            side: THREE.DoubleSide,
+            roughness: 0.5,
+            metalness: 0.1,
+        });
+
+        // 为了让边缘更清晰，我们给它加上一点黑色描边感，这里使用两个材质或只是调整光影
+        // StandardMaterial 的双面渲染在良好打光下已经足够清晰
+
+        // --- 几何体构建 ---
+        
+        // 1. 侧面 (动态网格)
+        const lateralSegmentsX = 120;
+        const lateralSegmentsY = 30;
+        // 创建平面几何体，之后我们将手动修改它的顶点来"卷起"它
+        const lateralGeometry = new THREE.PlaneGeometry(1, 1, lateralSegmentsX, lateralSegmentsY);
+        const lateralMesh = new THREE.Mesh(lateralGeometry, material);
+        lateralMesh.castShadow = true;
+        lateralMesh.receiveShadow = true;
+        scene.add(lateralMesh);
+
+        // 2. 顶盖
+        const topCapGroup = new THREE.Group();
+        scene.add(topCapGroup);
+        const capGeometry = new THREE.CircleGeometry(R, 64);
+        const topCapMesh = new THREE.Mesh(capGeometry, material);
+        topCapMesh.castShadow = true;
+        // 将顶盖的局部坐标偏移，使其边缘对准组的中心(铰链点)
+        topCapMesh.position.set(0, R, 0); 
+        topCapGroup.add(topCapMesh);
+
+        // 3. 底盖
+        const botCapGroup = new THREE.Group();
+        scene.add(botCapGroup);
+        const botCapMesh = new THREE.Mesh(capGeometry, material);
+        botCapMesh.castShadow = true;
+        // 底盖局部坐标偏移相反
+        botCapMesh.position.set(0, -R, 0);
+        botCapGroup.add(botCapMesh);
+
+        // --- 核心数学与展开逻辑 ---
+
+        // 定义中心切线方程：不同剪开方式对应不同的展开图中心线
+        function getXCenter(y, type) {
+            if (type === 'rectangle') {
+                return 0; // 直线
+            } else if (type === 'parallelogram') {
+                return y * 0.7; // 斜线
+            } else if (type === 'curve') {
+                // 模拟图片中左右内凹的曲线，这里用余弦波
+                return Math.cos(y / H * Math.PI) * 1.5; 
+            }
+            return 0;
+        }
+
+        // 更新几何体函数 (t = 0 时为圆柱，t = 1 时为平铺)
+        function updateGeometry(t) {
+            const pos = lateralGeometry.attributes.position;
+            const uv = lateralGeometry.attributes.uv;
+
+            // 曲率 (k=0 时为平坦，k=1/R 时为完整的圆柱)
+            const k = (1 - t) / R;
+
+            for (let i = 0; i < pos.count; i++) {
+                const u = uv.getX(i); // 0 到 1 (水平进度)
+                const v = uv.getY(i); // 0 到 1 (垂直进度)
+                
+                const y = H * (v - 0.5); // 实际 Y 坐标
+                const xc = getXCenter(y, currentType);
+                
+                // 平面上的 X 范围
+                const x_left = xc - C / 2;
+                
+                // 稍微留一丝极其微小的缝隙(0.1%)，让闭合时能看出剪裁的痕迹
+                const mappedU = 0.0005 + u * 0.999;
+                const x = x_left + mappedU * C;
+
+                let X, Z;
+                if (k > 0.00001) {
+                    // 卷起状态的物理映射：根据曲率弯曲
+                    X = Math.sin(x * k) / k;
+                    Z = (Math.cos(x * k) - 1) / k;
+                } else {
+                    // 完全平坦
+                    X = x;
+                    Z = 0;
+                }
+
+                pos.setXYZ(i, X, y, Z);
+            }
+            
+            pos.needsUpdate = true;
+            lateralGeometry.computeVertexNormals(); // 重新计算法线以保证光照正确
+
+            // --- 更新顶盖和底盖 ---
+            updateCap(topCapGroup, H/2, t);
+            updateCap(botCapGroup, -H/2, t);
+        }
+
+        function updateCap(group, y, t) {
+            const xc = getXCenter(y, currentType);
+            const k = (1 - t) / R;
+
+            let X, Z;
+            if (k > 0.00001) {
+                X = Math.sin(xc * k) / k;
+                Z = (Math.cos(xc * k) - 1) / k;
+            } else {
+                X = xc;
+                Z = 0;
+            }
+
+            // 1. 设置铰链点位置
+            group.position.set(X, y, Z);
+            
+            // 2. 重置旋转
+            group.rotation.set(0, 0, 0);
+            
+            // 3. 沿Y轴旋转，使其贴合侧面的切线方向
+            group.rotateY(xc * k);
+            
+            // 4. 沿局部X轴"翻折"
+            // y > 0 为顶盖，y < 0 为底盖。翻折方向不同。
+            const sign = y > 0 ? -1 : 1;
+            group.rotateX(sign * (1 - t) * Math.PI / 2);
+        }
+
+        // 初始化第一次渲染
+        updateGeometry(animProgress);
+
+        // --- 动画与交互逻辑 ---
+        const slider = document.getElementById('slider');
+        const toggleBtn = document.getElementById('toggle-btn');
+        const cutBtns = document.querySelectorAll('.cut-btn');
+
+        let tween = null;
+
+        function renderProgress(p) {
+            animProgress = p;
+            slider.value = p;
+            updateGeometry(p);
+        }
+
+        slider.addEventListener('input', (e) => {
+            if (tween) tween.kill(); // 停止自动动画
+            renderProgress(parseFloat(e.target.value));
+            updateBtnText();
+        });
+
+        function updateBtnText() {
+            if (animProgress > 0.5) {
+                toggleBtn.textContent = "自动演示卷起";
+                toggleBtn.style.background = "#e6a23c";
+            } else {
+                toggleBtn.textContent = "自动演示展开";
+                toggleBtn.style.background = "#7bc0b5";
+            }
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            if (tween) tween.kill();
+            
+            const target = animProgress > 0.5 ? 0 : 1;
+            
+            tween = gsap.to({ p: animProgress }, {
+                p: target,
+                duration: 2.0,
+                ease: "power2.inOut",
+                onUpdate: function() {
+                    renderProgress(this.targets()[0].p);
+                },
+                onComplete: updateBtnText
+            });
+        });
+
+        cutBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // 更新UI状态
+                cutBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // 切换类型
+                currentType = btn.dataset.type;
+                
+                // 如果当前处于展开状态，为了演示效果可以自动先卷起再展开（或者直接更新）
+                // 为了流畅体验，这里选择直接更新几何体并带有轻微的弹性过渡
+                if (animProgress > 0) {
+                    // 利用一个假的变量强制重新计算并赋予动感
+                    if(tween) tween.kill();
+                    
+                    // 我们直接更新形状
+                    updateGeometry(animProgress);
+                    
+                    // 添加一个小的弹跳动画反馈
+                    gsap.fromTo(scene.scale, 
+                        { x: 0.95, y: 0.95, z: 0.95 }, 
+                        { x: 1, y: 1, z: 1, duration: 0.5, ease: "back.out(1.7)" }
+                    );
+                } else {
+                    updateGeometry(animProgress);
+                }
+            });
+        });
+
+        // --- 渲染循环 ---
+        function animate() {
+            requestAnimationFrame(animProgressLoop);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function animProgressLoop() {
+            animate();
+        }
+        
+        // 启动循环
+        animProgressLoop();
+
+        // 响应窗口大小变化
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>

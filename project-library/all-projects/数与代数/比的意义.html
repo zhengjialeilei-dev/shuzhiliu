@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>数学实验室：比的意义与基本性质 (Layout Fixed)</title>
+    <!-- 引入 FontAwesome 图标 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Canvas Confetti 烟花特效 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- 引入 Marked 用于解析 AI 返回的 Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        :root {
+            --ios-bg: #F2F2F7;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --primary-red: 255, 59, 48;
+            --primary-yellow: 255, 204, 0;
+            --text-primary: #1C1C1E;
+            --ai-purple-bg: #fcfaff; 
+            --ai-purple-border: rgba(175, 82, 222, 0.15);
+        }
+
+        body {
+            background-color: var(--ios-bg);
+            background-image: 
+                radial-gradient(circle at 5% 15%, rgba(255, 59, 48, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 95% 85%, rgba(255, 204, 0, 0.06) 0%, transparent 50%);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 统一卡片基础样式 */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03);
+            /* 强制盒模型，防止 padding 撑大宽度 */
+            box-sizing: border-box; 
+        }
+
+        /* 隐藏滚动条 */
+        .scroll-hidden::-webkit-scrollbar { display: none; }
+        .scroll-hidden { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* === 控件布局 === */
+        
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 48px;
+            gap: 12px;
+        }
+
+        .label-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 55px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #48484a;
+            flex-shrink: 0;
+        }
+
+        .slider-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .value-display {
+            width: 32px;
+            text-align: right;
+            font-family: "SF Mono", "Menlo", monospace;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #1c1c1e;
+            flex-shrink: 0;
+        }
+
+        /* 滑块样式 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            margin: 0;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1), 0 0 0 0.5px rgba(0,0,0,0.05);
+            margin-top: -10px;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:active { 
+            transform: scale(1.15); 
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15); 
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer; border-radius: 2px;
+        }
+
+        .slider-red::-webkit-slider-runnable-track { background: rgba(var(--primary-red), 0.2); }
+        .slider-red::-webkit-slider-thumb { border: 2px solid rgb(var(--primary-red)); }
+        
+        .slider-yellow::-webkit-slider-runnable-track { background: rgba(var(--primary-yellow), 0.3); }
+        .slider-yellow::-webkit-slider-thumb { border: 2px solid rgb(var(--primary-yellow)); }
+
+        /* 烧杯容器 */
+        .beaker-container {
+            width: 120px;
+            height: 180px;
+            position: relative;
+            margin: 0 auto;
+        }
+        .beaker {
+            width: 100%; height: 100%;
+            border: 4px solid rgba(255,255,255,0.7);
+            border-top: none;
+            border-radius: 0 0 28px 28px;
+            background: rgba(255, 255, 255, 0.2);
+            position: relative; overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.4);
+            backdrop-filter: blur(2px);
+        }
+        .liquid {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
+            transition: height 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.5s ease;
+        }
+        .liquid::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 6px;
+            background: rgba(255,255,255,0.5); opacity: 0.6;
+        }
+
+        /* 动画与过渡 */
+        .animate-pop { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        
+        .card-transition { transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+
+        /* AI 消息 */
+        .ai-message { font-size: 0.9rem; line-height: 1.6; color: #444; }
+        .ai-message p { margin-bottom: 0.5em; }
+    </style>
+</head>
+<body class="p-4 md:p-8 text-gray-800">
+
+    <main class="w-full max-w-[1280px] h-full grid grid-cols-1 md:grid-cols-12 gap-6 relative">
+        
+        <!-- 左侧：控制台 (Layout Fixed) -->
+        <!-- 核心修复：添加 max-w-md 和 mx-auto 确保在移动端和大屏下宽度一致，且不超过右侧比例 -->
+        <section class="md:col-span-5 lg:col-span-4 flex flex-col h-full overflow-hidden w-full">
+            
+            <!-- 头部 -->
+            <header class="px-1 py-4 flex-shrink-0 flex justify-between items-center mb-2">
+                <h1 class="text-xl font-bold flex items-center gap-3 text-gray-800 tracking-tight">
+                    <span class="w-8 h-8 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-500">
+                        <i class="fas fa-flask"></i>
+                    </span>
+                    <span>比的性质</span>
+                </h1>
+                <div class="text-[10px] font-bold text-gray-400 bg-white/60 px-2 py-1 rounded-md uppercase tracking-wider border border-white/50">PRO LAB</div>
+            </header>
+
+            <!-- 核心滚动区 -->
+            <!-- 修复：统一 gap, 移除 padding-right, 依靠 w-full 统一对齐 -->
+            <div class="flex-1 overflow-y-auto scroll-hidden flex flex-col w-full" style="gap: 20px; padding-bottom: 20px;">
+                
+                <!-- 1. 配方 A -->
+                <div class="glass-panel w-full p-5 relative overflow-hidden bg-white/60 border-white/80 shrink-0">
+                    <div class="absolute -top-3 -right-3 text-[100px] font-black opacity-[0.02] pointer-events-none select-none text-gray-900">A</div>
+                    
+                    <div class="flex justify-between items-center mb-4 z-10 relative">
+                        <h2 class="font-bold text-sm text-gray-500 uppercase tracking-wide flex items-center gap-2">
+                            <span class="w-2 h-2 bg-blue-500 rounded-full"></span> 标准配方 A
+                        </h2>
+                        <div class="bg-white border border-gray-100 px-3 py-1 rounded-lg text-lg font-mono font-bold text-gray-800 shadow-sm" id="displayRatioA">2 : 3</div>
+                    </div>
+
+                    <div class="control-row z-10 relative">
+                        <div class="label-group"><i class="fas fa-circle text-[10px] text-red-500"></i> 红</div>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="10" value="2" class="slider-red" id="inputR1" oninput="updateSystem()">
+                        </div>
+                        <div class="value-display" id="valR1">2</div>
+                    </div>
+
+                    <div class="control-row z-10 relative">
+                        <div class="label-group"><i class="fas fa-circle text-[10px] text-yellow-500"></i> 黄</div>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="10" value="3" class="slider-yellow" id="inputY1" oninput="updateSystem()">
+                        </div>
+                        <div class="value-display" id="valY1">3</div>
+                    </div>
+                    
+                     <div class="flex justify-between items-center border-t border-gray-200/50 pt-2 mt-2 z-10 relative">
+                        <span class="text-[10px] text-gray-400 font-semibold">最简整数比</span>
+                        <span class="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded" id="simpA">2 : 3</span>
+                    </div>
+                </div>
+
+                <!-- 2. 配方 B -->
+                <div class="glass-panel w-full p-5 relative overflow-hidden bg-blue-50/40 card-transition border border-blue-100/60 shrink-0" id="cardB">
+                    <div class="absolute -top-3 -right-3 text-[100px] font-black opacity-[0.02] pointer-events-none select-none text-blue-900">B</div>
+
+                    <div class="flex justify-between items-center mb-4 z-10 relative">
+                        <h2 class="font-bold text-sm text-gray-500 uppercase tracking-wide flex items-center gap-2">
+                            <span class="w-2 h-2 bg-purple-500 rounded-full"></span> 实验配方 B
+                        </h2>
+                        <div class="bg-white border border-gray-100 px-3 py-1 rounded-lg text-lg font-mono font-bold text-gray-800 shadow-sm" id="displayRatioB">4 : 6</div>
+                    </div>
+
+                    <div class="control-row z-10 relative">
+                        <div class="label-group"><i class="fas fa-circle text-[10px] text-red-500"></i> 红</div>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="20" value="4" class="slider-red" id="inputR2" oninput="updateSystem()">
+                        </div>
+                        <div class="value-display" id="valR2">4</div>
+                    </div>
+
+                    <div class="control-row z-10 relative">
+                        <div class="label-group"><i class="fas fa-circle text-[10px] text-yellow-500"></i> 黄</div>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="20" value="6" class="slider-yellow" id="inputY2" oninput="updateSystem()">
+                        </div>
+                        <div class="value-display" id="valY2">6</div>
+                    </div>
+                     <div class="flex justify-between items-center border-t border-blue-200/30 pt-2 mt-2 z-10 relative">
+                        <span class="text-[10px] text-gray-400 font-semibold">最简整数比</span>
+                        <span class="text-xs font-bold text-gray-500 bg-blue-100/50 px-2 py-0.5 rounded" id="simpB">2 : 3</span>
+                    </div>
+                </div>
+
+                <!-- 3. 操作按钮组 (工具栏风格，无背景) -->
+                <!-- 修复：使用 w-full 和 grid 保证宽度与上方卡片完全一致 -->
+                <div class="w-full grid grid-cols-3 gap-3 shrink-0">
+                    <button onclick="expandRatio(2)" class="bg-white/80 hover:bg-white text-blue-600 font-bold py-3 rounded-xl border border-blue-100/80 shadow-sm transition-all active:scale-95 flex flex-col items-center justify-center group h-20">
+                        <span class="text-[10px] text-gray-400 font-normal mb-1 group-hover:text-blue-400 uppercase tracking-wider">Expand</span>
+                        <span class="text-xl">×2</span>
+                    </button>
+                    <button onclick="expandRatio(3)" class="bg-white/80 hover:bg-white text-blue-600 font-bold py-3 rounded-xl border border-blue-100/80 shadow-sm transition-all active:scale-95 flex flex-col items-center justify-center group h-20">
+                        <span class="text-[10px] text-gray-400 font-normal mb-1 group-hover:text-blue-400 uppercase tracking-wider">Expand</span>
+                        <span class="text-xl">×3</span>
+                    </button>
+                    <button onclick="randomExpand()" class="bg-white/80 hover:bg-white text-purple-600 font-bold py-3 rounded-xl border border-purple-100/80 shadow-sm transition-all active:scale-95 flex flex-col items-center justify-center group h-20">
+                        <span class="text-[10px] text-gray-400 font-normal mb-1 group-hover:text-purple-400 uppercase tracking-wider">Random</span>
+                        <span class="text-xl"><i class="fas fa-dice"></i></span>
+                    </button>
+                </div>
+
+                <!-- 4. AI 助教 (卡片对齐) -->
+                <!-- 修复：padding 和 宽度限制 -->
+                <div class="w-full rounded-2xl p-4 flex flex-col gap-3 min-h-[180px] border shrink-0" style="background-color: var(--ai-purple-bg); border-color: var(--ai-purple-border);">
+                    <!-- Header: 标题左，按钮右 -->
+                    <div class="flex justify-between items-center pb-2 border-b border-purple-100/50">
+                        <h3 class="font-bold text-gray-700 flex items-center gap-2 text-sm">
+                            <span class="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs shadow-sm"><i class="fas fa-robot"></i></span>
+                            AI 智能助教
+                        </h3>
+                        <div class="flex gap-2">
+                            <button onclick="askAI('explain')" class="bg-white hover:bg-purple-50 text-purple-600 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-purple-100 shadow-sm transition-colors active:scale-95">
+                                原理?
+                            </button>
+                            <button onclick="askAI('problem')" class="bg-white hover:bg-blue-50 text-blue-600 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-blue-100 shadow-sm transition-colors active:scale-95">
+                                出题
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- AI Output -->
+                    <div id="aiOutput" class="flex-1 bg-white/60 rounded-xl p-3 text-sm overflow-y-auto scroll-hidden border border-purple-100/50 relative shadow-inner h-full">
+                        <div class="absolute inset-0 flex items-center justify-center text-gray-400 italic text-xs pointer-events-none">
+                            <span class="opacity-60">点击按钮开始辅导</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 右侧：实验室 (保持 60% 占比) -->
+        <section class="md:col-span-7 lg:col-span-8 h-full flex flex-col">
+            <div class="glass-panel h-full p-8 relative flex flex-col items-center justify-center bg-white/30 border-white/40">
+                
+                <div id="statusMessage" class="absolute top-8 z-20 transition-all duration-500">
+                    <span class="bg-white/95 backdrop-blur-xl px-6 py-2.5 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.08)] text-sm font-bold text-gray-600 border border-white/60 flex items-center gap-2">
+                        <i class="fas fa-hand-pointer text-blue-400 animate-pulse"></i> 拖动左侧滑块开始实验
+                    </span>
+                </div>
+
+                <div class="flex w-full justify-evenly items-end h-3/5 relative mb-12 px-4 md:px-8">
+                    
+                    <!-- 烧杯 A -->
+                    <div class="flex flex-col items-center gap-3 z-10 w-[120px]">
+                        <div class="beaker-container">
+                            <div class="beaker">
+                                <div class="liquid" id="liquidA"></div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold text-gray-700 mb-0.5">烧杯 A</div>
+                            <div class="text-[10px] text-gray-400 font-mono bg-white/50 px-2 py-0.5 rounded-full" id="volA">Total: 5</div>
+                        </div>
+                        <div class="flex w-full h-1.5 rounded-full overflow-hidden bg-gray-200/50 mt-1 ring-1 ring-white">
+                            <div id="barR1" class="bg-red-500 h-full transition-all duration-300"></div>
+                            <div id="barY1" class="bg-yellow-400 h-full transition-all duration-300"></div>
+                        </div>
+                    </div>
+
+                    <!-- 结果对比 -->
+                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-[60%] z-20 flex flex-col items-center pointer-events-none">
+                        <div class="w-16 h-16 rounded-full bg-white flex items-center justify-center text-2xl shadow-[0_15px_40px_rgba(0,0,0,0.15)] border-4 border-gray-50 transition-all duration-500 transform" id="compareRing">
+                            <i class="fas fa-question text-gray-200"></i>
+                        </div>
+                        <div class="mt-4 px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-xl text-xs font-bold shadow-lg opacity-0 transition-all duration-500 transform translate-y-4 scale-90 border border-white/50 whitespace-nowrap" id="resultLabel">
+                            颜色相同
+                        </div>
+                    </div>
+
+                    <!-- 烧杯 B -->
+                    <div class="flex flex-col items-center gap-3 z-10 w-[120px]">
+                        <div class="beaker-container">
+                            <div class="beaker">
+                                <div class="liquid" id="liquidB"></div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold text-gray-700 mb-0.5">烧杯 B</div>
+                            <div class="text-[10px] text-gray-400 font-mono bg-white/50 px-2 py-0.5 rounded-full" id="volB">Total: 10</div>
+                        </div>
+                        <div class="flex w-full h-1.5 rounded-full overflow-hidden bg-gray-200/50 mt-1 ring-1 ring-white">
+                            <div id="barR2" class="bg-red-500 h-full transition-all duration-300"></div>
+                            <div id="barY2" class="bg-yellow-400 h-full transition-all duration-300"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="absolute bottom-6 flex gap-8 text-xs font-medium text-gray-500 bg-white/60 backdrop-blur px-6 py-2.5 rounded-full border border-white/40 shadow-sm">
+                    <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm"></div> 红色颜料</div>
+                    <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-sm"></div> 黄色颜料</div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const RED_COLOR = { r: 255, g: 59, b: 48 };
+        const YELLOW_COLOR = { r: 255, g: 204, b: 0 };
+        const MAX_VOLUME = 25;
+        const apiKey = ""; 
+
+        const els = {
+            inputR1: document.getElementById('inputR1'), inputY1: document.getElementById('inputY1'),
+            inputR2: document.getElementById('inputR2'), inputY2: document.getElementById('inputY2'),
+            valR1: document.getElementById('valR1'), valY1: document.getElementById('valY1'),
+            valR2: document.getElementById('valR2'), valY2: document.getElementById('valY2'),
+            displayRatioA: document.getElementById('displayRatioA'), displayRatioB: document.getElementById('displayRatioB'),
+            simpA: document.getElementById('simpA'), simpB: document.getElementById('simpB'),
+            liquidA: document.getElementById('liquidA'), liquidB: document.getElementById('liquidB'),
+            volA: document.getElementById('volA'), volB: document.getElementById('volB'),
+            barR1: document.getElementById('barR1'), barY1: document.getElementById('barY1'),
+            barR2: document.getElementById('barR2'), barY2: document.getElementById('barY2'),
+            compareRing: document.getElementById('compareRing'), resultLabel: document.getElementById('resultLabel'),
+            statusMessage: document.getElementById('statusMessage'), cardB: document.getElementById('cardB'),
+            aiOutput: document.getElementById('aiOutput')
+        };
+
+        function gcd(a, b) { return !b ? a : gcd(b, a % b); }
+
+        function calculateMixColor(rParts, yParts) {
+            const total = rParts + yParts;
+            if (total === 0) return 'rgba(230,230,230, 0.3)';
+            const rRatio = rParts / total;
+            const yRatio = yParts / total;
+            const finalR = Math.round(RED_COLOR.r * rRatio + YELLOW_COLOR.r * yRatio);
+            const finalG = Math.round(RED_COLOR.g * rRatio + YELLOW_COLOR.g * yRatio);
+            const finalB = Math.round(RED_COLOR.b * rRatio + YELLOW_COLOR.b * yRatio);
+            return `rgb(${finalR}, ${finalG}, ${finalB})`;
+        }
+
+        function areRatiosEqual(r1, y1, r2, y2) {
+            if (r1+y1 === 0 && r2+y2 === 0) return true;
+            if (r1+y1 === 0 || r2+y2 === 0) return false;
+            const gcd1 = gcd(r1, y1);
+            const gcd2 = gcd(r2, y2);
+            return (r1/gcd1 === r2/gcd2) && (y1/gcd1 === y2/gcd2);
+        }
+
+        function updateBeaker(r, y, liquidEl, volEl, barREl, barYEl) {
+            const total = r + y;
+            const color = calculateMixColor(r, y);
+            const heightPercentage = Math.min((total / MAX_VOLUME) * 100, 100);
+            
+            liquidEl.style.height = `${heightPercentage}%`;
+            liquidEl.style.backgroundColor = color;
+            volEl.textContent = `总量: ${total}`;
+
+            if (total > 0) {
+                barREl.style.width = `${(r/total)*100}%`;
+                barYEl.style.width = `${(y/total)*100}%`;
+            } else {
+                barREl.style.width = '0%'; barYEl.style.width = '0%';
+            }
+        }
+
+        function updateSystem() {
+            const r1 = parseInt(els.inputR1.value) || 0;
+            const y1 = parseInt(els.inputY1.value) || 0;
+            const r2 = parseInt(els.inputR2.value) || 0;
+            const y2 = parseInt(els.inputY2.value) || 0;
+
+            els.valR1.textContent = r1; els.valY1.textContent = y1;
+            els.valR2.textContent = r2; els.valY2.textContent = y2;
+            els.displayRatioA.textContent = `${r1} : ${y1}`;
+            els.displayRatioB.textContent = `${r2} : ${y2}`;
+
+            const gcdA = gcd(r1, y1);
+            const gcdB = gcd(r2, y2);
+            els.simpA.textContent = (r1+y1 === 0) ? "- : -" : `${r1/gcdA} : ${y1/gcdA}`;
+            els.simpB.textContent = (r2+y2 === 0) ? "- : -" : `${r2/gcdB} : ${y2/gcdB}`;
+
+            updateBeaker(r1, y1, els.liquidA, els.volA, els.barR1, els.barY1);
+            updateBeaker(r2, y2, els.liquidB, els.volB, els.barR2, els.barY2);
+
+            const isEqual = areRatiosEqual(r1, y1, r2, y2);
+            const isBothEmpty = (r1+y1 === 0) || (r2+y2 === 0);
+
+            els.compareRing.className = 'w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-[0_15px_40px_rgba(0,0,0,0.15)] border-4 transition-all duration-500 transform z-20';
+            els.resultLabel.style.opacity = '1';
+            els.resultLabel.style.transform = 'translateY(0) scale(1)';
+
+            if (isBothEmpty) {
+                els.compareRing.classList.add('border-gray-100', 'text-gray-300', 'bg-white');
+                els.compareRing.innerHTML = '<i class="fas fa-question"></i>';
+                els.resultLabel.style.opacity = '0';
+                els.cardB.classList.remove('border-green-400', 'bg-green-50/50');
+                els.cardB.classList.add('bg-blue-50/40', 'border-blue-100/60');
+                els.statusMessage.innerHTML = '<span class="bg-white/95 backdrop-blur-xl px-6 py-2.5 rounded-full shadow-lg text-sm font-bold text-gray-600 border border-white/60 flex items-center gap-2"><i class="fas fa-plus-circle text-blue-400"></i> 请添加颜料</span>';
+            } else if (isEqual) {
+                els.compareRing.classList.add('border-green-500', 'text-green-500', 'bg-white', 'scale-110');
+                els.compareRing.innerHTML = '<i class="fas fa-check"></i>';
+                els.resultLabel.textContent = "配方相同 (比值相等)";
+                els.resultLabel.className = "mt-4 px-3 py-1.5 bg-green-100/90 text-green-700 rounded-xl text-xs font-bold shadow-lg transition-all duration-300 border border-green-200";
+                
+                els.cardB.classList.remove('bg-blue-50/40', 'border-blue-100/60');
+                els.cardB.classList.add('bg-green-50/50', 'border-green-300');
+                els.statusMessage.innerHTML = `<span class="bg-green-100/90 backdrop-blur px-6 py-2.5 rounded-full shadow-lg text-sm font-bold text-green-700 border border-green-200 flex items-center gap-2 animate-pop"><i class="fas fa-magic"></i> 发现性质：颜色不变！</span>`;
+            } else {
+                els.compareRing.classList.add('border-red-400', 'text-red-400', 'bg-white');
+                els.compareRing.innerHTML = '<i class="fas fa-times"></i>';
+                els.resultLabel.textContent = "颜色不同 (比值不等)";
+                els.resultLabel.className = "mt-4 px-3 py-1.5 bg-red-100/90 text-red-700 rounded-xl text-xs font-bold shadow-lg transition-all duration-300 border border-red-200";
+                
+                els.cardB.classList.remove('border-green-400', 'bg-green-50/50');
+                els.cardB.classList.add('bg-blue-50/40', 'border-blue-100/60');
+                els.statusMessage.innerHTML = '<span class="bg-white/95 backdrop-blur-xl px-6 py-2.5 rounded-full shadow-lg text-sm font-bold text-gray-600 border border-white/60 flex items-center gap-2"><i class="fas fa-adjust text-red-400"></i> 尝试让颜色变一致</span>';
+            }
+        }
+
+        function expandRatio(multiplier) {
+            const r1 = parseInt(els.inputR1.value);
+            const y1 = parseInt(els.inputY1.value);
+            if (r1 + y1 === 0) { alert("请先设置配方 A 的数值！"); return; }
+            const newR2 = r1 * multiplier;
+            const newY2 = y1 * multiplier;
+
+            if (newR2 > 20 || newY2 > 20) {
+                els.statusMessage.innerHTML = '<span class="bg-yellow-100 text-yellow-800 px-6 py-2.5 rounded-full font-bold shadow-lg border border-yellow-200">⚠️ 容量不足，无法扩大</span>';
+                setTimeout(updateSystem, 1500); 
+                return;
+            }
+            els.inputR2.value = newR2; els.inputY2.value = newY2;
+            updateSystem();
+            triggerConfetti();
+        }
+
+        function randomExpand() {
+            const multipliers = [2, 3, 4, 5];
+            const r1 = parseInt(els.inputR1.value);
+            const y1 = parseInt(els.inputY1.value);
+            if (r1 + y1 === 0) { alert("请先设置配方 A"); return; }
+            const validMultipliers = multipliers.filter(m => (r1 * m <= 20) && (y1 * m <= 20));
+            if (validMultipliers.length > 0) {
+                const m = validMultipliers[Math.floor(Math.random() * validMultipliers.length)];
+                expandRatio(m);
+            } else {
+                els.statusMessage.innerHTML = '<span class="bg-yellow-100 text-yellow-800 px-6 py-2.5 rounded-full font-bold shadow-lg border border-yellow-200">⚠️ 当前数值太大</span>';
+                setTimeout(updateSystem, 1500);
+            }
+        }
+
+        function triggerConfetti() {
+            confetti({ particleCount: 120, spread: 80, origin: { y: 0.6, x: 0.7 }, colors: ['#FF3B30', '#FFCC00', '#34C759'], disableForReducedMotion: true, startVelocity: 30 });
+        }
+
+        async function askAI(type) {
+            const r1 = els.inputR1.value, y1 = els.inputY1.value;
+            const r2 = els.inputR2.value, y2 = els.inputY2.value;
+            const isEqual = areRatiosEqual(parseInt(r1), parseInt(y1), parseInt(r2), parseInt(y2));
+            
+            els.aiOutput.innerHTML = `<div class="flex flex-col items-center justify-center h-full gap-2"><div class="w-6 h-6 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></div><span class="text-purple-400 font-bold text-xs">AI 老师思考中...</span></div>`;
+
+            let prompt = "";
+            if (type === 'explain') {
+                prompt = `我正在做一个数学实验，比较两个颜料配方。
+                配方A: ${r1}红:${y1}黄。配方B: ${r2}红:${y2}黄。
+                状态：${isEqual ? "相等" : "不相等"}。
+                请用小学六年级学生能听懂的语言解释为什么？
+                要求：
+                1. 语气活泼幽默，像个大哥哥/大姐姐。
+                2. 必须控制在100字以内。
+                3. 用Markdown加粗关键词。`;
+            } else if (type === 'problem') {
+                prompt = `请根据比 ${r1}:${y1} 编一道小学数学生活应用题（如奶茶、混凝土、植树）。
+                要求：
+                1. 只出题，不给答案。
+                2. 必须包含数字 ${r1} 和 ${y1}。
+                3. 100字以内。
+                4. Markdown格式。`;
+            }
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+                
+                const text = data.candidates[0].content.parts[0].text;
+                els.aiOutput.innerHTML = `<div class="ai-message fade-in">${marked.parse(text)}</div>`;
+                els.aiOutput.scrollTop = els.aiOutput.scrollHeight;
+
+            } catch (error) {
+                els.aiOutput.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-red-400 text-xs gap-1"><i class="fas fa-exclamation-circle text-lg"></i><span>网络开小差了</span></div>`;
+            }
+        }
+
+        window.addEventListener('load', updateSystem);
+    </script>
+</body>
+</html>

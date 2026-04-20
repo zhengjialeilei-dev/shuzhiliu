@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 位值演示 (个-十-百-千)</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background-color: #f0f0f0; }
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+        
+        #ui-layer {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            pointer-events: none; /* 让点击穿透到画布，除了按钮 */
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .info-box {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        h1 { margin: 0 0 5px 0; font-size: 24px; color: #333; }
+        p { margin: 0; font-size: 16px; color: #666; line-height: 1.5; }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        button {
+            padding: 10px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            background: #4a90e2;
+            color: white;
+            box-shadow: 0 4px 6px rgba(74, 144, 226, 0.3);
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(74, 144, 226, 0.4); }
+        button:active:not(:disabled) { transform: translateY(0); }
+        button:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; transform: none; }
+        button.secondary { background: #6c757d; box-shadow: 0 4px 6px rgba(108, 117, 125, 0.3); }
+
+        #step-indicator {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #333;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            z-index: 999;
+            display: none; /* 默认隐藏，资源加载时可显示 */
+        }
+    </style>
+    <!-- 引入 Three.js, GSAP, OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+    
+    <div id="step-indicator">Step 0/3: 准备开始</div>
+
+    <div id="ui-layer">
+        <div class="info-box">
+            <h1 id="title-text">位值演示</h1>
+            <p id="desc-text">点击“下一步”开始演示数字的演变过程。</p>
+        </div>
+        <div class="controls">
+            <button id="reset-btn" class="secondary">重置</button>
+            <button id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        // === 配置与状态 ===
+        const CONFIG = {
+            cubeSize: 1,
+            spacing: 0.2, // 松散排列时的间隙
+            tightSpacing: 0.05, // 紧密排列时的微小缝隙（避免Z-fighting）
+            colors: {
+                unit: 0xFFD700,    // 金色 (1)
+                ten: 0x4CAF50,     // 绿色 (10)
+                hundred: 0x2196F3, // 蓝色 (100)
+                thousand: 0xE91E63 // 红色 (1000)
+            },
+            animDuration: 0.5,
+            jumpHeight: 3
+        };
+
+        const STATE = {
+            step: 0, // 0: Start, 1: Ten, 2: Hundred, 3: Thousand
+            isAnimating: false,
+            cubes: [] // 存储所有 Cube Mesh
+        };
+
+        // === Three.js 初始化 ===
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0);
+        // 添加雾效让远处更柔和
+        scene.fog = new THREE.Fog(0xf0f0f0, 20, 100);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(15, 15, 25);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // === 灯光 ===
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(20, 30, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.1;
+        dirLight.shadow.camera.far = 100;
+        dirLight.shadow.camera.left = -30;
+        dirLight.shadow.camera.right = 30;
+        dirLight.shadow.camera.top = 30;
+        dirLight.shadow.camera.bottom = -30;
+        scene.add(dirLight);
+
+        // === 地面 ===
+        const gridHelper = new THREE.GridHelper(50, 50, 0xcccccc, 0xe0e0e0);
+        scene.add(gridHelper);
+
+        const planeGeometry = new THREE.PlaneGeometry(100, 100);
+        const planeMaterial = new THREE.MeshStandardMaterial({ color: 0xf9f9f9 });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -0.01;
+        plane.receiveShadow = true;
+        scene.add(plane);
+
+        // === 核心逻辑类 ===
+        class CubeManager {
+            constructor() {
+                this.cubeGeometry = new THREE.BoxGeometry(CONFIG.cubeSize, CONFIG.cubeSize, CONFIG.cubeSize);
+                // 使用带黑色边框的材质技巧：一个 Mesh 是颜色，外面套一个 LineSegments 或者用贴图
+                // 这里简单起见，用 MeshStandardMaterial
+                // 为了更好的视觉效果，可以给每个 cube 添加一个 edges
+            }
+
+            createCube(color) {
+                const material = new THREE.MeshStandardMaterial({ color: color });
+                const mesh = new THREE.Mesh(this.cubeGeometry, material);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+
+                // 添加黑色边框
+                const edges = new THREE.EdgesGeometry(this.cubeGeometry);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.2, transparent: true }));
+                mesh.add(line);
+
+                scene.add(mesh);
+                STATE.cubes.push(mesh);
+                return mesh;
+            }
+
+            clearAll() {
+                STATE.cubes.forEach(cube => {
+                    scene.remove(cube);
+                    // 清理内存
+                    cube.geometry.dispose();
+                    if(Array.isArray(cube.material)) cube.material.forEach(m=>m.dispose());
+                    else cube.material.dispose();
+                });
+                STATE.cubes = [];
+            }
+        }
+
+        const cubeManager = new CubeManager();
+
+        // === 步骤逻辑 ===
+
+        // 辅助：获取某个逻辑位置的坐标
+        // xIndex: 0-9 (列), yIndex: 0-9 (行/高度), zIndex: 0-9 (层/排)
+        // mode: 'spread' (散开), 'tight' (紧密)
+        function getPosition(xIndex, yIndex, zIndex, mode = 'tight') {
+            const size = CONFIG.cubeSize;
+            const gap = mode === 'spread' ? CONFIG.spacing : CONFIG.tightSpacing;
+            
+            // 基础偏移，使整体大致居中
+            // 10个单位的总宽 = 10 * (1 + gap) - gap
+            // 我们希望 (0,0,0) 在原点附近，或者整体居中
+            // 这里我们动态计算中心点有点麻烦，不如固定逻辑原点，移动相机或整体Group
+            
+            const step = size + gap;
+            return {
+                x: xIndex * step,
+                y: yIndex * step + size/2, // y从0开始，所以要加size/2确保在地面上
+                z: -zIndex * step // z轴向内为负，方便观察
+            };
+        }
+
+        async function runStep1() {
+            // 1. 生成10个小立方体，初始横向排列
+            updateUI("步骤 1/3：认识“十”", "看！这里有10个小立方体（1）。它们排着队...", true);
+            
+            // 清理旧的（如果有）
+            cubeManager.clearAll();
+
+            // 生成10个，横排，居中
+            const startX = -5 * (CONFIG.cubeSize + 0.5);
+            const cubes = [];
+            for (let i = 0; i < 10; i++) {
+                const cube = cubeManager.createCube(CONFIG.colors.unit);
+                cube.position.set(startX + i * 1.5, CONFIG.cubeSize/2, 0);
+                cubes.push(cube);
+            }
+
+            // 稍微等待用户看清
+            await wait(1000);
+            updateUI(null, "它们依次跳跃...");
+
+            // 2. 依次跳跃
+            for (let i = 0; i < 10; i++) {
+                const cube = cubes[i];
+                // 跳起
+                gsap.to(cube.position, { y: CONFIG.jumpHeight, duration: 0.2, ease: "power1.out", yoyo: true, repeat: 1 });
+                // 旋转一下增加动感
+                gsap.to(cube.rotation, { y: Math.PI * 2, duration: 0.4, ease: "none" });
+                await wait(100); // 错开时间
+            }
+            
+            await wait(500);
+            updateUI(null, "然后排成一竖列，变成了“十”！");
+
+            // 3. 排成一竖列
+            // 目标位置：x=0, z=0, y=0~9
+            const tl = gsap.timeline();
+            cubes.forEach((cube, i) => {
+                const targetPos = getPosition(0, i, 0, 'tight');
+                // 先变成绿色（十的颜色）
+                tl.to(cube.material.color, { r: new THREE.Color(CONFIG.colors.ten).r, g: new THREE.Color(CONFIG.colors.ten).g, b: new THREE.Color(CONFIG.colors.ten).b, duration: 0.5 }, "<0.05");
+                // 移动到位
+                tl.to(cube.position, { x: targetPos.x, y: targetPos.y, z: targetPos.z, duration: 0.8, ease: "back.out(1.2)" }, "<");
+                // 旋转归零
+                tl.to(cube.rotation, { x: 0, y: 0, z: 0, duration: 0.5 }, "<");
+            });
+
+            await tl;
+            
+            // 调整相机聚焦
+            gsap.to(controls.target, { x: 0, y: 5, z: 0, duration: 1 });
+            gsap.to(camera.position, { x: 10, y: 10, z: 20, duration: 1 });
+
+            updateUI(null, "现在我们有 1 个“十”。", false);
+        }
+
+        async function runStep2() {
+            // 当前已有 1 列 (x=0)。需要生成 x=1~9 的 9 列。
+            updateUI("步骤 2/3：认识“百”", "现在出现了另外 9 个竖列...", true);
+
+            // 1. 生成 9 列
+            const newColumns = []; // 存储新生成的列，每列是一个数组
+            
+            for (let x = 1; x < 10; x++) {
+                const colCubes = [];
+                for (let y = 0; y < 10; y++) {
+                    const cube = cubeManager.createCube(CONFIG.colors.ten);
+                    // 初始位置：稍微散开一点
+                    const pos = getPosition(x, y, 0, 'spread'); 
+                    // 从上方掉落或者透明度显现
+                    cube.position.set(pos.x + 2, pos.y + 10, pos.z); // 从右上方掉落
+                    cube.material.transparent = true;
+                    cube.material.opacity = 0;
+                    colCubes.push(cube);
+                }
+                newColumns.push(colCubes);
+            }
+
+            // 2. 动画进场
+            const tlInit = gsap.timeline();
+            newColumns.forEach((col, idx) => {
+                col.forEach(cube => {
+                    const targetPos = getPosition(idx + 1, (cube.position.y - 10 - CONFIG.cubeSize/2)/(CONFIG.cubeSize + CONFIG.spacing), 0, 'spread');
+                    // 修正y索引获取方式太麻烦，直接重新算
+                    // 这里的逻辑稍微简化一下，直接根据idx和内层循环i算
+                });
+            });
+
+            // 重新遍历做进场动画
+            for(let i=0; i<newColumns.length; i++) {
+                const col = newColumns[i];
+                const xIndex = i + 1; // 1~9
+                for(let j=0; j<col.length; j++) {
+                    const cube = col[j];
+                    const targetPos = getPosition(xIndex, j, 0, 'spread');
+                    // 进场
+                    gsap.to(cube.position, { x: targetPos.x, y: targetPos.y, z: targetPos.z, duration: 0.5, delay: i * 0.1, ease: "power2.out" });
+                    gsap.to(cube.material, { opacity: 1, duration: 0.5, delay: i * 0.1 });
+                }
+            }
+            
+            await wait(1500); // 等待进场完毕
+            updateUI(null, "一共有 10 个竖列。它们依次闪烁...");
+
+            // 3. 依次闪烁 (包括第0列)
+            // 获取所有列
+            const allCols = [];
+            // 重构一下数据结构，按列收集
+            for(let x=0; x<10; x++) {
+                // 既然 STATE.cubes 按照生成顺序排列：
+                // 0-9 是第0列
+                // 10-19 是第1列...
+                // 这样取比较方便
+                allCols.push(STATE.cubes.slice(x*10, (x+1)*10));
+            }
+
+            for(let i=0; i<10; i++) {
+                const col = allCols[i];
+                // 闪烁：变白再变回
+                col.forEach(c => {
+                    gsap.to(c.material.color, { r: 1, g: 1, b: 1, duration: 0.1, yoyo: true, repeat: 1 });
+                    // 如果不是绿色，先变绿
+                    if(i===0) gsap.to(c.material.color, { r: new THREE.Color(CONFIG.colors.ten).r, g: new THREE.Color(CONFIG.colors.ten).g, b: new THREE.Color(CONFIG.colors.ten).b, duration: 0.1 }); 
+                });
+                await wait(150);
+            }
+
+            updateUI(null, "排成一排，变成了“百”！");
+
+            // 4. 挤压成“百”板
+            const tlForm = gsap.timeline();
+            
+            // 计算整体偏移，让中心保持在视觉中心
+            // 10个单位宽，中心在 4.5
+            const centerOffsetX = 4.5 * (CONFIG.cubeSize + CONFIG.tightSpacing);
+
+            STATE.cubes.forEach((cube, idx) => {
+                const x = Math.floor(idx / 10);
+                const y = idx % 10;
+                const targetPos = getPosition(x, y, 0, 'tight');
+                
+                // 变蓝
+                tlForm.to(cube.material.color, { r: new THREE.Color(CONFIG.colors.hundred).r, g: new THREE.Color(CONFIG.colors.hundred).g, b: new THREE.Color(CONFIG.colors.hundred).b, duration: 0.5 }, "<0.01");
+                
+                // 移动
+                tlForm.to(cube.position, { x: targetPos.x - centerOffsetX, y: targetPos.y, z: targetPos.z, duration: 1, ease: "power2.inOut" }, "<");
+            });
+
+            await tlForm;
+
+            // 相机调整
+            gsap.to(controls.target, { x: 0, y: 5, z: 0, duration: 1 });
+            gsap.to(camera.position, { x: 0, y: 12, z: 30, duration: 1 });
+
+            updateUI(null, "现在我们有 1 个“百”。", false);
+        }
+
+        async function runStep3() {
+            // 当前已有 1 板 (z=0)。生成 z=1~9 的 9 板。
+            updateUI("步骤 3/3：认识“千”", "接着，又出现了 9 排...", true);
+
+            // 1. 生成 9 板 (每板 100 个)
+            const newPlates = [];
+            
+            // 为了性能，分批生成，每帧生成一点，或者直接生成
+            // 900个方块一次性生成可能会卡顿一帧，问题不大
+            
+            const startIdx = STATE.cubes.length; // 100
+
+            for (let z = 1; z < 10; z++) {
+                const plateCubes = [];
+                for (let x = 0; x < 10; x++) {
+                    for (let y = 0; y < 10; y++) {
+                        const cube = cubeManager.createCube(CONFIG.colors.hundred);
+                        // 初始位置：Z轴散开
+                        // 为了居中，X轴也要考虑之前的偏移
+                        const centerOffsetX = 4.5 * (CONFIG.cubeSize + CONFIG.tightSpacing);
+                        
+                        // Z轴方向散开距离大一点
+                        const spreadZ = z * (CONFIG.cubeSize + 1.0); 
+
+                        const rawPos = getPosition(x, y, 0, 'tight'); // 基础XY结构
+                        
+                        cube.position.set(rawPos.x - centerOffsetX, rawPos.y, -spreadZ);
+                        
+                        // 初始隐形
+                        cube.scale.set(0,0,0);
+                        plateCubes.push(cube);
+                    }
+                }
+                newPlates.push(plateCubes);
+            }
+
+            // 2. 动画进场 (放大出现)
+            const tlInit = gsap.timeline();
+            // 每次出现一板
+            for(let i=0; i<newPlates.length; i++) {
+                const plate = newPlates[i];
+                plate.forEach(c => {
+                    gsap.to(c.scale, { x: 1, y: 1, z: 1, duration: 0.4, delay: i * 0.2, ease: "back.out(1.5)" });
+                });
+            }
+            
+            await wait(2500);
+            updateUI(null, "一共有 10 排。它们依次闪烁...");
+
+            // 3. 依次闪烁 (0-9板)
+            // 按板整理数据
+            const allPlates = [];
+            for(let z=0; z<10; z++) {
+                // 每板100个
+                allPlates.push(STATE.cubes.slice(z*100, (z+1)*100));
+            }
+
+            for(let i=0; i<10; i++) {
+                const plate = allPlates[i];
+                // 闪烁
+                plate.forEach(c => {
+                    gsap.to(c.material.color, { r: 1, g: 1, b: 1, duration: 0.1, yoyo: true, repeat: 1 });
+                    // 第0板如果是蓝色，不用变，如果是其他色... 都是蓝色
+                });
+                await wait(200);
+            }
+
+            updateUI(null, "最后，排成一个正方体，变成了“千”！");
+
+            // 4. 堆叠成“千”
+            const tlForm = gsap.timeline();
+            const centerOffsetX = 4.5 * (CONFIG.cubeSize + CONFIG.tightSpacing);
+            const centerOffsetZ = -4.5 * (CONFIG.cubeSize + CONFIG.tightSpacing); // Z轴也要居中
+
+            // 此时所有cube都要变红，并移动到最终位置
+            STATE.cubes.forEach((cube, idx) => {
+                // 计算 x, y, z 索引
+                // idx: 0-99 -> z=0; 100-199 -> z=1 ...
+                // 内部: 0-9 -> x=0, y=0~9; 10-19 -> x=1 ...
+                
+                // 公式：
+                // z = floor(idx / 100)
+                // rem = idx % 100
+                // x = floor(rem / 10)
+                // y = rem % 10
+                
+                const z = Math.floor(idx / 100);
+                const rem = idx % 100;
+                const x = Math.floor(rem / 10);
+                const y = rem % 10;
+
+                const targetPos = getPosition(x, y, z, 'tight');
+                
+                // 变红
+                tlForm.to(cube.material.color, { r: new THREE.Color(CONFIG.colors.thousand).r, g: new THREE.Color(CONFIG.colors.thousand).g, b: new THREE.Color(CONFIG.colors.thousand).b, duration: 0.8 }, "<0.005");
+                
+                // 移动 (Z轴修正居中)
+                // getPosition 返回的是 z = -zIndex * step
+                // 我们希望整体中心在 0,0,0 附近
+                // 目前 X已居中，Y从0起，Z是负数
+                // 10层厚度，中心在 z = -4.5
+                // 所以我们把所有物体往 +z 方向移 4.5 * step
+                
+                const finalZ = targetPos.z + 4.5 * (CONFIG.cubeSize + CONFIG.tightSpacing);
+
+                tlForm.to(cube.position, { x: targetPos.x - centerOffsetX, y: targetPos.y, z: finalZ, duration: 1.2, ease: "power2.inOut" }, "<");
+            });
+
+            await tlForm;
+
+            // 相机环绕展示
+            gsap.to(camera.position, { x: 25, y: 25, z: 25, duration: 2 });
+            
+            updateUI("演示完成", "这就是 1000！(10个百)", false);
+        }
+
+
+        // === UI 与 控制逻辑 ===
+        const uiTitle = document.getElementById('title-text');
+        const uiDesc = document.getElementById('desc-text');
+        const nextBtn = document.getElementById('next-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const stepInd = document.getElementById('step-indicator');
+
+        function updateUI(title, desc, isAnimating) {
+            if (title) uiTitle.innerText = title;
+            if (desc) uiDesc.innerText = desc;
+            
+            if (isAnimating !== undefined) {
+                STATE.isAnimating = isAnimating;
+                nextBtn.disabled = isAnimating;
+                resetBtn.disabled = isAnimating;
+            }
+        }
+
+        function wait(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function onNext() {
+            if (STATE.isAnimating) return;
+
+            if (STATE.step === 0) {
+                STATE.step = 1;
+                stepInd.innerText = "Step 1/3: 个 -> 十";
+                await runStep1();
+            } else if (STATE.step === 1) {
+                STATE.step = 2;
+                stepInd.innerText = "Step 2/3: 十 -> 百";
+                await runStep2();
+            } else if (STATE.step === 2) {
+                STATE.step = 3;
+                stepInd.innerText = "Step 3/3: 百 -> 千";
+                await runStep3();
+                nextBtn.innerText = "重新开始";
+            } else {
+                onReset();
+            }
+        }
+
+        function onReset() {
+            if (STATE.isAnimating) return;
+            STATE.step = 0;
+            cubeManager.clearAll();
+            
+            // 重置相机
+            gsap.to(camera.position, { x: 15, y: 15, z: 25, duration: 1 });
+            gsap.to(controls.target, { x: 0, y: 0, z: 0, duration: 1 });
+            
+            stepInd.innerText = "Step 0/3: 准备开始";
+            nextBtn.innerText = "下一步";
+            updateUI("位值演示", "点击“下一步”开始演示数字的演变过程。", false);
+        }
+
+        nextBtn.addEventListener('click', onNext);
+        resetBtn.addEventListener('click', onReset);
+
+        // === 渲染循环 ===
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // 窗口大小调整
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>

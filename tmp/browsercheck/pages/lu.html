@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网格最短路径台</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+        /* ========================================================
+           极致现代化 UI - 大进化 (Spatial UI)
+        ======================================================== */
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; padding: 0; 
+            font-family: 'Outfit', sans-serif; 
+            overflow: hidden; 
+            background-color: #0b1120;
+            background-image: 
+                radial-gradient(ellipse at 80% 0%, rgba(120, 119, 198, 0.4) 0%, transparent 50%),
+                radial-gradient(ellipse at 20% 100%, rgba(56, 189, 248, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, #0b1120 0%, #020617 100%);
+            color: #f8fafc;
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            top: 20%; left: 30%;
+            width: 40vw; height: 40vw;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
+            filter: blur(60px);
+            animation: float 20s infinite ease-in-out alternate;
+            z-index: 0;
+            pointer-events: none;
+        }
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(10vw, 5vh) scale(1.2); }
+        }
+
+        .container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; z-index: 10; }
+        
+        .grid-container {
+            position: relative; 
+            background: rgba(255, 255, 255, 0.10); 
+             
+            border-radius: 48px; 
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.5), inset 0 0 40px rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-top: 1px solid rgba(255, 255, 255, 0.28);
+            border-left: 1px solid rgba(255, 255, 255, 0.28);
+            padding: 20px;
+        }
+        canvas { display: block; }
+        
+        .info-panel {
+            position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
+            padding: 16px 32px; 
+            background: rgba(15, 23, 42, 0.6); 
+            border-radius: 50px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid rgba(255,255,255,0.2);
+            font-size: 1.1rem; z-index: 1000; 
+            display: flex; gap: 32px; align-items: center; width: max-content;
+        }
+        .info-panel p { margin: 0; color: #cbd5e1; font-weight: 500; }
+        .info-panel span { font-size: 1.3rem; font-weight: 800; color: #38bdf8; }
+        .selected-points, .path-info { display: flex; gap: 20px; align-items: center; }
+        .controls { display: flex; gap: 12px; margin: 0; }
+        button {
+            padding: 12px 28px; 
+            background: rgba(255, 255, 255, 0.1); 
+            color: #f8fafc; 
+            border: 1px solid rgba(255,255,255,0.15); 
+            border-radius: 50px;
+            cursor: pointer; 
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+            font-size: 1rem; font-weight: 700; font-family: 'Outfit', sans-serif;
+            
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        button:hover:not(:disabled) { 
+            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.2); 
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.3); 
+        }
+        button:active:not(:disabled) { transform: translateY(0) scale(0.95); }
+        button:disabled { background: rgba(255,255,255,0.05); color: #64748b; border: 1px solid rgba(255,255,255,0.05); cursor: not-allowed; box-shadow: none; }
+        
+        .path { position: absolute; pointer-events: none; border-radius: 30px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.4)); }
+    </style>
+<!-- EDU_BRAND_STYLE_START -->
+<style id="edu-brand-style">
+  :root {
+    --edu-bg: #eef5f7;
+    --edu-bg-deep: #dfeaf0;
+    --edu-surface: rgba(255, 255, 255, 0.82);
+    --edu-surface-strong: rgba(255, 255, 255, 0.94);
+    --edu-line: rgba(97, 132, 161, 0.24);
+    --edu-shadow: 0 18px 48px rgba(37, 78, 110, 0.12);
+    --edu-shadow-strong: 0 24px 56px rgba(24, 61, 90, 0.16);
+    --edu-text: #17324d;
+    --edu-text-soft: #4a647c;
+    --edu-accent: #0f9d8a;
+    --edu-accent-deep: #0d7b72;
+    --edu-warm: #ff9d6c;
+    --edu-warm-soft: #fff1e8;
+  }
+
+  body.edu-refactor-body {
+    background:
+      radial-gradient(circle at 12% 14%, rgba(15, 157, 138, 0.10), transparent 22%),
+      radial-gradient(circle at 88% 16%, rgba(255, 157, 108, 0.18), transparent 20%),
+      radial-gradient(circle at 50% 100%, rgba(81, 122, 164, 0.10), transparent 28%),
+      linear-gradient(180deg, #f6fbfc 0%, var(--edu-bg) 42%, var(--edu-bg-deep) 100%) !important;
+    color: var(--edu-text) !important;
+  }
+
+  body.edu-refactor-body::before,
+  body.edu-refactor-body::after {
+    content: '';
+    position: fixed;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+    opacity: 0.6;
+  }
+
+  body.edu-refactor-body::before {
+    width: 240px;
+    height: 240px;
+    right: -40px;
+    top: 80px;
+    background: rgba(15, 157, 138, 0.14);
+  }
+
+  body.edu-refactor-body::after {
+    width: 180px;
+    height: 180px;
+    left: -20px;
+    bottom: 80px;
+    background: rgba(255, 157, 108, 0.16);
+  }
+
+  body.edu-refactor-body button,
+  body.edu-refactor-body input[type="button"],
+  body.edu-refactor-body input[type="submit"] {
+    border-radius: 16px !important;
+    border: 1px solid rgba(22, 101, 122, 0.16) !important;
+    box-shadow: 0 10px 24px rgba(33, 76, 111, 0.12) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #edf7f6 100%) !important;
+    color: var(--edu-text) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+  }
+
+  body.edu-refactor-body button:hover,
+  body.edu-refactor-body input[type="button"]:hover,
+  body.edu-refactor-body input[type="submit"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(33, 76, 111, 0.16) !important;
+    filter: saturate(1.04);
+  }
+
+  body.edu-refactor-body input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  body.edu-refactor-body select,
+  body.edu-refactor-body textarea {
+    border-radius: 14px !important;
+    border: 1px solid rgba(82, 119, 148, 0.26) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: var(--edu-text) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px rgba(42, 77, 105, 0.08) !important;
+  }
+
+  body.edu-refactor-body [class*="panel"],
+  body.edu-refactor-body [class*="Panel"],
+  body.edu-refactor-body [class*="card"],
+  body.edu-refactor-body [class*="Card"],
+  body.edu-refactor-body [class*="dialog"],
+  body.edu-refactor-body [class*="Dialog"],
+  body.edu-refactor-body [class*="controls"],
+  body.edu-refactor-body [class*="Controls"],
+  body.edu-refactor-body [class*="toolbar"],
+  body.edu-refactor-body [class*="Toolbar"],
+  body.edu-refactor-body [class*="sidebar"],
+  body.edu-refactor-body [class*="Sidebar"],
+  body.edu-refactor-body [class*="instruction"],
+  body.edu-refactor-body [class*="Instruction"],
+  body.edu-refactor-body [id*="panel"],
+  body.edu-refactor-body [id*="Panel"],
+  body.edu-refactor-body [id*="controls"],
+  body.edu-refactor-body [id*="Controls"] {
+    border-radius: 24px !important;
+    border: 1px solid var(--edu-line) !important;
+    box-shadow: var(--edu-shadow) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  body.edu-refactor-body .page-title,
+  body.edu-refactor-body .header h1,
+  body.edu-refactor-body .header h2,
+  body.edu-refactor-body .title,
+  body.edu-refactor-body .subtitle,
+  body.edu-refactor-body .teacher-text,
+  body.edu-refactor-body #step-indicator,
+  body.edu-refactor-body #narrative-text {
+    color: var(--edu-text) !important;
+    text-shadow: none !important;
+  }
+
+  body.edu-refactor-body .edu-brand-shell {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  body.edu-refactor-body .edu-brand-panel,
+  body.edu-refactor-body .edu-brand-guide {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 251, 0.92) 100%);
+    border: 1px solid rgba(89, 127, 156, 0.22);
+    box-shadow: var(--edu-shadow-strong);
+    backdrop-filter: blur(18px);
+    border-radius: 26px;
+  }
+
+  body.edu-refactor-body .edu-brand-panel {
+    max-width: min(720px, calc(100vw - 280px));
+    padding: 18px 22px 20px;
+  }
+
+  body.edu-refactor-body .edu-brand-guide {
+    width: 220px;
+    padding: 16px 18px;
+  }
+
+  body.edu-refactor-body .edu-brand-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(15, 157, 138, 0.10);
+    color: var(--edu-accent-deep);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  body.edu-refactor-body .edu-brand-title {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.08;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-copy {
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  body.edu-refactor-body .edu-brand-copy strong {
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-brand-shell {
+      flex-direction: column;
+      right: 12px;
+      left: 12px;
+      top: 12px;
+    }
+
+    body.edu-refactor-body .edu-brand-panel,
+    body.edu-refactor-body .edu-brand-guide {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
+
+
+  body.edu-refactor-body .edu-border-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 10001;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(89, 127, 156, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--edu-text, #1f2937);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  body.edu-refactor-body .edu-border-toggle:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  body.edu-refactor-body.edu-hide-brand-panels .edu-brand-shell {
+    display: none !important;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-border-toggle {
+      top: auto;
+      bottom: 12px;
+      right: 12px;
+    }
+  }
+
+</style>
+<!-- EDU_BRAND_STYLE_END -->
+
+
+</head>
+<body class="edu-refactor-body">
+<!-- EDU_BRAND_SHELL_START -->
+<div class="edu-brand-shell" data-brand-shell>
+  <section class="edu-brand-panel" aria-label="页面导语">
+    <div class="edu-brand-kicker">路径优化 · EDU STUDIO</div>
+    <h1 class="edu-brand-title">网格最短路径台</h1>
+    <div class="edu-brand-copy">
+      <div><strong>任务目标：</strong>在网格中的多种走法里筛出长度最短的一组路径。</div>
+      <div><strong>操作提示：</strong>先选定起点和终点，再播放所有最短方案，观察它们的共同长度。</div>
+      <div><strong>理解重点：</strong>最短路线往往能转化成更规整的距离问题，再从中找出等价方案。</div>
+    </div>
+</section>
+  <aside class="edu-brand-guide" aria-label="操作建议">
+    <h2>建议这样探索</h2>
+    <ul><li>先列出所有可行路线。</li><li>比较路线中每一段的变化。</li><li>尝试用展开或对称思路简化问题。</li></ul>
+  </aside>
+</div>
+<!-- EDU_BRAND_SHELL_END -->
+
+<button type="button" class="edu-border-toggle" id="edu-border-toggle" aria-pressed="false" aria-label="隐藏说明框" title="隐藏说明框">-</button>
+
+    <div class="container">
+        <div class="info-panel">
+            <div class="selected-points">
+                <p>第一点: <span id="point1">未选择</span></p>
+                <p>第二点: <span id="point2">未选择</span></p>
+            </div>
+            <div class="path-info">
+                <p>数量: <span id="path-count">0</span></p>
+                <p>长度: <span id="path-length">0</span></p>
+            </div>
+            <div class="controls">
+                <button id="show-paths-btn" disabled>播放路径</button>
+                <button id="reset-btn">清空选择</button>
+            </div>
+        </div>
+        <div class="grid-container" id="grid-container">
+            <canvas id="grid-canvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 配置参数
+        const config = {
+            gridSize: 6, // 网格大小 (10x10)
+            padding: 60,  // 画布内边距
+            pointRadius: 4, // 交点圆点半径
+            animationSpeed: 200, // 动画速度（毫秒）
+            axisLabelOffset: 10 // 坐标轴标签偏移量
+        };
+
+        // 计算画布尺寸和单元格大小
+        function calculateDimensions() {
+            const availableWidth = window.innerWidth;
+            const availableHeight = window.innerHeight;
+            
+            // 计算可用空间（考虑内边距）
+            const usableWidth = availableWidth - config.padding * 2;
+            const usableHeight = availableHeight - config.padding * 2;
+            
+            // 计算单元格大小（取较小值以确保完整显示）
+            config.cellSize = Math.min(
+                Math.floor(usableWidth / config.gridSize),
+                Math.floor(usableHeight / config.gridSize)
+            );
+            
+            // 更新画布尺寸
+            return {
+                width: config.padding * 2 + config.gridSize * config.cellSize,
+                height: config.padding * 2 + config.gridSize * config.cellSize
+            };
+        }
+
+        // 初始计算画布尺寸
+        let canvasWidth, canvasHeight;
+        function updateCanvasSize() {
+            const dimensions = calculateDimensions();
+            canvasWidth = dimensions.width;
+            canvasHeight = dimensions.height;
+            if (canvas) {
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+                drawGrid();
+            }
+        }
+
+        // 获取DOM元素
+        const canvas = document.getElementById('grid-canvas');
+        const gridContainer = document.getElementById('grid-container');
+        const point1Element = document.getElementById('point1');
+        const point2Element = document.getElementById('point2');
+        const pathCountElement = document.getElementById('path-count');
+        const pathLengthElement = document.getElementById('path-length');
+        const resetBtn = document.getElementById('reset-btn');
+        const showPathsBtn = document.getElementById('show-paths-btn');
+
+        // 设置画布尺寸
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        const ctx = canvas.getContext('2d');
+
+        // 状态变量
+        let selectedPoints = [];
+        let allPaths = [];
+        let currentPathIndex = 0;
+        let animationInProgress = false;
+
+        // 初始化函数
+        function init() {
+            updateCanvasSize();
+            setupEventListeners();
+            // 添加窗口大小变化监听
+            window.addEventListener('resize', updateCanvasSize);
+        }
+
+        // 绘制网格
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            
+            // 绘制坐标轴
+            ctx.strokeStyle = 'rgba(15, 23, 42, 0.82)';
+            ctx.lineWidth = 2.6;
+            
+            // X轴
+            ctx.beginPath();
+            ctx.moveTo(config.padding - 20, canvasHeight - config.padding);
+            ctx.lineTo(canvasWidth - config.padding + 20, canvasHeight - config.padding);
+            ctx.stroke();
+            
+            // Y轴
+            ctx.beginPath();
+            ctx.moveTo(config.padding, config.padding - 20);
+            ctx.lineTo(config.padding, canvasHeight - config.padding + 20);
+            ctx.stroke();
+            
+            // 绘制箭头 - X轴
+            ctx.beginPath();
+            ctx.moveTo(canvasWidth - config.padding + 20, canvasHeight - config.padding);
+            ctx.lineTo(canvasWidth - config.padding + 10, canvasHeight - config.padding - 10);
+            ctx.lineTo(canvasWidth - config.padding + 10, canvasHeight - config.padding + 10);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+            ctx.fill();
+            
+            // 绘制箭头 - Y轴
+            ctx.beginPath();
+            ctx.moveTo(config.padding, config.padding - 20);
+            ctx.lineTo(config.padding - 10, config.padding - 10);
+            ctx.lineTo(config.padding + 10, config.padding - 10);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 绘制网格线
+            ctx.lineWidth = 1.5;
+            
+            // 绘制垂直线
+            for (let i = 0; i <= config.gridSize; i++) {
+                const x = config.padding + i * config.cellSize;
+                const isMajorLine = i === 0 || i === config.gridSize || i % 3 === 0;
+                ctx.strokeStyle = isMajorLine ? 'rgba(15, 23, 42, 0.34)' : 'rgba(15, 23, 42, 0.22)';
+                ctx.beginPath();
+                ctx.moveTo(x, config.padding);
+                ctx.lineTo(x, canvasHeight - config.padding);
+                ctx.stroke();
+                
+                // 添加X轴坐标标签
+                if (i > 0) { // 跳过原点
+                    const fontSize = Math.max(18, Math.min(24, Math.floor(config.cellSize * 0.3)));
+                    ctx.font = `bold ${fontSize}px 'Outfit'`;
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.70)';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(i.toString(), x, canvasHeight - config.padding + fontSize + 5);
+                }
+            }
+            
+            // 绘制水平线
+            for (let i = 0; i <= config.gridSize; i++) {
+                const y = config.padding + i * config.cellSize;
+                const isMajorLine = i === 0 || i === config.gridSize || i % 3 === 0;
+                ctx.strokeStyle = isMajorLine ? 'rgba(15, 23, 42, 0.34)' : 'rgba(15, 23, 42, 0.22)';
+                ctx.beginPath();
+                ctx.moveTo(config.padding, y);
+                ctx.lineTo(canvasWidth - config.padding, y);
+                ctx.stroke();
+                
+                // 添加Y轴坐标标签
+                if (i > 0) { // 跳过原点
+                    const fontSize = Math.max(18, Math.min(24, Math.floor(config.cellSize * 0.3)));
+                    ctx.font = `bold ${fontSize}px 'Outfit'`;
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.70)';
+                    ctx.textAlign = 'right';
+                    ctx.fillText((config.gridSize - i).toString(), config.padding - (fontSize/2), y + (fontSize/3));
+                }
+            }
+            
+            // 绘制交点
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.52)';
+            for (let x = 0; x <= config.gridSize; x++) {
+                for (let y = 0; y <= config.gridSize; y++) {
+                    const canvasX = config.padding + x * config.cellSize;
+                    const canvasY = config.padding + y * config.cellSize;
+                    
+                    ctx.beginPath();
+                    ctx.arc(canvasX, canvasY, 4.6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // 绘制已选择的点
+            if (selectedPoints.length > 0) {
+                ctx.fillStyle = '#a855f7';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#a855f7';
+                selectedPoints.forEach(point => {
+                    const canvasX = config.padding + point.x * config.cellSize;
+                    const canvasY = config.padding + point.y * config.cellSize;
+                    
+                    ctx.beginPath();
+                    ctx.arc(canvasX, canvasY, config.pointRadius * 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 添加选中点的坐标标签
+                    ctx.font = 'bold 34px Outfit';
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`(${point.x}, ${config.gridSize - point.y})`, canvasX, canvasY - 15);
+                });
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            canvas.addEventListener('click', handleCanvasClick);
+            resetBtn.addEventListener('click', resetSelection);
+            showPathsBtn.addEventListener('click', showAllPaths);
+        }
+
+        // 处理画布点击事件
+        function handleCanvasClick(event) {
+            if (selectedPoints.length >= 2 || animationInProgress) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+            
+            // 查找最近的交点
+            let minDistance = Infinity;
+            let closestPoint = null;
+            
+            for (let x = 0; x <= config.gridSize; x++) {
+                for (let y = 0; y <= config.gridSize; y++) {
+                    const canvasX = config.padding + x * config.cellSize;
+                    const canvasY = config.padding + y * config.cellSize;
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(clickX - canvasX, 2) + 
+                        Math.pow(clickY - canvasY, 2)
+                    );
+                    
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestPoint = { x, y };
+                    }
+                }
+            }
+            
+            // 如果点击足够接近交点
+            if (minDistance <= 20) {
+                // 检查是否已经选择了该点
+                const alreadySelected = selectedPoints.some(
+                    point => point.x === closestPoint.x && point.y === closestPoint.y
+                );
+                
+                if (!alreadySelected) {
+                    selectedPoints.push(closestPoint);
+                    updateUI();
+                    
+                    if (selectedPoints.length === 2) {
+                        findAllShortestPaths();
+                    }
+                }
+            }
+        }
+
+        // 更新UI
+        function updateUI() {
+            drawGrid();
+            
+            if (selectedPoints.length > 0) {
+                point1Element.textContent = `(${selectedPoints[0].x}, ${config.gridSize - selectedPoints[0].y})`;
+            } else {
+                point1Element.textContent = '未选择';
+            }
+            
+            if (selectedPoints.length > 1) {
+                point2Element.textContent = `(${selectedPoints[1].x}, ${config.gridSize - selectedPoints[1].y})`;
+                showPathsBtn.disabled = false;
+            } else {
+                point2Element.textContent = '未选择';
+                showPathsBtn.disabled = true;
+            }
+            
+            if (allPaths.length > 0) {
+                pathCountElement.textContent = allPaths.length;
+                const pathLength = calculatePathLength(allPaths[0]);
+                pathLengthElement.textContent = pathLength;
+            } else {
+                pathCountElement.textContent = '0';
+                pathLengthElement.textContent = '0';
+            }
+        }
+
+        // 重置选择
+        function resetSelection() {
+            selectedPoints = [];
+            allPaths = [];
+            currentPathIndex = 0;
+            clearPathElements();
+            updateUI();
+        }
+
+        // 查找所有最短路径
+        function findAllShortestPaths() {
+            if (selectedPoints.length !== 2) return;
+            
+            const start = selectedPoints[0];
+            const end = selectedPoints[1];
+            
+            // 计算曼哈顿距离（最短路径长度）
+            const manhattanDistance = 
+                Math.abs(end.x - start.x) + 
+                Math.abs(end.y - start.y);
+            
+            // 使用回溯法找出所有最短路径
+            allPaths = [];
+            const visited = Array(config.gridSize + 1)
+                .fill()
+                .map(() => Array(config.gridSize + 1).fill(false));
+            
+            findPaths(start, end, [start], visited, manhattanDistance);
+            updateUI();
+        }
+
+        // 回溯法查找路径
+        function findPaths(current, end, path, visited, targetLength) {
+            // 如果到达终点且路径长度正确
+            if (current.x === end.x && current.y === end.y) {
+                if (path.length - 1 === targetLength) {
+                    allPaths.push([...path]);
+                }
+                return;
+            }
+            
+            // 如果路径已经超过最短距离，剪枝
+            if (path.length - 1 > targetLength) {
+                return;
+            }
+            
+            // 标记当前点为已访问
+            visited[current.x][current.y] = true;
+            
+            // 可能的移动方向：上、右、下、左
+            const directions = [
+                { dx: 0, dy: -1 }, // 上
+                { dx: 1, dy: 0 },  // 右
+                { dx: 0, dy: 1 },  // 下
+                { dx: -1, dy: 0 }  // 左
+            ];
+            
+            for (const dir of directions) {
+                const nextX = current.x + dir.dx;
+                const nextY = current.y + dir.dy;
+                
+                // 检查是否在网格范围内且未访问过
+                if (
+                    nextX >= 0 && 
+                    nextX <= config.gridSize && 
+                    nextY >= 0 && 
+                    nextY <= config.gridSize && 
+                    !visited[nextX][nextY]
+                ) {
+                    // 添加到路径并继续搜索
+                    path.push({ x: nextX, y: nextY });
+                    findPaths({ x: nextX, y: nextY }, end, path, visited, targetLength);
+                    path.pop(); // 回溯
+                }
+            }
+            
+            // 取消标记当前点
+            visited[current.x][current.y] = false;
+        }
+
+        // 计算路径长度
+        function calculatePathLength(path) {
+            return path.length - 1;
+        }
+
+        // 显示所有最短路径
+        function showAllPaths() {
+            if (allPaths.length === 0 || animationInProgress) return;
+            
+            animationInProgress = true;
+            clearPathElements();
+            animatePath(allPaths[currentPathIndex], 0);
+        }
+
+        // 清除路径元素
+        function clearPathElements() {
+            const pathElements = document.querySelectorAll('.path');
+            pathElements.forEach(el => el.remove());
+        }
+
+        // 动画显示路径
+        function animatePath(path, index) {
+            if (index >= path.length - 1) {
+                // 当前路径动画完成，准备下一条路径
+                setTimeout(() => {
+                    currentPathIndex = (currentPathIndex + 1) % allPaths.length;
+                    clearPathElements();
+                    
+                    // 如果还有更多路径，继续动画
+                    if (currentPathIndex !== 0) {
+                        animatePath(allPaths[currentPathIndex], 0);
+                    } else {
+                        animationInProgress = false;
+                    }
+                }, config.animationSpeed * 2);
+                return;
+            }
+            
+            // 创建路径段元素
+            const pathSegment = document.createElement('div');
+            pathSegment.className = 'path';
+            
+            // 获取当前点和下一个点的坐标
+            const current = path[index];
+            const next = path[index + 1];
+            
+            const startX = config.padding + current.x * config.cellSize;
+            const startY = config.padding + current.y * config.cellSize;
+            const endX = config.padding + next.x * config.cellSize;
+            const endY = config.padding + next.y * config.cellSize;
+            
+            // 计算线段长度和角度
+            const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+            const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+            
+            // 设置线段样式
+            pathSegment.style.width = `${length}px`;
+            pathSegment.style.height = '6px';
+            pathSegment.style.backgroundColor = getPathColor(currentPathIndex);
+            pathSegment.style.position = 'absolute';
+            pathSegment.style.left = `${startX}px`;
+            pathSegment.style.top = `${startY}px`;
+            pathSegment.style.transformOrigin = '0 50%';
+            pathSegment.style.transform = `rotate(${angle}deg)`;
+            pathSegment.style.opacity = '0';
+            pathSegment.style.transition = 'opacity 0.3s';
+            
+            // 添加到容器
+            gridContainer.appendChild(pathSegment);
+            
+            // 触发动画
+            setTimeout(() => {
+                pathSegment.style.opacity = '1';
+                
+                // 继续下一段
+                setTimeout(() => {
+                    animatePath(path, index + 1);
+                }, config.animationSpeed);
+            }, 10);
+        }
+
+        // 获取路径颜色（为不同路径生成不同颜色）
+        function getPathColor(index) {
+            const colors = [
+                '#FF5252', '#FF4081', '#E040FB', '#7C4DFF', 
+                '#536DFE', '#448AFF', '#40C4FF', '#18FFFF', 
+                '#64FFDA', '#69F0AE', '#B2FF59', '#EEFF41', 
+                '#FFFF00', '#FFD740', '#FFAB40', '#FF6E40'
+            ];
+            return colors[index % colors.length];
+        }
+
+        // 初始化应用
+        init();
+    </script>
+
+
+
+
+<script>
+(function () {
+  var storageKey = 'edu_hide_brand_panels';
+  var toggleButton = document.getElementById('edu-border-toggle');
+  if (!toggleButton || !document.body) {
+    return;
+  }
+
+  function applyState(hidden) {
+    document.body.classList.toggle('edu-hide-brand-panels', hidden);
+    toggleButton.textContent = hidden ? '+' : '-';
+    toggleButton.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    toggleButton.setAttribute('aria-label', hidden ? '显示说明框' : '隐藏说明框');
+    toggleButton.setAttribute('title', hidden ? '显示说明框' : '隐藏说明框');
+  }
+
+  var hiddenByDefault = false;
+  try {
+    hiddenByDefault = localStorage.getItem(storageKey) === '1';
+  } catch (e) {
+    hiddenByDefault = false;
+  }
+
+  applyState(hiddenByDefault);
+
+  toggleButton.addEventListener('click', function () {
+    var nextHidden = !document.body.classList.contains('edu-hide-brand-panels');
+    applyState(nextHidden);
+    try {
+      localStorage.setItem(storageKey, nextHidden ? '1' : '0');
+    } catch (e) {
+      // no-op
+    }
+  });
+})();
+</script>
+
+
+</body>
+</html>

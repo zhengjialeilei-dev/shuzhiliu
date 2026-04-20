@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百分数探索实验室 - 布局修复版</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 图标 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- 引入 Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --theme-color: #3b82f6;
+            --bg-color: #f5f7fa;
+        }
+
+        /* 核心布局修复：
+           设置 body 为 flex 容器，水平排列，禁止 body 级滚动 
+        */
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            display: flex;       /* 启用 Flexbox */
+            flex-direction: row; /* 强制水平排列 */
+            overflow: hidden;    /* 禁止整个页面出现滚动条 */
+        }
+
+        /* 移动端适配：小于 768px 时切回垂直布局 */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                overflow-y: auto; /* 移动端允许 body 滚动 */
+                height: auto;
+            }
+        }
+
+        .mono-font {
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        /* 自定义垂直滑块样式 */
+        .custom-slider-container {
+            position: relative;
+            height: 300px;
+            width: 60px;
+            background: #e2e8f0;
+            border-radius: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .slider-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--theme-color);
+            border-radius: 0 0 30px 30px;
+            transition: height 0.1s ease-out, background-color 0.5s ease;
+            z-index: 1;
+        }
+
+        .slider-fill.full {
+            border-radius: 30px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 300px; 
+            height: 60px;
+            background: transparent;
+            position: absolute;
+            z-index: 10;
+            transform: rotate(-90deg);
+            cursor: pointer;
+            opacity: 0;
+        }
+
+        /* --- 百格图样式 --- */
+        .grid-cell {
+            background-color: #e2e8f0;
+            transition: background-color 0.3s ease;
+            border-radius: 2px;
+        }
+        .grid-cell.active {
+            background-color: var(--theme-color);
+            box-shadow: 0 0 4px var(--theme-color);
+        }
+
+        /* --- 电池动画 --- */
+        .battery-liquid {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--theme-color);
+            transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s ease;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .wave {
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            border-radius: 40%;
+            background-color: rgba(255, 255, 255, 0.3);
+            animation: rotate 6s linear infinite;
+            z-index: 2;
+        }
+
+        @keyframes rotate {
+            from { transform: translateY(0) rotate(0deg); }
+            to { transform: translateY(-5px) rotate(360deg); }
+        }
+
+        /* --- 进度条光效 --- */
+        .progress-bar-shine {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transform: translateX(-100%);
+            animation: shine 2s infinite;
+        }
+
+        @keyframes shine {
+            100% { transform: translateX(100%); }
+        }
+
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 分数线样式 */
+        .fraction {
+            display: inline-block;
+            text-align: center;
+            vertical-align: middle;
+            margin: 0 2px;
+        }
+        .fraction .top {
+            display: block;
+            border-bottom: 2px solid currentColor;
+            padding: 0 2px;
+        }
+        .fraction .bottom {
+            display: block;
+            padding: 0 2px;
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<!-- Body 上的类已经简化，主要依靠 style 标签中的 CSS 保证布局的稳固性 -->
+<body>
+
+    <!-- 
+      布局区域 1: 左侧侧边栏 (Sidebar) 
+      关键修复: 
+      - width: 350px (固定宽度)
+      - flex-shrink: 0 (禁止压缩)
+      - height: 100% (撑满高度)
+      - overflow-y: auto (内容多时内部滚动)
+    -->
+    <aside class="w-full md:w-[350px] md:flex-shrink-0 h-auto md:h-full bg-white border-b md:border-b-0 md:border-r border-slate-200 p-6 flex flex-col shadow-xl z-20 overflow-y-auto relative">
+        
+        <header class="mb-6 flex-shrink-0">
+            <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <i class="fas fa-percent text-blue-500"></i> 百分数的意义
+            </h1>
+            <p class="text-sm text-slate-500 mt-2">拖动滑块，观察数值与图形的变化。</p>
+        </header>
+
+        <!-- 核心控制器 -->
+        <div class="flex-1 flex flex-col items-center justify-center min-h-[300px] w-full">
+            <div class="relative flex items-center justify-center gap-8">
+                <!-- 自定义垂直滑块 -->
+                <div class="custom-slider-container">
+                    <div id="sliderFill" class="slider-fill" style="height: 45%;"></div>
+                    <input type="range" id="mainSlider" min="0" max="100" value="45" step="1">
+                </div>
+
+                <!-- 大字数值显示 -->
+                <div class="text-center">
+                    <div class="text-6xl font-bold mono-font" style="color: var(--theme-color)">
+                        <span id="bigPercent">45</span>%
+                    </div>
+                    <div class="text-slate-400 mt-2 font-medium">当前占比</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 互化面板 -->
+        <div class="mt-8 grid grid-cols-1 gap-4 flex-shrink-0 w-full">
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">数值互化 (Conversion)</h3>
+                <div class="flex justify-around items-center">
+                    <!-- 分数 -->
+                    <div class="text-center">
+                        <div class="text-sm text-slate-400 mb-1">分数</div>
+                        <div id="fractionDisplay" class="text-2xl font-bold mono-font text-slate-700">
+                            <div class="fraction">
+                                <span class="top">45</span>
+                                <span class="bottom">100</span>
+                            </div>
+                        </div>
+                        <div id="simplifiedDisplay" class="text-xs text-green-600 mt-1 h-4 font-bold">
+                            = 9/20
+                        </div>
+                    </div>
+                    
+                    <div class="text-xl text-slate-300">=</div>
+
+                    <!-- 小数 -->
+                    <div class="text-center">
+                        <div class="text-sm text-slate-400 mb-1">小数</div>
+                        <div class="text-2xl font-bold mono-font text-slate-700" id="decimalDisplay">0.45</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 
+      布局区域 2: 右侧内容区 (Content)
+      关键修复:
+      - flex: 1 (占据剩余所有空间)
+      - height: 100% (高度撑满)
+      - overflow-y: auto (关键! 成为独立的滚动容器)
+      - relative (建立新的定位上下文，避免被左侧绝对定位元素干扰)
+    -->
+    <main class="flex-1 h-full overflow-y-auto bg-[#f5f7fa] relative">
+        
+        <!-- 内容包装器：增加 padding 避免贴边 -->
+        <div class="p-8 md:p-10 w-full max-w-7xl mx-auto">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                
+                <!-- 卡片 A: 百格图 (数学模型) -->
+                <!-- 确保没有负 margin 或奇怪的 positioning -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 card-hover lg:col-span-1 lg:row-span-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-bold text-lg text-slate-700"><i class="fas fa-th text-slate-400 mr-2"></i>百格图模型</h2>
+                        <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded">10 x 10</span>
+                    </div>
+                    <div class="aspect-square w-full max-w-[350px] mx-auto bg-slate-50 p-2 rounded-lg border border-slate-200">
+                        <div id="gridContainer" class="w-full h-full grid grid-cols-10 grid-rows-10 gap-1">
+                            <!-- JS will populate 100 divs here -->
+                        </div>
+                    </div>
+                    <p class="text-center text-sm text-slate-500 mt-4">
+                        把单位“1”平均分成100份，<br>涂色部分占了 <span class="font-bold mono-font highlight-text">45</span> 份。
+                    </p>
+                </div>
+
+                <!-- 卡片 B: 电池 (生活模型 1) -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 card-hover flex flex-col items-center justify-center relative overflow-hidden">
+                    <div class="absolute top-4 left-6 font-bold text-lg text-slate-700"><i class="fas fa-battery-half text-slate-400 mr-2"></i>电量显示</div>
+                    
+                    <div class="w-24 h-44 border-4 border-slate-700 rounded-2xl p-1 relative mt-4">
+                        <!-- 电池正极 -->
+                        <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-10 h-3 bg-slate-700 rounded-t-md"></div>
+                        
+                        <!-- 液体容器 -->
+                        <div class="w-full h-full bg-slate-100 rounded-lg relative overflow-hidden flex flex-col-reverse">
+                            <div id="batteryLevel" class="battery-liquid h-[45%]">
+                                <div class="wave"></div>
+                            </div>
+                            <!-- 百分比文字 -->
+                            <div class="absolute inset-0 flex items-center justify-center z-10 mix-blend-difference text-white font-bold text-xl mono-font">
+                                <span class="val-text">45</span>%
+                            </div>
+                        </div>
+                    </div>
+                    <p id="batteryStatus" class="mt-4 text-sm font-medium text-slate-500">正在充电...</p>
+                </div>
+
+                <!-- 卡片 C: 下载进度 (生活模型 2) -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 card-hover flex flex-col justify-center">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="font-bold text-lg text-slate-700"><i class="fas fa-cloud-download-alt text-slate-400 mr-2"></i>文件下载</h2>
+                        <span class="text-xs text-slate-400">34.5 MB / 100 MB</span>
+                    </div>
+
+                    <div class="relative pt-1">
+                        <div class="flex mb-2 items-center justify-between">
+                            <div>
+                                <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200 dynamic-badge">
+                                    Loading
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-semibold inline-block text-blue-600 dynamic-text">
+                                    <span class="val-text">45</span>%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="overflow-hidden h-4 mb-4 text-xs flex rounded bg-slate-200 shadow-inner">
+                            <div id="progressBar" style="width: 45%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-300 relative">
+                                <div class="progress-bar-shine"></div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-400 text-center">正在下载数学学习资料包.zip</p>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- 底部占位，确保滚动到底部不贴边 -->
+            <div class="h-8"></div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. 初始化 DOM 元素 ---
+        const slider = document.getElementById('mainSlider');
+        const sliderFill = document.getElementById('sliderFill');
+        const bigPercent = document.getElementById('bigPercent');
+        
+        // 互化显示
+        const fractionDisplay = document.getElementById('fractionDisplay');
+        const simplifiedDisplay = document.getElementById('simplifiedDisplay');
+        const decimalDisplay = document.getElementById('decimalDisplay');
+        
+        // 可视化模型
+        const gridContainer = document.getElementById('gridContainer');
+        const batteryLevel = document.getElementById('batteryLevel');
+        const batteryStatus = document.getElementById('batteryStatus');
+        const progressBar = document.getElementById('progressBar');
+        const valTexts = document.querySelectorAll('.val-text');
+        const highlightText = document.querySelector('.highlight-text');
+        
+        // 动态样式元素
+        const root = document.documentElement;
+        const dynamicBadges = document.querySelectorAll('.dynamic-badge');
+        const dynamicTexts = document.querySelectorAll('.dynamic-text');
+
+        // --- 2. 辅助函数：生成百格图 ---
+        function initGrid() {
+            gridContainer.innerHTML = '';
+            for (let i = 0; i < 100; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                cell.dataset.index = i;
+                gridContainer.appendChild(cell);
+            }
+        }
+
+        // --- 3. 辅助函数：最大公约数 (GCD) ---
+        function gcd(a, b) {
+            return b ? gcd(b, a % b) : a;
+        }
+
+        // --- 4. 核心逻辑：更新视图 ---
+        function updateView(val) {
+            const percent = parseInt(val);
+            
+            // A. 更新滑块UI
+            sliderFill.style.height = `${percent}%`;
+            if (percent === 100) sliderFill.classList.add('full');
+            else sliderFill.classList.remove('full');
+
+            // B. 更新数值显示
+            bigPercent.textContent = percent;
+            valTexts.forEach(el => el.textContent = percent);
+            if (highlightText) highlightText.textContent = percent;
+
+            // C. 更新颜色逻辑 (情感化设计)
+            let color, bgClass, statusText;
+            if (percent < 20) {
+                color = '#ef4444'; // Red
+                bgClass = 'bg-red-200 text-red-600';
+                statusText = '电量不足';
+            } else if (percent > 80) {
+                color = '#22c55e'; // Green
+                bgClass = 'bg-green-200 text-green-600';
+                statusText = '电量充足';
+            } else {
+                color = '#3b82f6'; // Blue
+                bgClass = 'bg-blue-200 text-blue-600';
+                statusText = '正常使用';
+            }
+
+            // 应用颜色变量
+            root.style.setProperty('--theme-color', color);
+            
+            // 更新特定元素的颜色类
+            dynamicBadges.forEach(el => {
+                el.className = `text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${bgClass} dynamic-badge`;
+                el.textContent = percent === 100 ? 'Completed' : 'Loading';
+            });
+            dynamicTexts.forEach(el => el.style.color = color);
+
+            // D. 数值互化逻辑
+            // 1. 小数
+            decimalDisplay.textContent = (percent / 100).toFixed(2).replace(/\.?0+$/, ""); 
+            if (percent === 0) decimalDisplay.textContent = "0";
+
+            // 2. 分数 (原始)
+            let htmlFraction = `<div class="fraction"><span class="top">${percent}</span><span class="bottom">100</span></div>`;
+            fractionDisplay.innerHTML = htmlFraction;
+
+            // 3. 分数 (化简)
+            if (percent === 0) {
+                simplifiedDisplay.textContent = "= 0";
+            } else if (percent === 100) {
+                simplifiedDisplay.textContent = "= 1";
+            } else {
+                const divisor = gcd(percent, 100);
+                if (divisor > 1) {
+                    simplifiedDisplay.textContent = `= ${percent/divisor}/${100/divisor} (化简后)`;
+                } else {
+                    simplifiedDisplay.textContent = ""; 
+                }
+            }
+
+            // E. 更新百格图
+            const cells = document.querySelectorAll('.grid-cell');
+            cells.forEach((cell, index) => {
+                // 计算该格子在 "从下往上" 逻辑中的排名
+                const currentRow = Math.floor(index / 10);
+                const currentCol = index % 10;
+                const visualIndex = (9 - currentRow) * 10 + currentCol;
+
+                if (visualIndex < percent) {
+                    cell.classList.add('active');
+                } else {
+                    cell.classList.remove('active');
+                }
+            });
+
+            // F. 更新电池
+            batteryLevel.style.height = `${percent}%`;
+            batteryStatus.textContent = percent === 100 ? '充电完成' : statusText;
+
+            // G. 更新进度条
+            progressBar.style.width = `${percent}%`;
+            progressBar.style.backgroundColor = color;
+        }
+
+        // --- 5. 事件监听 ---
+        slider.addEventListener('input', (e) => {
+            updateView(e.target.value);
+        });
+
+        // --- 6. 启动初始化 ---
+        initGrid();
+        updateView(45); // 默认值
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>等周面积极值台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+        body { 
+            font-family: 'Outfit', 'Noto Sans SC', sans-serif; 
+            overflow: hidden; /* 禁止body滚动，由main处理 */
+            background: #e0e5ec;
+        }
+        /* 全屏滚动容器 */
+        main {
+            height: 100vh;
+            height: 100dvh; /* 移动端优化 */
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+        /* 每一页 */
+        section {
+            height: 100vh;
+            height: 100dvh;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden; /* 防止内容溢出 */
+        }
+
+        .slider-thumb::slider-thumb {
+            appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #3b82f6;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: all 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .slider-thumb::slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        .canvas-container {
+            /* 稍微调整背景网格，使其更淡，突出图形 */
+            background-image: radial-gradient(#f3f4f6 1px, transparent 1px);
+            background-size: 20px 20px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.02);
+        }
+        .snapped::slider-thumb {
+            background: #10b981 !important;
+            transform: scale(1.2);
+        }
+        
+        /* 向下指示箭头动画 */
+        .scroll-hint {
+            animation: bounce 2s infinite;
+            cursor: pointer; /* 增加手型 */
+        }
+        .scroll-hint:hover {
+            color: #3b82f6; /* hover变蓝 */
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0) translateX(-50%);}
+            40% {transform: translateY(-10px) translateX(-50%);}
+            60% {transform: translateY(-5px) translateX(-50%);}
+        }
+    </style>
+<!-- EDU_BRAND_STYLE_START -->
+<style id="edu-brand-style">
+  :root {
+    --edu-bg: #eef5f7;
+    --edu-bg-deep: #dfeaf0;
+    --edu-surface: rgba(255, 255, 255, 0.82);
+    --edu-surface-strong: rgba(255, 255, 255, 0.94);
+    --edu-line: rgba(97, 132, 161, 0.24);
+    --edu-shadow: 0 18px 48px rgba(37, 78, 110, 0.12);
+    --edu-shadow-strong: 0 24px 56px rgba(24, 61, 90, 0.16);
+    --edu-text: #17324d;
+    --edu-text-soft: #4a647c;
+    --edu-accent: #0f9d8a;
+    --edu-accent-deep: #0d7b72;
+    --edu-warm: #ff9d6c;
+    --edu-warm-soft: #fff1e8;
+  }
+
+  body.edu-refactor-body {
+    background:
+      radial-gradient(circle at 12% 14%, rgba(15, 157, 138, 0.10), transparent 22%),
+      radial-gradient(circle at 88% 16%, rgba(255, 157, 108, 0.18), transparent 20%),
+      radial-gradient(circle at 50% 100%, rgba(81, 122, 164, 0.10), transparent 28%),
+      linear-gradient(180deg, #f6fbfc 0%, var(--edu-bg) 42%, var(--edu-bg-deep) 100%) !important;
+    color: var(--edu-text) !important;
+  }
+
+  body.edu-refactor-body::before,
+  body.edu-refactor-body::after {
+    content: '';
+    position: fixed;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+    opacity: 0.6;
+  }
+
+  body.edu-refactor-body::before {
+    width: 240px;
+    height: 240px;
+    right: -40px;
+    top: 80px;
+    background: rgba(15, 157, 138, 0.14);
+  }
+
+  body.edu-refactor-body::after {
+    width: 180px;
+    height: 180px;
+    left: -20px;
+    bottom: 80px;
+    background: rgba(255, 157, 108, 0.16);
+  }
+
+  body.edu-refactor-body button,
+  body.edu-refactor-body input[type="button"],
+  body.edu-refactor-body input[type="submit"] {
+    border-radius: 16px !important;
+    border: 1px solid rgba(22, 101, 122, 0.16) !important;
+    box-shadow: 0 10px 24px rgba(33, 76, 111, 0.12) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #edf7f6 100%) !important;
+    color: var(--edu-text) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+  }
+
+  body.edu-refactor-body button:hover,
+  body.edu-refactor-body input[type="button"]:hover,
+  body.edu-refactor-body input[type="submit"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(33, 76, 111, 0.16) !important;
+    filter: saturate(1.04);
+  }
+
+  body.edu-refactor-body input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  body.edu-refactor-body select,
+  body.edu-refactor-body textarea {
+    border-radius: 14px !important;
+    border: 1px solid rgba(82, 119, 148, 0.26) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: var(--edu-text) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px rgba(42, 77, 105, 0.08) !important;
+  }
+
+  body.edu-refactor-body [class*="panel"],
+  body.edu-refactor-body [class*="Panel"],
+  body.edu-refactor-body [class*="card"],
+  body.edu-refactor-body [class*="Card"],
+  body.edu-refactor-body [class*="dialog"],
+  body.edu-refactor-body [class*="Dialog"],
+  body.edu-refactor-body [class*="controls"],
+  body.edu-refactor-body [class*="Controls"],
+  body.edu-refactor-body [class*="toolbar"],
+  body.edu-refactor-body [class*="Toolbar"],
+  body.edu-refactor-body [class*="sidebar"],
+  body.edu-refactor-body [class*="Sidebar"],
+  body.edu-refactor-body [class*="instruction"],
+  body.edu-refactor-body [class*="Instruction"],
+  body.edu-refactor-body [id*="panel"],
+  body.edu-refactor-body [id*="Panel"],
+  body.edu-refactor-body [id*="controls"],
+  body.edu-refactor-body [id*="Controls"] {
+    border-radius: 24px !important;
+    border: 1px solid var(--edu-line) !important;
+    box-shadow: var(--edu-shadow) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  body.edu-refactor-body .page-title,
+  body.edu-refactor-body .header h1,
+  body.edu-refactor-body .header h2,
+  body.edu-refactor-body .title,
+  body.edu-refactor-body .subtitle,
+  body.edu-refactor-body .teacher-text,
+  body.edu-refactor-body #step-indicator,
+  body.edu-refactor-body #narrative-text {
+    color: var(--edu-text) !important;
+    text-shadow: none !important;
+  }
+
+  body.edu-refactor-body .edu-brand-shell {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  body.edu-refactor-body .edu-brand-panel,
+  body.edu-refactor-body .edu-brand-guide {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 251, 0.92) 100%);
+    border: 1px solid rgba(89, 127, 156, 0.22);
+    box-shadow: var(--edu-shadow-strong);
+    backdrop-filter: blur(18px);
+    border-radius: 26px;
+  }
+
+  body.edu-refactor-body .edu-brand-panel {
+    max-width: min(720px, calc(100vw - 280px));
+    padding: 18px 22px 20px;
+  }
+
+  body.edu-refactor-body .edu-brand-guide {
+    width: 220px;
+    padding: 16px 18px;
+  }
+
+  body.edu-refactor-body .edu-brand-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(15, 157, 138, 0.10);
+    color: var(--edu-accent-deep);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  body.edu-refactor-body .edu-brand-title {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.08;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-copy {
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  body.edu-refactor-body .edu-brand-copy strong {
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-brand-shell {
+      flex-direction: column;
+      right: 12px;
+      left: 12px;
+      top: 12px;
+    }
+
+    body.edu-refactor-body .edu-brand-panel,
+    body.edu-refactor-body .edu-brand-guide {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
+
+
+  body.edu-refactor-body .edu-border-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 10001;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(89, 127, 156, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--edu-text, #1f2937);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  body.edu-refactor-body .edu-border-toggle:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  body.edu-refactor-body.edu-hide-brand-panels .edu-brand-shell {
+    display: none !important;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-border-toggle {
+      top: auto;
+      bottom: 12px;
+      right: 12px;
+    }
+  }
+
+</style>
+<!-- EDU_BRAND_STYLE_END -->
+
+
+</head>
+<body class="text-gray-800 edu-refactor-body">
+<!-- EDU_BRAND_SHELL_START -->
+<div class="edu-brand-shell" data-brand-shell>
+  <section class="edu-brand-panel" aria-label="页面导语">
+    <div class="edu-brand-kicker">面积极值 · EDU STUDIO</div>
+    <h1 class="edu-brand-title">等周面积极值台</h1>
+    <div class="edu-brand-copy">
+      <div><strong>任务目标：</strong>把周长固定住，比较不同图形的面积谁能做到更大。</div>
+      <div><strong>操作提示：</strong>保持统一周长不变，切换图形或调整参数，观察面积如何响应。</div>
+      <div><strong>理解重点：</strong>等周问题最适合先固定周长，再专心观察面积变化，从而建立极值直觉。</div>
+    </div>
+</section>
+  <aside class="edu-brand-guide" aria-label="操作建议">
+    <h2>建议这样探索</h2>
+    <ul><li>先确认每种图形都使用同一条周长基准。</li><li>记录图形越规则时面积怎样变化。</li><li>把圆形和正方形当作关键参照。</li></ul>
+  </aside>
+</div>
+<!-- EDU_BRAND_SHELL_END -->
+
+<button type="button" class="edu-border-toggle" id="edu-border-toggle" aria-pressed="false" aria-label="隐藏说明框" title="隐藏说明框">-</button>
+
+
+    <!-- 固定顶部导航/标题 (更紧凑) -->
+    <header class="fixed top-0 left-0 w-full bg-white/90 backdrop-blur-sm shadow-sm z-50 px-4 py-2 flex justify-between items-center">
+        <h1 class="text-lg md:text-xl font-bold text-blue-700">几何调优：等周极值</h1>
+        <div class="text-xs text-gray-500 hidden md:block">向下滚动切换模块</div>
+    </header>
+
+    <main>
+        <!-- 第一页：实验一（多边形） -->
+        <section id="section1" class="bg-purple-50/30 p-4 pt-16">
+            <!-- 布局调整：Grid 1:3 -->
+            <div class="w-full max-w-[98%] h-full grid md:grid-cols-4 gap-4 md:gap-8 items-center">
+                <!-- 左侧：控制与数据 (占 1/4) -->
+                <div class="space-y-6 md:col-span-1 flex flex-col justify-center h-full overflow-y-auto max-h-[90vh]">
+                    <div class="border-l-4 border-purple-500 pl-4">
+                        <h2 class="text-xl md:text-2xl font-bold text-purple-800">模块 1</h2>
+                        <p class="text-base text-purple-600 font-medium">从折线边界到圆</p>
+                        <p class="text-xs text-gray-500 mt-1">增加边数，观察面积怎样逼近极值</p>
+                    </div>
+
+                    <div class="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+                        <div class="mb-6">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="font-bold text-base">边数: <span id="sidesDisplay" class="text-purple-600">3</span></label>
+                                <div class="flex gap-2">
+                                    <button onclick="adjustSides(-1)" class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold flex items-center justify-center transition active:scale-95" aria-label="减少边数档位">-</button>
+                                    <button onclick="adjustSides(1)" class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold flex items-center justify-center transition active:scale-95" aria-label="增加边数档位">+</button>
+                                </div>
+                            </div>
+                            <input type="range" min="3" max="50" value="3" id="sidesSlider" class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb">
+                        </div>
+
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between border-b pb-2">
+                                <span class="text-gray-500">图形</span>
+                                <span id="shapeName" class="font-bold text-gray-800">正三角形</span>
+                            </div>
+                            <div class="flex justify-between border-b pb-2">
+                                <span class="text-gray-500">统一周长</span>
+                                <span class="font-mono font-bold text-gray-800" id="polyPerimeterVal">200.00</span>
+                            </div>
+                            <!-- 边长样式修改：橙色，加大字号 -->
+                            <div class="flex justify-between items-center border-b pb-2">
+                                <span class="font-bold text-orange-700">边长</span>
+                                <span class="font-mono text-xl md:text-2xl font-bold text-orange-600" id="sideLengthVal">66.67</span>
+                            </div>
+                            <div class="flex justify-between items-center pt-2">
+                                <span class="font-bold text-purple-700">面积</span>
+                                <span class="font-mono text-xl md:text-2xl font-bold text-purple-600" id="polyAreaVal">1924.50</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：画布 (占 3/4，尽可能大) -->
+                <div class="flex flex-col items-center justify-center md:col-span-3 h-full w-full p-2">
+                    <div class="canvas-container bg-white border-2 border-purple-100 rounded-2xl shadow-inner flex justify-center items-center relative aspect-square w-full h-auto max-h-[80vh] max-w-[80vh]">
+                        <canvas id="polyCanvas" width="600" height="600" class="w-full h-full rounded-2xl"></canvas>
+                        <div class="absolute bottom-3 right-3 text-xs text-gray-600 bg-white/90 px-3 py-1 rounded shadow-sm border flex flex-col md:flex-row gap-2 md:gap-4">
+                            <div class="flex items-center"><span class="inline-block w-3 h-3 bg-purple-300 rounded-full mr-1"></span>当前多边形</div>
+                            <div class="flex items-center"><span class="inline-block w-3 h-3 bg-gray-200 rounded-full mr-1 border border-gray-400 border-dashed"></span>同周长圆形</div>
+                            <div class="flex items-center"><span class="inline-block w-3 h-3 bg-indigo-600 rounded-full mr-1"></span>公共覆盖区</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 向下提示 (支持点击) -->
+            <a href="#section2" class="absolute bottom-4 left-1/2 text-gray-400 scroll-hint z-10 p-2" title="进入下一模块">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </a>
+        </section>
+
+        <!-- 第二页：实验二（矩形） -->
+        <section id="section2" class="bg-green-50/30 p-4 pt-16">
+            <!-- 布局调整：Grid 1:3 -->
+            <div class="w-full max-w-[98%] h-full grid md:grid-cols-4 gap-4 md:gap-8 items-center">
+                <!-- 左侧：控制与数据 (占 1/4) -->
+                <div class="space-y-6 md:col-span-1 flex flex-col justify-center h-full overflow-y-auto max-h-[90vh]">
+                    <div class="border-l-4 border-green-500 pl-4">
+                        <h2 class="text-xl md:text-2xl font-bold text-green-800">模块 2</h2>
+                        <p class="text-base text-green-600 font-medium">矩形调优</p>
+                        <p class="text-xs text-gray-500 mt-1">调整长宽比，寻找面积峰值</p>
+                    </div>
+
+                    <div class="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+                        <div class="mb-6">
+                            <label class="flex justify-between font-bold mb-2 text-base">
+                                <span>形状: <span id="rectStatus" class="text-sm font-normal text-gray-600">扁长方形</span></span>
+                            </label>
+                            <div class="relative">
+                                <!-- 默认值改为30，对应长30宽70 (当周长为200时) -->
+                                <input type="range" min="1" max="99" value="30" id="rectSlider" class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb z-10 relative">
+                                <!-- 中间刻度线 -->
+                                <div class="absolute top-0 left-1/2 w-0.5 h-3 bg-green-500 -translate-x-1/2 opacity-50"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-400 mt-1 px-1">
+                                <span>偏瘦</span>
+                                <span class="font-bold text-green-600">最佳均衡</span>
+                                <span>偏扁</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between border-b pb-2">
+                                <span class="text-gray-500">长边</span>
+                                <span class="font-mono font-bold text-gray-800" id="rectW">30.00</span>
+                            </div>
+                            <div class="flex justify-between border-b pb-2">
+                                <span class="text-gray-500">短边</span>
+                                <span class="font-mono font-bold text-gray-800" id="rectH">70.00</span>
+                            </div>
+                            <div class="flex justify-between items-center pt-2">
+                                <span class="font-bold text-green-700">面积</span>
+                                <span class="font-mono text-xl md:text-2xl font-bold text-green-600" id="rectAreaVal">2100.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 右侧：画布 (占 3/4，尽可能大) -->
+                <div class="flex flex-col items-center justify-center md:col-span-3 h-full w-full p-2">
+                    <div class="canvas-container bg-white border-2 border-green-100 rounded-2xl shadow-inner flex justify-center items-center relative aspect-square w-full h-auto max-h-[80vh] max-w-[80vh]">
+                        <canvas id="rectCanvas" width="600" height="600" class="w-full h-full rounded-2xl"></canvas>
+                        <div class="absolute bottom-3 right-3 text-xs text-gray-600 bg-white/90 px-3 py-1 rounded shadow-sm border flex flex-col md:flex-row gap-2 md:gap-4">
+                             <div class="flex items-center"><span class="inline-block w-3 h-3 bg-green-300 rounded-full mr-1"></span>当前矩形</div>
+                            <div class="flex items-center"><span class="inline-block w-3 h-3 bg-gray-200 rounded-full mr-1 border border-gray-400 border-dashed"></span>同周长正方形</div>
+                            <div class="flex items-center"><span class="inline-block w-3 h-3 bg-teal-700 rounded-full mr-1"></span>公共覆盖区</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+             <!-- 向下提示 (支持点击) -->
+             <a href="#section3" class="absolute bottom-4 left-1/2 text-gray-400 scroll-hint z-10 p-2" title="进入结果总览">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </a>
+        </section>
+
+        <!-- 第三页：设定与总结 -->
+        <section id="section3" class="bg-blue-50/30 p-4 pt-16 relative">
+            <!-- 向上箭头提示 -->
+            <a href="#section2" class="absolute top-16 left-1/2 -translate-x-1/2 text-gray-400 hover:text-blue-600 p-2 animate-pulse z-20" title="返回上一个模块">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+            </a>
+
+            <div class="max-w-4xl w-full h-full flex flex-col justify-center space-y-6 py-10">
+                
+                <div class="text-center mb-2">
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800">全局设定与结果总览</h2>
+                </div>
+
+                <!-- 1. 全局周长设定 (原头部内容) -->
+                <div class="bg-white rounded-xl shadow-md p-6 md:p-8 border border-blue-100">
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="text-center md:text-left">
+                            <label class="font-bold text-xl text-gray-700">统一周长</label>
+                            <p class="text-sm text-gray-500">调整这个数值后，前面两个模块会同步更新</p>
+                        </div>
+                        <div class="flex items-center w-full md:w-1/2 gap-4">
+                            <span class="font-mono text-2xl font-bold text-blue-600 min-w-[3ch]" id="perimeterDisplay">200</span>
+                            <input type="range" min="100" max="400" step="10" value="200" id="perimeterSlider" class="flex-grow h-3 bg-blue-100 rounded-lg appearance-none cursor-pointer slider-thumb">
+                        </div>
+                    </div>
+                    <div class="mt-4 p-3 bg-yellow-50 text-yellow-800 text-sm rounded-lg flex items-start gap-2">
+                        <span>💡</span>
+                        <span>圆的极限面积 (周长 <span id="limitPLabel">200</span>) ≈ <span class="font-bold" id="limitAreaLabel">3183.10</span></span>
+                    </div>
+                </div>
+
+                <!-- 2. 数据对比图表 -->
+                <div class="bg-white rounded-xl shadow-md p-4 flex-grow flex flex-col min-h-0">
+                    <h3 class="text-lg font-bold text-center mb-2 text-gray-700">面积对比面板</h3>
+                    <div class="relative flex-grow w-full min-h-[200px]">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                    <div class="mt-3 text-center text-gray-600 text-sm">
+                        当周长保持一致时，<span class="font-bold text-blue-600">圆形</span> 往往给出最大的面积结果。
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+var _0xodv='jsjiami.com.v7';const _0x23ea0a=_0x5dd3;(function(_0x449af3,_0x17ad28,_0x2d6bb7,_0x2e2dd9,_0x35a6c8,_0x57fa3f,_0xd80536){return _0x449af3=_0x449af3>>0x4,_0x57fa3f='hs',_0xd80536='hs',function(_0x2e7ae3,_0x479bb3,_0x108a32,_0x5065c9,_0x71572c){const _0x2ff826=_0x5dd3;_0x5065c9='tfi',_0x57fa3f=_0x5065c9+_0x57fa3f,_0x71572c='up',_0xd80536+=_0x71572c,_0x57fa3f=_0x108a32(_0x57fa3f),_0xd80536=_0x108a32(_0xd80536),_0x108a32=0x0;const _0x6a5a3b=_0x2e7ae3();while(!![]&&--_0x2e2dd9+_0x479bb3){try{_0x5065c9=parseInt(_0x2ff826(0x15e,'i9#A'))/0x1*(parseInt(_0x2ff826(0xe3,'lrnE'))/0x2)+parseInt(_0x2ff826(0x109,'QfVq'))/0x3+-parseInt(_0x2ff826(0x132,')oiZ'))/0x4*(parseInt(_0x2ff826(0x15c,'geDb'))/0x5)+parseInt(_0x2ff826(0xb4,'3Glg'))/0x6*(-parseInt(_0x2ff826(0x1a1,'aDuD'))/0x7)+parseInt(_0x2ff826(0x1a0,'X@8S'))/0x8*(parseInt(_0x2ff826(0x1af,'ShQ3'))/0x9)+parseInt(_0x2ff826(0x127,'7wZ@'))/0xa*(-parseInt(_0x2ff826(0x1a8,'lrnE'))/0xb)+parseInt(_0x2ff826(0x104,'Zk#D'))/0xc;}catch(_0x497c79){_0x5065c9=_0x108a32;}finally{_0x71572c=_0x6a5a3b[_0x57fa3f]();if(_0x449af3<=_0x2e2dd9)_0x108a32?_0x35a6c8?_0x5065c9=_0x71572c:_0x35a6c8=_0x71572c:_0x108a32=_0x71572c;else{if(_0x108a32==_0x35a6c8['replace'](/[TxwEuSRbIqOdFMLNBYXt=]/g,'')){if(_0x5065c9===_0x479bb3){_0x6a5a3b['un'+_0x57fa3f](_0x71572c);break;}_0x6a5a3b[_0xd80536](_0x71572c);}}}}}(_0x2d6bb7,_0x17ad28,function(_0x4ab2b2,_0xdea332,_0x27fd03,_0x5ddbd6,_0x47da45,_0x52a722,_0x44db63){return _0xdea332='\x73\x70\x6c\x69\x74',_0x4ab2b2=arguments[0x0],_0x4ab2b2=_0x4ab2b2[_0xdea332](''),_0x27fd03='\x72\x65\x76\x65\x72\x73\x65',_0x4ab2b2=_0x4ab2b2[_0x27fd03]('\x76'),_0x5ddbd6='\x6a\x6f\x69\x6e',(0x1c2110,_0x4ab2b2[_0x5ddbd6](''));});}(0xbd0,0xdb5cc,_0x5c1e,0xbf),_0x5c1e)&&(_0xodv=_0x5c1e);let perimeter=0xc8;const scale=0x6,pSlider=document[_0x23ea0a(0xf8,'Ddio')](_0x23ea0a(0x175,'VIp9')),pDisplay=document[_0x23ea0a(0xbf,'!8Z(')](_0x23ea0a(0xf7,'aDuD')),limitPLabel=document[_0x23ea0a(0x133,'N#&&')]('limitPLabel'),limitAreaLabel=document[_0x23ea0a(0xb7,'f4kJ')]('limitAreaLabel'),polySlider=document[_0x23ea0a(0xf5,'q7Lv')](_0x23ea0a(0x17f,'4uPf')),sidesDisplay=document[_0x23ea0a(0x103,'Zk#D')]('sidesDisplay'),shapeNameDisplay=document[_0x23ea0a(0x12f,'%7b7')](_0x23ea0a(0x1a5,'aDuD')),polyPerimeterVal=document[_0x23ea0a(0x169,'JSkp')](_0x23ea0a(0x1ac,'4uPf')),sideLengthVal=document['getElementById'](_0x23ea0a(0xca,'JcBB')),polyAreaVal=document[_0x23ea0a(0xc3,'VEpC')](_0x23ea0a(0x140,'X@8S')),polyCanvas=document[_0x23ea0a(0xe0,'QfVq')](_0x23ea0a(0xf1,'!(pv')),ctxPoly=polyCanvas[_0x23ea0a(0x197,'X!f]')]('2d'),rectSlider=document['getElementById'](_0x23ea0a(0xee,'EjVW')),rectStatus=document[_0x23ea0a(0x16f,'!H3l')](_0x23ea0a(0x1b2,'ShQ3')),rectWDisplay=document['getElementById']('rectW'),rectHDisplay=document[_0x23ea0a(0xd3,'$u3D')](_0x23ea0a(0x171,'%7b7')),rectAreaVal=document[_0x23ea0a(0xff,'65fX')]('rectAreaVal'),rectCanvas=document[_0x23ea0a(0x125,'4uPf')](_0x23ea0a(0xb0,'X(8J')),ctxRect=rectCanvas[_0x23ea0a(0x183,'QfVq')]('2d');let myChart=null;function init(){const _0x2a124d=_0x23ea0a,_0x34865a={'jCFdJ':function(_0x323f7c,_0x1a5e48){return _0x323f7c+_0x1a5e48;},'ZimaT':function(_0x1ad513,_0x25f268){return _0x1ad513*_0x25f268;},'zMCiW':function(_0x4daae1,_0x563d1d){return _0x4daae1+_0x563d1d;},'ENuFo':function(_0x2c9894,_0x5e9c14){return _0x2c9894===_0x5e9c14;},'TnCyA':function(_0x10aadb,_0x8fbd1e){return _0x10aadb!==_0x8fbd1e;},'rImhD':_0x2a124d(0xb5,'gius'),'mEasq':_0x2a124d(0x123,'!H3l'),'lqvjW':function(_0x33f16f,_0xe94f4e){return _0x33f16f(_0xe94f4e);},'OUZwD':function(_0x44e806,_0x3b0878){return _0x44e806===_0x3b0878;},'WslJd':_0x2a124d(0x130,'ShQ3'),'QjABp':_0x2a124d(0x128,'5MhP'),'QKxPq':function(_0xaccab5,_0x246d5d){return _0xaccab5>_0x246d5d;},'ibuoL':_0x2a124d(0x1ae,'!8Z('),'eBioW':function(_0x5f0581,_0x966e73){return _0x5f0581/_0x966e73;},'bVMrA':function(_0x435f45,_0x16af25){return _0x435f45*_0x16af25;},'VmYsH':function(_0x113313,_0xb16c87){return _0x113313/_0xb16c87;},'wnrjd':function(_0x4f9495,_0x5d81d1){return _0x4f9495*_0x5d81d1;},'RlHAH':function(_0x46d9a7,_0x16825d){return _0x46d9a7*_0x16825d;},'OjAUo':function(_0x3efff2,_0x29f194,_0x29746a){return _0x3efff2(_0x29f194,_0x29746a);},'cNpfj':_0x2a124d(0xd7,'Ddio'),'gIABj':function(_0x3fd82f,_0x3b3db3){return _0x3fd82f>=_0x3b3db3;},'DtTQh':function(_0x59c559,_0x782a81){return _0x59c559(_0x782a81);},'WYWgU':function(_0x47ed01,_0x2764ba){return _0x47ed01<=_0x2764ba;},'JEIwb':function(_0x16a16f){return _0x16a16f();},'eaGqP':_0x2a124d(0x1a9,'JSkp'),'OjazR':'resize'};pSlider['addEventListener'](_0x34865a[_0x2a124d(0x105,'$u3D')],updateAll),polySlider[_0x2a124d(0x11f,'4uPf')](_0x34865a[_0x2a124d(0x119,'c1xb')],updatePoly),rectSlider[_0x2a124d(0x17e,'Ddio')](_0x34865a[_0x2a124d(0x182,'aDuD')],handleRectInput),window['addEventListener'](_0x34865a['OjazR'],()=>{const _0x1a116a=_0x2a124d,_0x4bf959={'InNtv':function(_0x213084,_0x342d4c){return _0x34865a['jCFdJ'](_0x213084,_0x342d4c);},'VxyuD':function(_0x422367,_0x1b9baf){return _0x34865a['ZimaT'](_0x422367,_0x1b9baf);},'wZEoq':function(_0x55bf0b,_0x10cd10){const _0x5c09a4=_0x5dd3;return _0x34865a[_0x5c09a4(0xf9,'!8Z(')](_0x55bf0b,_0x10cd10);},'gDTml':function(_0x32e7e2,_0x2322f7){return _0x32e7e2*_0x2322f7;},'HKEpJ':function(_0x26b1e8,_0x2bf600){return _0x34865a['ENuFo'](_0x26b1e8,_0x2bf600);}};if(_0x34865a[_0x1a116a(0x13a,')Bxw')](_0x34865a[_0x1a116a(0x159,'D)d6')],_0x34865a['mEasq'])){if(myChart)myChart[_0x1a116a(0xcc,'ZpuK')]();}else{const _0x338996=_0x4bf959['InNtv'](_0x486ee,_0x4bf959[_0x1a116a(0x16c,'geDb')](_0x4bf959['VxyuD'](_0x4940cf,0x2),_0x9facf1['PI'])/_0x57c4f9),_0xfa8443=_0x4bf959[_0x1a116a(0x16d,'N#&&')](_0x4eeec5,_0x4bf959[_0x1a116a(0x163,'X@8S')](_0x388b3e*_0x32d332,_0x16b868[_0x1a116a(0x144,'X(8J')](_0x338996))),_0x141ae1=_0x4bf959[_0x1a116a(0x13b,'5MhP')](_0x1f1a52,_0x4bf959['gDTml'](_0x4bf959[_0x1a116a(0x14d,')oiZ')](_0x17fbd0,_0x523f5e),_0x5f154c[_0x1a116a(0x110,'i9#A')](_0x338996)));if(_0x4bf959[_0x1a116a(0x17c,'DrUH')](_0xfd3d05,0x0))_0x1ccddd['moveTo'](_0xfa8443,_0x141ae1);else _0xe6e57f['lineTo'](_0xfa8443,_0x141ae1);}}),window[_0x2a124d(0xfc,'JSkp')]=function(_0x977ea2){const _0x82c519=_0x2a124d;if(_0x34865a[_0x82c519(0x162,'5MhP')]===_0x34865a[_0x82c519(0x177,'f4kJ')]){let _0x9dea13=_0x34865a['lqvjW'](parseInt,polySlider[_0x82c519(0x160,'JSkp')]),_0x560e16=_0x34865a[_0x82c519(0xfe,'JcBB')](_0x9dea13,_0x977ea2);_0x34865a[_0x82c519(0xdd,'ShQ3')](_0x560e16,_0x34865a['DtTQh'](parseInt,polySlider['min']))&&_0x34865a[_0x82c519(0x12a,'Cb7%')](_0x560e16,parseInt(polySlider[_0x82c519(0x1ad,'Ddio')]))&&(polySlider[_0x82c519(0x14f,'uPl$')]=_0x560e16,_0x34865a[_0x82c519(0x10c,'h9mi')](updatePoly));}else{const _0x518f5e=_0x34865a[_0x82c519(0x191,'&CP!')](_0x469793,_0x3a1598[_0x82c519(0x1a2,'dPM8')]);_0x288086[_0x82c519(0x199,'!(pv')]=_0x518f5e;let _0x163f8c=_0x34865a[_0x82c519(0x19e,'aDuD')](_0x518f5e,'边形');if(_0x34865a[_0x82c519(0xd1,'(Fat')](_0x518f5e,0x3))_0x163f8c=_0x34865a['WslJd'];if(_0x34865a['OUZwD'](_0x518f5e,0x4))_0x163f8c=_0x34865a['QjABp'];if(_0x34865a[_0x82c519(0x118,'ShQ3')](_0x518f5e,0x1e))_0x163f8c=_0x34865a[_0x82c519(0x124,'N#&&')];_0x34e34e[_0x82c519(0x148,'QfVq')]=_0x163f8c;const _0x2f9369=_0x34865a[_0x82c519(0x196,'uPl$')](_0x59a556,_0x518f5e),_0x3c8c98=_0x2f9369/_0x34865a['bVMrA'](0x2,_0x4c4077[_0x82c519(0x16a,'Ddio')](_0x34865a['eBioW'](_0x1e5f24['PI'],_0x518f5e))),_0x4acea5=_0x34865a[_0x82c519(0x116,'uPl$')](_0x2f9369,0x2*_0x4ca604[_0x82c519(0xf2,'aDuD')](_0x506387['PI']/_0x518f5e)),_0x3d5a8a=_0x34865a[_0x82c519(0x181,'X!f]')](_0x34865a[_0x82c519(0x188,'dPM8')](0.5,_0x1e134b),_0x3c8c98);_0x4ab3d4[_0x82c519(0x129,'7wZ@')]=_0xf207ff[_0x82c519(0x131,'c1xb')](0x2),_0x4253a9[_0x82c519(0x11c,'Ddio')]=_0x2f9369[_0x82c519(0x1a3,'5MhP')](0x2),_0x3bd73f[_0x82c519(0xd2,'i9#A')]=_0x3d5a8a[_0x82c519(0xd0,'!H3l')](0x2),_0x34865a['OjAUo'](_0x29d6d9,_0x518f5e,_0x4acea5),_0x59a343();}},_0x34865a['JEIwb'](initChart),_0x34865a[_0x2a124d(0xda,'aDuD')](updateAll);}function _0x5dd3(_0x3909ef,_0x53c530){const _0x5c1eae=_0x5c1e();return _0x5dd3=function(_0x5dd337,_0x5f3a27){_0x5dd337=_0x5dd337-0xb0;let _0x236062=_0x5c1eae[_0x5dd337];if(_0x5dd3['cCrhhA']===undefined){var _0x20e193=function(_0x484456){const _0x3da302='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=';let _0x5f5d9d='',_0x11419a='';for(let _0x2948ca=0x0,_0x352049,_0x2f987e,_0x13b829=0x0;_0x2f987e=_0x484456['charAt'](_0x13b829++);~_0x2f987e&&(_0x352049=_0x2948ca%0x4?_0x352049*0x40+_0x2f987e:_0x2f987e,_0x2948ca++%0x4)?_0x5f5d9d+=String['fromCharCode'](0xff&_0x352049>>(-0x2*_0x2948ca&0x6)):0x0){_0x2f987e=_0x3da302['indexOf'](_0x2f987e);}for(let _0x388571=0x0,_0x35fd49=_0x5f5d9d['length'];_0x388571<_0x35fd49;_0x388571++){_0x11419a+='%'+('00'+_0x5f5d9d['charCodeAt'](_0x388571)['toString'](0x10))['slice'](-0x2);}return decodeURIComponent(_0x11419a);};const _0x311abf=function(_0x5d3afd,_0x54e5fd){let _0x5da18a=[],_0x3e32d8=0x0,_0x5d90ad,_0x524f7c='';_0x5d3afd=_0x20e193(_0x5d3afd);let _0x1baea9;for(_0x1baea9=0x0;_0x1baea9<0x100;_0x1baea9++){_0x5da18a[_0x1baea9]=_0x1baea9;}for(_0x1baea9=0x0;_0x1baea9<0x100;_0x1baea9++){_0x3e32d8=(_0x3e32d8+_0x5da18a[_0x1baea9]+_0x54e5fd['charCodeAt'](_0x1baea9%_0x54e5fd['length']))%0x100,_0x5d90ad=_0x5da18a[_0x1baea9],_0x5da18a[_0x1baea9]=_0x5da18a[_0x3e32d8],_0x5da18a[_0x3e32d8]=_0x5d90ad;}_0x1baea9=0x0,_0x3e32d8=0x0;for(let _0x51508b=0x0;_0x51508b<_0x5d3afd['length'];_0x51508b++){_0x1baea9=(_0x1baea9+0x1)%0x100,_0x3e32d8=(_0x3e32d8+_0x5da18a[_0x1baea9])%0x100,_0x5d90ad=_0x5da18a[_0x1baea9],_0x5da18a[_0x1baea9]=_0x5da18a[_0x3e32d8],_0x5da18a[_0x3e32d8]=_0x5d90ad,_0x524f7c+=String['fromCharCode'](_0x5d3afd['charCodeAt'](_0x51508b)^_0x5da18a[(_0x5da18a[_0x1baea9]+_0x5da18a[_0x3e32d8])%0x100]);}return _0x524f7c;};_0x5dd3['GGENQR']=_0x311abf,_0x3909ef=arguments,_0x5dd3['cCrhhA']=!![];}const _0xd766bd=_0x5c1eae[0x0],_0x2328b4=_0x5dd337+_0xd766bd,_0x4756fc=_0x3909ef[_0x2328b4];return!_0x4756fc?(_0x5dd3['ZFkJuG']===undefined&&(_0x5dd3['ZFkJuG']=!![]),_0x236062=_0x5dd3['GGENQR'](_0x236062,_0x5f3a27),_0x3909ef[_0x2328b4]=_0x236062):_0x236062=_0x4756fc,_0x236062;},_0x5dd3(_0x3909ef,_0x53c530);}function updateAll(){const _0x3d39ee=_0x23ea0a,_0x22f83f={'DEtgv':function(_0x2629d6,_0xb086e0){return _0x2629d6/_0xb086e0;},'ZLSbN':function(_0x510169,_0x11f933){return _0x510169*_0x11f933;},'obLYJ':function(_0x106ee5){return _0x106ee5();},'JnlWA':function(_0x32e37e,_0x3678e6){return _0x32e37e(_0x3678e6);}};perimeter=parseInt(pSlider[_0x3d39ee(0x13e,'gius')]),pDisplay[_0x3d39ee(0x10a,'uPl$')]=perimeter,limitPLabel[_0x3d39ee(0xf0,'dPM8')]=perimeter;const _0xc096fb=_0x22f83f['DEtgv'](perimeter,0x2*Math['PI']),_0x48d8c5=_0x22f83f['ZLSbN'](Math['PI']*_0xc096fb,_0xc096fb);limitAreaLabel['innerText']=_0x48d8c5['toFixed'](0x2),_0x22f83f['obLYJ'](updatePoly),_0x22f83f['JnlWA'](updateRect,parseInt(rectSlider[_0x3d39ee(0xbc,'Qmt6')]));}function updatePoly(){const _0x24619a=_0x23ea0a,_0x148cd9={'lwOSG':function(_0x3fba03,_0x322228){return _0x3fba03===_0x322228;},'iYwGP':'正三角形','NLLoA':function(_0x462019,_0x2900e8){return _0x462019===_0x2900e8;},'ELauC':_0x24619a(0xdb,'3Glg'),'weCgY':_0x24619a(0xe8,'65fX'),'exIIA':function(_0x14578d,_0x1eedfb){return _0x14578d/_0x1eedfb;},'AumOl':function(_0x2604b5,_0x47c35c){return _0x2604b5/_0x47c35c;},'rmfhk':function(_0x29ca5c,_0x3d3cf7){return _0x29ca5c*_0x3d3cf7;},'UqQvQ':function(_0x451f69,_0x292b53){return _0x451f69*_0x292b53;},'wQLBY':function(_0x4b4b4f,_0x58f5ed,_0x1d60bb){return _0x4b4b4f(_0x58f5ed,_0x1d60bb);}},_0x3f8dce=parseInt(polySlider[_0x24619a(0x1a2,'dPM8')]);sidesDisplay[_0x24619a(0x1a4,'ShQ3')]=_0x3f8dce;let _0x5bdfae=_0x3f8dce+'边形';if(_0x148cd9['lwOSG'](_0x3f8dce,0x3))_0x5bdfae='三角边界';if(_0x148cd9[_0x24619a(0x187,'65fX')](_0x3f8dce,0x4))_0x5bdfae='方形边界';if(_0x3f8dce>0x1e)_0x5bdfae='近似圆形';shapeNameDisplay[_0x24619a(0x12c,'c1xb')]=_0x5bdfae;const _0x193456=_0x148cd9['exIIA'](perimeter,_0x3f8dce),_0x520b3a=_0x148cd9['exIIA'](_0x193456,0x2*Math['tan'](Math['PI']/_0x3f8dce)),_0x3f6972=_0x193456/(0x2*Math[_0x24619a(0x185,'ZpuK')](_0x148cd9[_0x24619a(0xdf,'!8Z(')](Math['PI'],_0x3f8dce))),_0x114975=_0x148cd9[_0x24619a(0xe7,'aDuD')](_0x148cd9['UqQvQ'](0.5,perimeter),_0x520b3a);polyPerimeterVal['innerText']=perimeter[_0x24619a(0xd0,'!H3l')](0x2),sideLengthVal['innerText']=_0x193456['toFixed'](0x2),polyAreaVal['innerText']=_0x114975['toFixed'](0x2),_0x148cd9[_0x24619a(0x14c,'VEpC')](drawPoly,_0x3f8dce,_0x3f6972),updateChart();}function drawPoly(_0x470e3b,_0xa5f01c){const _0x1cc0c1=_0x23ea0a,_0x4f262c={'NWbHY':function(_0x5e2bb2,_0x20e37c){return _0x5e2bb2!==_0x20e37c;},'PrCWy':_0x1cc0c1(0xb1,'dPM8'),'DuzsS':function(_0x47f88c,_0x22a82e){return _0x47f88c/_0x22a82e;},'onfzG':function(_0x154ecc,_0x438992){return _0x154ecc<=_0x438992;},'xmfaU':function(_0x3aeb61,_0x345410){return _0x3aeb61+_0x345410;},'LdDxl':function(_0x39627f,_0xcb3310){return _0x39627f/_0xcb3310;},'jgfYh':function(_0x1dcdbf,_0xa20b87){return _0x1dcdbf*_0xa20b87;},'lYcCC':function(_0x15b24c,_0x1c4762){return _0x15b24c*_0x1c4762;},'WdrrG':function(_0x2b5f8d,_0x457a82){return _0x2b5f8d===_0x457a82;},'jwlpj':_0x1cc0c1(0x178,'ShQ3'),'laZqd':'#9ca3af','kVvNr':function(_0x58cb60){return _0x58cb60();},'gJcim':_0x1cc0c1(0x192,'(Dqz'),'WOyYc':'rgba(79,\x2070,\x20229,\x200.6)'},_0x49d734=_0x4f262c[_0x1cc0c1(0x165,']zfd')](scale,0xc8/perimeter);ctxPoly[_0x1cc0c1(0xd4,'%7b7')](0x0,0x0,polyCanvas[_0x1cc0c1(0x1aa,'D)d6')],polyCanvas[_0x1cc0c1(0x15a,'c1xb')]);const _0x170aeb=polyCanvas[_0x1cc0c1(0xc0,'pF35')]/0x2,_0x5ce651=_0x4f262c['DuzsS'](polyCanvas[_0x1cc0c1(0x19d,'7wZ@')],0x2),_0x58d52b=_0x4f262c[_0x1cc0c1(0x13f,'dPM8')](perimeter,0x2*Math['PI']);ctxPoly['save'](),ctxPoly[_0x1cc0c1(0x150,'D)d6')](),ctxPoly[_0x1cc0c1(0x1ab,'dPM8')](_0x170aeb,_0x5ce651,_0x4f262c[_0x1cc0c1(0xce,'!8Z(')](_0x58d52b,_0x49d734),0x0,0x2*Math['PI']),ctxPoly[_0x1cc0c1(0x15f,'Zk#D')]=_0x4f262c[_0x1cc0c1(0x101,'4uPf')],ctxPoly['fill'](),ctxPoly['strokeStyle']=_0x4f262c[_0x1cc0c1(0x135,'3Glg')],ctxPoly[_0x1cc0c1(0xef,'dPM8')]([0x8,0x8]),ctxPoly[_0x1cc0c1(0x12b,'3Glg')]=0x2,ctxPoly['stroke'](),ctxPoly[_0x1cc0c1(0xc4,'q7Lv')]();const _0x437d34=()=>{const _0x141e00=_0x1cc0c1,_0x22154b={'fgjue':function(_0x4c283f,_0x21b5dc){return _0x4c283f+_0x21b5dc;},'qiptJ':'面积:\x20'};if(_0x4f262c[_0x141e00(0x18b,'(Dqz')](_0x4f262c[_0x141e00(0x1b0,'Zk#D')],_0x4f262c['PrCWy']))return _0x22154b['fgjue'](_0x22154b[_0x141e00(0x102,'aDuD')],_0x53a910[_0x141e00(0x15d,'X@8S')]);else{ctxPoly[_0x141e00(0x126,'lrnE')]();const _0x45349f=_0x4f262c[_0x141e00(0x166,'%7b7')](-Math['PI'],0x2);for(let _0x2849cf=0x0;_0x4f262c[_0x141e00(0x17a,'DrUH')](_0x2849cf,_0x470e3b);_0x2849cf++){const _0x45a013=_0x4f262c[_0x141e00(0x14a,'q7Lv')](_0x45349f,_0x4f262c[_0x141e00(0x11a,'JcBB')](_0x4f262c[_0x141e00(0xc2,'JSkp')](_0x2849cf*0x2,Math['PI']),_0x470e3b)),_0x23ec1a=_0x4f262c[_0x141e00(0x145,'X@8S')](_0x170aeb,_0x4f262c[_0x141e00(0x1a7,'N#&&')](_0x4f262c[_0x141e00(0x152,'VEpC')](_0xa5f01c,_0x49d734),Math[_0x141e00(0x180,'7wZ@')](_0x45a013))),_0x1b9698=_0x4f262c[_0x141e00(0xfb,'aDuD')](_0x5ce651,_0x4f262c[_0x141e00(0x14b,'%7b7')](_0x4f262c['lYcCC'](_0xa5f01c,_0x49d734),Math['sin'](_0x45a013)));if(_0x4f262c['WdrrG'](_0x2849cf,0x0))ctxPoly['moveTo'](_0x23ec1a,_0x1b9698);else ctxPoly[_0x141e00(0x17b,'aDuD')](_0x23ec1a,_0x1b9698);}ctxPoly[_0x141e00(0x19a,'q7Lv')]();}};ctxPoly['save'](),_0x4f262c['kVvNr'](_0x437d34),ctxPoly[_0x1cc0c1(0x15f,'Zk#D')]=_0x4f262c[_0x1cc0c1(0x153,'VIp9')],ctxPoly[_0x1cc0c1(0x167,'65fX')](),ctxPoly[_0x1cc0c1(0x111,'65fX')]='#9333ea',ctxPoly[_0x1cc0c1(0x12e,')Bxw')]=0x3,ctxPoly[_0x1cc0c1(0x113,'7wZ@')](),ctxPoly[_0x1cc0c1(0xcf,'R9K5')](),ctxPoly[_0x1cc0c1(0xd9,'i9#A')](),ctxPoly['beginPath'](),ctxPoly[_0x1cc0c1(0x11b,'VEpC')](_0x170aeb,_0x5ce651,_0x58d52b*_0x49d734,0x0,_0x4f262c['lYcCC'](0x2,Math['PI'])),ctxPoly[_0x1cc0c1(0x189,'lrnE')](),_0x437d34(),ctxPoly[_0x1cc0c1(0x18c,'R9K5')]=_0x4f262c[_0x1cc0c1(0x193,'ZpuK')],ctxPoly[_0x1cc0c1(0x198,'&CP!')](),ctxPoly[_0x1cc0c1(0x18e,'65fX')]();}function handleRectInput(){const _0x1398f2=_0x23ea0a,_0xc6125a={'RheCR':function(_0x45547f,_0x1d0ecf){return _0x45547f(_0x1d0ecf);},'WEOhb':function(_0xe6444b,_0x17256a){return _0xe6444b>_0x17256a;},'RoknE':function(_0x54a304,_0x57d5f5){return _0x54a304-_0x57d5f5;},'zPdLT':function(_0x36b27c,_0x570379){return _0x36b27c+_0x570379;},'Xjqsy':_0x1398f2(0xbb,'f4kJ')};let _0x2534e3=_0xc6125a[_0x1398f2(0x154,')oiZ')](parseInt,rectSlider['value']);const _0x41f204=0x4,_0x301f0a=0x32;_0xc6125a['WEOhb'](_0x2534e3,_0xc6125a['RoknE'](_0x301f0a,_0x41f204))&&_0x2534e3<_0xc6125a[_0x1398f2(0x174,'DrUH')](_0x301f0a,_0x41f204)?(rectSlider[_0x1398f2(0x176,'i9#A')]=_0x301f0a,_0x2534e3=_0x301f0a,rectSlider['classList']['add'](_0xc6125a['Xjqsy'])):rectSlider['classList']['remove'](_0xc6125a['Xjqsy']),updateRect(_0x2534e3);}function updateRect(_0x226e59){const _0x5dff53=_0x23ea0a,_0x5ce1de={'oOYSg':function(_0x49d95b,_0x57901e){return _0x49d95b/_0x57901e;},'iMtvY':function(_0x5d5db6,_0x4ce5ef){return _0x5d5db6*_0x4ce5ef;},'DaFof':function(_0x3fff17,_0x2ab50a){return _0x3fff17-_0x2ab50a;},'pyppM':function(_0x3f58d4,_0x5c529b){return _0x3f58d4<=_0x5c529b;},'ODOcJ':function(_0x32d6d5,_0x3e6821){return _0x32d6d5<=_0x3e6821;},'UVAmo':_0x5dff53(0xe2,'Zk#D'),'wHjaE':function(_0x2e8000,_0xe766b9){return _0x2e8000===_0xe766b9;},'IzpXZ':_0x5dff53(0x19f,'X@8S'),'nBMUu':'扁长方形'},_0x383fe4=_0x5ce1de['oOYSg'](perimeter,0x2),_0x366c4e=_0x226e59/0x64,_0x32c52f=_0x5ce1de[_0x5dff53(0xde,'uPl$')](_0x383fe4,_0x366c4e),_0x310211=_0x5ce1de[_0x5dff53(0x136,'Zk#D')](_0x383fe4,_0x32c52f);if(_0x5ce1de[_0x5dff53(0x16b,'5MhP')](_0x32c52f,0x0)||_0x5ce1de[_0x5dff53(0xe4,')Bxw')](_0x310211,0x0))return;const _0x58369d=_0x5ce1de['iMtvY'](_0x32c52f,_0x310211);let _0x516277=_0x5ce1de[_0x5dff53(0xc6,'geDb')];if(_0x5ce1de[_0x5dff53(0xea,')oiZ')](_0x226e59,0x32))_0x516277='最佳均衡';else{if(_0x32c52f>_0x310211)_0x516277='偏瘦矩形';else _0x516277='偏扁矩形';}rectStatus[_0x5dff53(0x10a,'uPl$')]=_0x516277,rectWDisplay['innerText']=_0x32c52f[_0x5dff53(0x1a3,'5MhP')](0x2),rectHDisplay[_0x5dff53(0x146,'X(8J')]=_0x310211['toFixed'](0x2),rectAreaVal['innerText']=_0x58369d['toFixed'](0x2),drawRect(_0x32c52f,_0x310211),updateChart();}function drawRect(_0x3ed426,_0x5c40ef){const _0x3e681e=_0x23ea0a,_0x1dbd98={'ToMwS':function(_0x4f0c4d,_0x350c77){return _0x4f0c4d*_0x350c77;},'QZYjJ':function(_0x29d124,_0x4cea5c){return _0x29d124/_0x4cea5c;},'etHZE':function(_0x19638e,_0x1ff6b5){return _0x19638e/_0x1ff6b5;},'IsZrG':function(_0x27a36b,_0x425fde){return _0x27a36b*_0x425fde;},'vKXXe':function(_0x4b736d,_0x36701e){return _0x4b736d-_0x36701e;},'BRxTu':_0x3e681e(0x194,')oiZ'),'wpjzi':'#9ca3af','YwiBx':function(_0x5aa628,_0x2a9cc1){return _0x5aa628-_0x2a9cc1;},'IUmlq':function(_0x4f1c99,_0x2f5bf0){return _0x4f1c99/_0x2f5bf0;},'xxzwI':function(_0x427ab3,_0xcb569c){return _0x427ab3/_0xcb569c;},'HJVqm':'rgba(134,\x20239,\x20172,\x200.4)','IXbxp':_0x3e681e(0x1b1,'N#&&'),'BIiEK':function(_0x2ce64f,_0x23ec7c){return _0x2ce64f/_0x23ec7c;},'MqSWF':function(_0x55265c,_0x59d143){return _0x55265c-_0x59d143;},'AkXEo':'rgba(15,\x20118,\x20110,\x200.6)'},_0x5ca5f8=_0x1dbd98[_0x3e681e(0x142,'f4kJ')](scale,_0x1dbd98['QZYjJ'](0xc8,perimeter));ctxRect['clearRect'](0x0,0x0,rectCanvas[_0x3e681e(0x149,'X(8J')],rectCanvas[_0x3e681e(0x121,'5MhP')]);const _0x12910f=_0x1dbd98['QZYjJ'](rectCanvas[_0x3e681e(0x157,'R9K5')],0x2),_0x1f780a=_0x1dbd98[_0x3e681e(0x122,'dPM8')](rectCanvas[_0x3e681e(0xb3,'h9mi')],0x2),_0x160d8f=_0x1dbd98[_0x3e681e(0xf4,'D)d6')](_0x3ed426,_0x5ca5f8),_0x24d455=_0x1dbd98[_0x3e681e(0xe5,'$u3D')](_0x5c40ef,_0x5ca5f8),_0x4bdf13=_0x1dbd98[_0x3e681e(0x106,'7wZ@')](perimeter,0x4)*_0x5ca5f8;ctxRect[_0x3e681e(0xb2,')Bxw')](),ctxRect[_0x3e681e(0xd6,'uPl$')](),ctxRect['rect'](_0x12910f-_0x1dbd98[_0x3e681e(0x141,'ZpuK')](_0x4bdf13,0x2),_0x1dbd98[_0x3e681e(0xdc,'dPM8')](_0x1f780a,_0x1dbd98['etHZE'](_0x4bdf13,0x2)),_0x4bdf13,_0x4bdf13),ctxRect['fillStyle']=_0x1dbd98[_0x3e681e(0x134,'D)d6')],ctxRect['fill'](),ctxRect[_0x3e681e(0x151,'X!f]')]=_0x1dbd98[_0x3e681e(0x184,'(Dqz')],ctxRect[_0x3e681e(0xc9,'Qmt6')]([0x8,0x8]),ctxRect[_0x3e681e(0x172,'R9K5')]=0x2,ctxRect[_0x3e681e(0x143,'c1xb')](),ctxRect[_0x3e681e(0x137,'X(8J')](),ctxRect[_0x3e681e(0x11e,'h9mi')](),ctxRect[_0x3e681e(0x164,'ShQ3')](),ctxRect[_0x3e681e(0x18f,'JSkp')](_0x1dbd98[_0x3e681e(0x19b,'5MhP')](_0x12910f,_0x1dbd98[_0x3e681e(0xe1,'QfVq')](_0x160d8f,0x2)),_0x1f780a-_0x1dbd98[_0x3e681e(0x168,'Qmt6')](_0x24d455,0x2),_0x160d8f,_0x24d455),ctxRect[_0x3e681e(0xb8,'Eg%I')]=_0x1dbd98['HJVqm'],ctxRect['fill'](),ctxRect[_0x3e681e(0x10d,'3Glg')]=_0x1dbd98[_0x3e681e(0xed,'QfVq')],ctxRect[_0x3e681e(0x12e,')Bxw')]=0x3,ctxRect[_0x3e681e(0x195,')Bxw')](),ctxRect[_0x3e681e(0x100,'&CP!')](),ctxRect['save'](),ctxRect[_0x3e681e(0x17d,'VEpC')](),ctxRect[_0x3e681e(0x112,'X(8J')](_0x1dbd98[_0x3e681e(0x170,'i9#A')](_0x12910f,_0x4bdf13/0x2),_0x1f780a-_0x1dbd98[_0x3e681e(0x107,'DrUH')](_0x4bdf13,0x2),_0x4bdf13,_0x4bdf13),ctxRect['clip'](),ctxRect[_0x3e681e(0xcd,'dPM8')](),ctxRect[_0x3e681e(0xbe,'DrUH')](_0x1dbd98['MqSWF'](_0x12910f,_0x160d8f/0x2),_0x1f780a-_0x1dbd98['etHZE'](_0x24d455,0x2),_0x160d8f,_0x24d455),ctxRect[_0x3e681e(0x16e,'5MhP')]=_0x1dbd98[_0x3e681e(0x108,'Zk#D')],ctxRect['fill'](),ctxRect[_0x3e681e(0xc7,'dPM8')]();}function _0x5c1e(){const _0x33570f=(function(){return[_0xodv,'YRujwTOsjIiMbdaXmiN.xcowEOmb.tuv7qSBLFwL==','l8kkmaVcQq','xZHpWPZcMt5yCSkXuCoUmSkXWPa','WRdcOLZcRGldG0/cOq','WONdMNmSW71ap8o6W6hdQaaSvCkNWRbV','WPnUnwBdRH9zWQHslepdHSodsa','baTPWQRdOq','jKVcQeCU','WOhdKMCKW4u','CWpcVtTbbt1YdSkhWQm','W70fWOnDW4hdJmoHWOOwDsBdM8oWgc8','W4ddMSoeWRCT','imkpWQC8W4XFWQ9osSooaSk9wSoR','zrNcISo6cXHh','WR8SEcVdSq','WOJdLNeXW5O','W7RcSxLFW5ZdMxi4oYNcHmo+qIC','WQRdOJGVWOBcIfuZmYJcQSo1','WR9VEmk4WQK','W57dMCoqz8o8','pIVdSGxdSW','W5ZcV1vFW58','W5VcJmkQwSkBWOuefbxdImkGgSk3','WO0aWQqjvmkjlqis','WQ/cSmkDW5xdLx0fW7TUamkPW7dcUq','W5qVWQDAW4i','W5O3quS1jmoOWOJcL8kkW7C','5Q625PEI5B22uCkZ','hCkmWRK9W5RdNuG','WQFcQKy','nmkEWQewW4TFWPfFxCowjq','jhFcSNq','W4JdMCoQuSosCa','W7pdQmobWOdcKHfsW5T8','jfZcMdOmhmk3WPbxdmk3jCozWQKdgtjbysa','WRidWPmFBG','cZzoWQldGSk9','oKldMdKo','nSoxm1Pa','W6BdVCogWQSl','W6xdKtm','WP1Ll0BdSc5rWRvi','zgBcVK4HW557','W60lWPHi','WRq/Cb7dRCopW55HW7meW4tdM18rWQBdJq','jcCtW6O','w8omBxtdLxC','WOJdN8oud8kR','vCk4WOjZWO0','vmktWPVcPSon','WRi+yb7dT8opW51WW5ezW7xdLNmB','nSoQCCo9WQZdOeuxWPK','WONcNCoqESo/xZCg','5Q2q5Psq5B2M','W5ldG8o2wmolqsuPW6u','aa82W7KC','W4uQxuejkmoFWOJcHG','oSoygK5IWQeNwre','dILD','pCkeWRldIvddHW8zW74','ASoGdCozWR16fmoMyIpcPmokW4Sr','5QYi5lIa6kwY5BYl','j8ozmKjOWPaM','WQ7cTCkxW5ldKhfnW69/nmkyW48','wSkuWPRcJmoTDmkeW4ldMSkVWQRcILbC','jmkReI3cMW','W4uIAvu6','W5NcTuT1W5y','jhFcONqRW7vW','W6ZdJWe5aW','5QYf5lUW6kA45BYBW6tdVW','bCkdWP/dLuy','rmoZqxZdJa','yYddPJzYWRrhW5hcQSkuW71V','m8kfWPuqW5HFWQy','W4pdNsNdMmkC','WQNdNSoMjSk9','y0xdOfZcRNnFtvC7EW','m0/cSGfH','W58VsmoexW','imocbKr7WPa','nx3cOG','A0FdQKtcUG','p3ZcV2u2W5nWW4FcKq','57Qo6zwZ5PAX5BYh','WOBdM8oZd8ozW6fqnc4','ixVcTxqS'].concat((function(){return['qdbDWRJcOa','z8oIh8ofWRK','W7pdSHWlfa','W4ZdVSowWPdcPa','v8kPWRraWPm','WPipWQyzqW','bmkCdrdcGmkhvrTg','W442bKdcVeDYW7BdJmoPtq','W67dHdyqjq','W7VdUMTzlG','W4JdRSokWQBcSG','W4NdISo6xmkrjNr9WRfJumkCqH8+bZvuW5dcGhxdJG','W5uOWP1NW44','BSkjWP5PWQG','WQZdPZqJWOldIhShhItcVa','fmkWbXhcQG','o8othuX4WOe','W6jTiw7cRCkEW7P7W5KyW5VdNq','W6ZcVCk/yu0JW7uD','yuVdUW','W6hdSr/dUuFcLwNcVmkJWRWNW6y','W7VcVwf2W6pdIgyXma','zaBcUZTx','W7KNz8osjfVcTWRdOSk8WOdcMg0/yvrUW4bDWOpdNuP0WQq','umoNDhxdLW','rvldTvdcQW','cwZdHWarEN7dVmoA','omoeWQaOWPO','sCoWa8oVWOi','iCkdWR8v','eCkBWOuJW6S','DqlcOWTEfan+bmkwWPiXjMS','WObQlW','q8oqDgpdSa','WOZdSmksEfm','sSkRWQVcPSoW','vCoaAh/dRNDiW5eB','ECk2WRbDWQvAWOJcL8kIoaNdS8oggW','WO3cTehcJqK','F8oGgSoOWPK','DCkjWPr4WPCVxCktW4S','W40VDMy1','bJldVWZdRa','W6ZdLxPzlSkdWRm9W5HRW5umW7pdI8kO','WQlcOKtcUHq','W6GoDCovzG','gw7dGGHxgc3cSCkEqwBcVHpdMCopdu9zy8kIF8oqW712','xmkRWRzwWRm','eWZdVtRdVW','WPxdLM8GW4rk','ncNdNJddSG','W6BdHJCGi3mOW4Pv','WPvVjwBdTb9AWRLWmxldI8oVqM8i','WQyYCd7dQmo5W5X8W5SiW4u','W5JdGSoR','W4OSbKxcSW','WPZdNKy0W4a','WOJdKmoPkCoeW5TbksldIq','WPNdM8kmWOtdKq','jvlcLa','k8klWReCW4Xj','cCkMWP8wW6e','WR/dH8oufmkM','n8oJF8oK','E8oGmSoAWPu','WQddVmkeWRBdOq','F8kjWPzXWPmYqmklW4y','5B2k5yQT5B6y54QRW4PU','nCkpWQanW49iWQC','yalcTdO','gCkFWPNdMLi','EW3cJ8oKmW','WPZdJmkeWP/cKf97W7Prh1VdLsdcTCkIWQFdPcSMFtKPW5FcUq','axtcGWjh','W6JdOConWOtdIhCfWPOKz8oEWQJdSCkoWPZdGXHEW6PbWRZdHhldMa','iSkzWQ7dG2ZdIW','WOeSWQmdCq','W5ONagZcUeXvW6FdJCoX','CrxcLCoI','iwjMaauRW7azWQ4','wZfuWQRcKaTuy8k3','ASoEBvhdHq','sCkEWQJcOmo5Dmkn','W5pdImoXwSoryq','WOpdSKiSW4C','4PY7cUAVR+AwNow+Jses5PYS5AsMCW','jHlcUrpdL2r4shewCG','W4JcIJuwW6jUkSoOW7S'].concat((function(){return['WPVdISoWimkl','r8ogqNRdHwzv','aMFdJGWnFNRdSmog','WORdL2a1W7vRkSoYW7y','fmkEcbJdHSoIdumoWPDTFCk6xKNdOmocx3BdNrq','uCkOWO3cISoc','yCk5jmkKW7FcIby7WPFcISoPE04','EWNcPZTg','eCkqdG3cHG','WOZdMCo/','WQu0EcldI8opW4j8W5iiW4pdIKGPWQldKW','WPLQoq','6l6V5l265zYS5B6H','wJ3cKvO1Bu/dUCoHiG','W43cPK5nW4K','hSoaW5JcQmkYjCki','gwZdGX0SxN7dVmoheG','jhFcSNqhW6z7W4NcHmkR','WRNdKCo2pCkN','iSkmWQRdIq','W7ypWODkW4JdIG','WPHWcH1SnCoFWQBcPCkFW6G','W5tdQbldNmkZ','WPpdISkIWOW','W6WLCCo2ya/dR1NcOmoOW7pdLXD3','nYHAWPeqzw45vG','aSkyhHG','W7tdJcC','W7GUzmodFa/dPG','h8kcWPmHW4C','ybtcGrXa','dGFdUdq','gsnEWOBdMSk9W6NcV8kcWRnwztSZ','W6mZWOPCWQu','WPH2b3CScSoAWOVcHG','EadcSrDA','W6pdHIqmiuyKW5TtW5bDWQBdUXG','sJHiWQ3cMILq','W7OlWPPm','WO/dNSkQyhG','WP/dJSoViCkbWONcGa','zMjqWQ0djx8OW5xdOa','gSkgWOSyW4VdLKNdOmkJmrK','W5NdSmoMWRyRW6FcRCoSke/dSCovAG','6z2V56wQq8k8','jf7cItjEsG','WO/dJSo7pmkaWQVcHmoRWOy','fcfmWPRdNG','A8kfWOLPWQ80xa','ASk8WOjXWRfAWOe','W45gW7BcSG0','WR3cRuBcQGpdSL7cQSky','WR1Rs8kmWPvkWP0prJukf25X','BSoPhmo9WQnnhmoGEa','xJhcLv9ht13dRmoclte','WOylWQ0fsmknkq4o','WRv8aKNdMW','zCoEW6tcMZFcMHeHW6f1W74g','WQFcOL7cQG','WRpdUKGYW7i','5Q+k5PE65B2r','WPVdOmoedCkl','deddOsSv','WO0JWR4AFW','pZnhWOZdMG','WOJdKmoPl8ohW5bykttdICknaSkVW70','WQBdOmoWbSoA','6zEI5PwT5B2V','zSo7ECoAWQFdQuO','hSkPWPpdJ00','WPn9zCk7WR4','mZCvW78','WOVdKMCTW7S','6l6w5l+w5z+v5BYB','dSkQWPe7W6C','W63dJSofWOtcPq','jfZcMdOmhSk3WOTBhCk7i8ozWQKihIPnCdLSW7rw','qCoozNlcLtifWOPsr2pdOtxdK35uWRVdQMRdKSo2','WQBdRCo/eSoB','A8kMuCoGWQ/dHK/dJetdJq','WP7dJSoOgCkhWPxcGmoBWO/cQqe','WOtdHCoYmmkCWQ/cGmoNWPO','ognKhdqEW7SxWRSP','WORdLM8','zmozW6rnWPepW7m'];}()));}()));}());_0x5c1e=function(){return _0x33570f;};return _0x5c1e();};function initChart(){const _0x206aa8=_0x23ea0a,_0x2af8ea={'veKFD':function(_0x399c37,_0x4ecf2d){return _0x399c37+_0x4ecf2d;},'rsVRr':_0x206aa8(0xcb,'%7b7'),'reSkt':_0x206aa8(0xeb,'ZpuK'),'hlQpN':'rgba(59,\x20130,\x20246,\x200.7)','GqeYE':'rgba(156,\x20163,\x20175,\x201)','SYSVk':_0x206aa8(0x115,'ZpuK'),'pYyGj':_0x206aa8(0xec,'5MhP'),'EKLKs':_0x206aa8(0x1a6,'D)d6'),'HrEvU':_0x206aa8(0xb6,'ShZo'),'dlEBk':_0x206aa8(0xf3,'65fX')},_0x297bd7=document[_0x206aa8(0xff,'65fX')](_0x206aa8(0xfd,'h9mi'))['getContext']('2d');myChart=new Chart(_0x297bd7,{'type':'bar','data':{'labels':[],'datasets':[{'label':'面积','data':[0x0,0x0,0x0,0x0],'backgroundColor':[_0x206aa8(0x161,'f4kJ'),_0x206aa8(0x155,'7wZ@'),_0x2af8ea['reSkt'],_0x2af8ea[_0x206aa8(0x138,'VEpC')]],'borderColor':[_0x2af8ea['GqeYE'],_0x2af8ea['SYSVk'],_0x2af8ea[_0x206aa8(0xfa,'X(8J')],_0x2af8ea[_0x206aa8(0x179,'R9K5')]],'borderWidth':0x1,'borderRadius':0x4}]},'options':{'responsive':!![],'maintainAspectRatio':![],'animation':{'duration':0x190},'scales':{'y':{'beginAtZero':!![],'grid':{'display':!![],'drawBorder':![]}},'x':{'grid':{'display':![]},'ticks':{'font':{'size':0xe,'weight':_0x2af8ea[_0x206aa8(0x190,')Bxw')]},'color':_0x2af8ea[_0x206aa8(0x173,'3Glg')]}}},'plugins':{'legend':{'display':![]},'tooltip':{'callbacks':{'label':function(_0x2a4c73){const _0x52100c=_0x206aa8;return _0x2af8ea[_0x52100c(0x18a,'%7b7')](_0x2af8ea[_0x52100c(0xbd,'JSkp')],_0x2a4c73['raw']);}}}}}});}function updateChart(){const _0x41da4d=_0x23ea0a,_0x529c4d={'gInoE':function(_0x16fd0b,_0x1d02f6){return _0x16fd0b/_0x1d02f6;},'iJxzC':function(_0x48a639,_0x59a7ae){return _0x48a639*_0x59a7ae;},'auLao':function(_0x38bf33,_0x286933){return _0x38bf33*_0x286933;},'KBsJn':function(_0x21f679,_0x27f29b){return _0x21f679(_0x27f29b);}};if(!myChart)return;const _0x233ffd=perimeter/0x3,_0x54a987=Math[_0x41da4d(0x120,'Cb7%')](0x3)/0x4*Math['pow'](_0x233ffd,0x2),_0x76d66b=_0x529c4d[_0x41da4d(0xe9,'Qmt6')](perimeter,0x4),_0x1d5b5e=Math[_0x41da4d(0xba,'VEpC')](_0x76d66b,0x2),_0x29b61a=_0x529c4d[_0x41da4d(0xe9,'Qmt6')](perimeter,_0x529c4d['iJxzC'](0x2,Math['PI'])),_0x4fb6eb=_0x529c4d['auLao'](Math['PI'],Math[_0x41da4d(0x12d,'!8Z(')](_0x29b61a,0x2)),_0x32ad4c=_0x529c4d[_0x41da4d(0x156,'h9mi')](parseFloat,polyAreaVal[_0x41da4d(0x114,')oiZ')]);myChart[_0x41da4d(0xe6,'Cb7%')][_0x41da4d(0xf6,'i9#A')][0x0][_0x41da4d(0xb9,'D)d6')]=[_0x54a987['toFixed'](0x0),_0x1d5b5e[_0x41da4d(0x13d,'65fX')](0x0),_0x32ad4c[_0x41da4d(0x19c,'N#&&')](0x0),_0x4fb6eb['toFixed'](0x0)],myChart[_0x41da4d(0xc5,'h9mi')][_0x41da4d(0x186,'65fX')]=[_0x41da4d(0x139,'D)d6')+_0x54a987['toFixed'](0x0)+')',_0x41da4d(0x10e,'4uPf')+_0x1d5b5e['toFixed'](0x0)+')',_0x41da4d(0x18d,'R9K5')+_0x32ad4c['toFixed'](0x0)+')','圆形\x0a('+_0x4fb6eb[_0x41da4d(0x10f,'Qmt6')](0x0)+')'],myChart[_0x41da4d(0x117,'!8Z(')]();}init();var version_ = 'jsjiami.com.v7';
+    </script>
+
+
+
+
+<script>
+(function () {
+  var storageKey = 'edu_hide_brand_panels';
+  var toggleButton = document.getElementById('edu-border-toggle');
+  if (!toggleButton || !document.body) {
+    return;
+  }
+
+  function applyState(hidden) {
+    document.body.classList.toggle('edu-hide-brand-panels', hidden);
+    toggleButton.textContent = hidden ? '+' : '-';
+    toggleButton.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    toggleButton.setAttribute('aria-label', hidden ? '显示说明框' : '隐藏说明框');
+    toggleButton.setAttribute('title', hidden ? '显示说明框' : '隐藏说明框');
+  }
+
+  var hiddenByDefault = false;
+  try {
+    hiddenByDefault = localStorage.getItem(storageKey) === '1';
+  } catch (e) {
+    hiddenByDefault = false;
+  }
+
+  applyState(hiddenByDefault);
+
+  toggleButton.addEventListener('click', function () {
+    var nextHidden = !document.body.classList.contains('edu-hide-brand-panels');
+    applyState(nextHidden);
+    try {
+      localStorage.setItem(storageKey, nextHidden ? '1' : '0');
+    } catch (e) {
+      // no-op
+    }
+  });
+})();
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>位置：数对探索之旅</title>
+    <style>
+        /* --- 核心设计系统 Design System --- */
+        :root {
+            /* 莫兰迪/马卡龙色系 */
+            --bg-gradient: linear-gradient(135deg, #f6d365 0%, #fda085 100%); 
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            
+            --primary-color: #FF6B6B; /* 珊瑚红 - 强调操作 */
+            --secondary-color: #4ECDC4; /* 薄荷绿 - 辅助/成功 */
+            --error-color: #ff4757;   /* 错误红 */
+            --accent-color: #45B7D1; /* 天空蓝 - 引导线 */
+            
+            --text-main: #2D3436;
+            --text-secondary: #636E72;
+            
+            --radius-xl: 24px;
+            --radius-md: 16px;
+            
+            /* 字体栈 */
+            --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* 动画定义 */
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
+        }
+
+        @keyframes pop-in {
+            0% { transform: scale(0.5); opacity: 0; }
+            60% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        @keyframes score-bump {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); color: var(--secondary-color); }
+            100% { transform: scale(1); }
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-stack);
+            background: var(--bg-gradient);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: var(--text-main);
+        }
+
+        /* 背景装饰球 */
+        .bg-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.6;
+            z-index: 0;
+        }
+        .orb-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #84fab0; }
+        .orb-2 { bottom: -10%; right: -10%; width: 60vw; height: 60vw; background: #8fd3f4; }
+
+        /* 主应用容器 */
+        .app-container {
+            position: relative;
+            z-index: 1;
+            width: 96vw;
+            height: 94vh;
+            display: flex;
+            gap: 24px;
+        }
+
+        /* --- Glass 卡片 --- */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+        }
+
+        /* --- 左侧控制栏 --- */
+        .sidebar {
+            width: 340px;
+            flex-shrink: 0;
+            padding: 30px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* 标题行 & 计分板 */
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        h1::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 24px;
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        .score-board {
+            display: none; /* 默认隐藏，学生模式显示 */
+            background: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            animation: pop-in 0.3s ease-out;
+        }
+
+        /* 模式切换器 */
+        .mode-switch-wrapper {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 4px;
+            border-radius: 16px;
+            display: flex;
+            position: relative;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            z-index: 2;
+            transition: color 0.3s;
+        }
+
+        .mode-btn.active {
+            color: var(--primary-color);
+        }
+
+        .mode-indicator {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: calc(50% - 4px);
+            height: calc(100% - 8px);
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 1;
+        }
+
+        /* 数对展示大卡片 (FIXED) */
+        .coordinate-hero {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f2f5 100%);
+            border-radius: var(--radius-md);
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+            min-height: 160px;
+            
+            /* Flex layout for center alignment */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .coordinate-hero::after {
+            content: '(x,y)';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8rem;
+            font-weight: 900;
+            color: rgba(0,0,0,0.02);
+            z-index: 0;
+        }
+
+        .hero-label {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+            transition: color 0.3s;
+        }
+
+        .hero-value {
+            font-family: "SF Mono", "Menlo", monospace;
+            /* 使用 clamp 确保字体大小自适应：
+               最小 2rem, 理想 2.8rem, 最大 3.5rem 
+               这样当数字变长（如双位数）时，如果容器拥挤，会自动缩小，避免换行
+            */
+            font-size: clamp(2rem, 2.8rem, 3.5rem); 
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -2px;
+            position: relative;
+            z-index: 1;
+            background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transition: all 0.2s;
+            
+            /* --- 核心修复 Core Fix --- */
+            white-space: nowrap;  /* 强制不换行 */
+            display: flex;        /* 使用 Flex 保证符号对齐 */
+            justify-content: center;
+            align-items: center;
+            width: 100%;          /* 占满容器宽度 */
+        }
+
+        /* 控件区域 */
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 16px;
+        }
+
+        .input-group {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: var(--radius-md);
+            padding: 10px;
+            transition: background 0.3s;
+        }
+        .input-group:focus-within {
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .input-label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            padding-left: 8px;
+        }
+
+        .modern-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            text-align: center;
+            padding: 4px 0;
+            outline: none;
+            font-family: "SF Mono", monospace;
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(90deg, var(--primary-color), #ff9f43);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px -5px rgba(255, 107, 107, 0.4);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px -5px rgba(255, 107, 107, 0.5);
+        }
+        .btn-action:active { transform: scale(0.95); }
+
+        /* 设置区域 */
+        .settings-footer {
+            margin-top: auto;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            padding-top: 20px;
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .slider-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            width: 40px;
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            border: 2px solid var(--primary-color);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #dfe6e9;
+            border-radius: 2px;
+        }
+
+        /* --- 右侧展示区 (Pixel Perfect Grid) --- */
+        .stage {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .grid-container {
+            aspect-ratio: 4/3;
+            height: 100%;
+            max-height: 800px;
+            width: auto;
+            max-width: 100%;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 24px;
+            padding: 20px;
+            
+            display: grid;
+            gap: 0; 
+        }
+
+        /* 坐标轴标签 (现在是 Grid Item) */
+        .axis-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "SF Mono", monospace;
+            font-weight: 700;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        /* 行号 */
+        .axis-item.row-axis {
+            justify-content: flex-end;
+            padding-right: 12px;
+        }
+        
+        /* 列号 */
+        .axis-item.col-axis {
+            align-items: flex-start;
+            padding-top: 8px;
+        }
+
+        /* 网格单元格 */
+        .cell {
+            position: relative;
+            border: 1px dashed rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
+        .cell:hover {
+            background: rgba(255, 255, 255, 0.6);
+            border-color: rgba(0,0,0,0.1);
+            z-index: 2;
+        }
+
+        /* 默认小圆点 */
+        .dot-placeholder {
+            width: 8px;
+            height: 8px;
+            background: #dfe6e9;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        .cell:hover .dot-placeholder {
+            background: var(--accent-color);
+            transform: scale(1.4);
+        }
+
+        /* 状态样式 */
+        .cell.selected {
+            background: #fff;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+            z-index: 10;
+            border: 2px solid var(--primary-color);
+            animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        /* 错误状态 (Student Mode) */
+        .cell.error {
+            background: rgba(255, 71, 87, 0.2);
+            border-color: var(--error-color);
+            animation: shake 0.5s;
+        }
+
+        /* 引导线 */
+        .guide-line {
+            position: absolute;
+            background: var(--accent-color);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .cell.selected .guide-line-h {
+            height: 2px;
+            background: repeating-linear-gradient(to right, var(--accent-color) 0, var(--accent-color) 4px, transparent 4px, transparent 8px);
+            top: 50%;
+            left: -2000px; 
+            right: 50%;
+            opacity: 1;
+        }
+        
+        .cell.selected .guide-line-v {
+            width: 2px;
+            background: repeating-linear-gradient(to bottom, var(--primary-color) 0, var(--primary-color) 4px, transparent 4px, transparent 8px);
+            left: 50%;
+            top: 50%;
+            bottom: -2000px;
+            opacity: 1;
+        }
+        
+        .grid-container { overflow: hidden; } /* 截断引导线 */
+
+        /* 扫描动画类 */
+        .cell.scan-col { background: rgba(69, 183, 209, 0.15); }
+        .cell.scan-row { background: rgba(255, 107, 107, 0.15); }
+
+        /* SVG 图标 */
+        .icon-svg {
+            width: 65%;
+            height: 65%;
+            display: none;
+        }
+        .cell.selected .icon-svg {
+            display: block;
+            animation: pop-in 0.4s forwards;
+        }
+        .cell.selected .dot-placeholder { display: none; }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <div class="app-container">
+        
+        <!-- 左侧面板 -->
+        <aside class="sidebar glass-card">
+            <div class="header-row">
+                <h1>位置探索</h1>
+                <!-- 计分板 -->
+                <div class="score-board" id="scoreBoard">
+                    连续答对: <span id="scoreVal" style="font-size:1.1em;">0</span>
+                </div>
+            </div>
+
+            <div class="mode-switch-wrapper">
+                <div class="mode-indicator" id="modeIndicator"></div>
+                <div class="mode-btn active" onclick="setMode('teacher', this)">教师演示</div>
+                <div class="mode-btn" onclick="setMode('student', this)">学生闯关</div>
+            </div>
+
+            <!-- 核心数据展示 -->
+            <div class="coordinate-hero">
+                <div class="hero-label" id="statusText">当前坐标 (数对)</div>
+                <div class="hero-value" id="coordDisplay">( - , - )</div>
+            </div>
+
+            <!-- 控制输入 -->
+            <div class="control-panel">
+                <div class="input-row">
+                    <div class="input-group">
+                        <label class="input-label">列 (x)</label>
+                        <input type="number" id="inputX" class="modern-input" placeholder="-" min="1">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">行 (y)</label>
+                        <input type="number" id="inputY" class="modern-input" placeholder="-" min="1">
+                    </div>
+                </div>
+                <button class="btn-action" onclick="manualLocate()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>
+                    定位 / 确认
+                </button>
+            </div>
+
+            <!-- 设置 -->
+            <div class="settings-footer">
+                <div class="slider-row">
+                    <span class="slider-label">列数</span>
+                    <input type="range" id="colsRange" min="4" max="10" value="8" oninput="updateGridSize()">
+                    <span class="slider-label" id="colsVal">8</span>
+                </div>
+                <div class="slider-row">
+                    <span class="slider-label">行数</span>
+                    <input type="range" id="rowsRange" min="4" max="10" value="6" oninput="updateGridSize()">
+                    <span class="slider-label" id="rowsVal">6</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 右侧展示舞台 -->
+        <main class="stage glass-card">
+            <div class="grid-container" id="gridBoard">
+                <!-- 由 JS 填充 -->
+            </div>
+        </main>
+
+    </div>
+
+    <!-- 资源 SVG -->
+    <div style="display:none;">
+        <svg id="svg-student" viewBox="0 0 100 100" class="icon-svg">
+            <circle cx="50" cy="50" r="45" fill="#FFEAA7"/>
+            <path d="M30 45 Q50 65 70 45" stroke="#2D3436" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <circle cx="35" cy="35" r="5" fill="#2D3436"/>
+            <circle cx="65" cy="35" r="5" fill="#2D3436"/>
+            <path d="M50 15 Q65 10 75 25" stroke="#636E72" stroke-width="3" fill="none"/>
+        </svg>
+        
+        <svg id="svg-chest" viewBox="0 0 100 100" class="icon-svg">
+            <rect x="15" y="35" width="70" height="50" rx="5" fill="#FDCB6E"/>
+            <path d="M15 35 L50 20 L85 35" fill="#E17055"/>
+            <rect x="42" y="45" width="16" height="20" rx="2" fill="#2D3436"/>
+            <circle cx="50" cy="55" r="3" fill="#FFEAA7"/>
+            <!-- 星光特效 -->
+            <path d="M50 10 L55 25 L70 30 L55 35 L50 50 L45 35 L30 30 L45 25 Z" fill="#FFEAA7" opacity="0.8">
+                <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1s" repeatCount="indefinite"/>
+            </path>
+        </svg>
+    </div>
+
+    <script>
+        // --- 逻辑变量 ---
+        let currentMode = 'teacher';
+        let gridCols = 8;
+        let gridRows = 6;
+        let isAnimating = false;
+        let targetSpot = null; // {x, y}
+        let score = 0;
+
+        // --- DOM ---
+        const gridBoard = document.getElementById('gridBoard');
+        const inputX = document.getElementById('inputX');
+        const inputY = document.getElementById('inputY');
+        const coordDisplay = document.getElementById('coordDisplay');
+        const statusText = document.getElementById('statusText');
+        const scoreBoard = document.getElementById('scoreBoard');
+        const scoreVal = document.getElementById('scoreVal');
+        const modeIndicator = document.getElementById('modeIndicator');
+
+        // SVG
+        const studentSvgStr = document.getElementById('svg-student').outerHTML.replace('display:none', '').replace('id="svg-student"', '');
+        const chestSvgStr = document.getElementById('svg-chest').outerHTML.replace('display:none', '').replace('id="svg-chest"', '');
+
+        window.onload = initGrid;
+
+        function initGrid() {
+            gridBoard.innerHTML = '';
+            
+            // --- Pixel Perfect Grid Logic ---
+            // 定义 Grid 结构：第一列为行号 (40px)，之后是 cols 个等宽列
+            // 第一行到倒数第二行为网格行，最后一行是列号 (40px)
+            gridBoard.style.gridTemplateColumns = `40px repeat(${gridCols}, 1fr)`;
+            gridBoard.style.gridTemplateRows = `repeat(${gridRows}, 1fr) 40px`;
+
+            // 循环生成网格
+            // 外层循环：Y轴（视觉上从上到下，即数学坐标 gridRows -> 1）
+            for (let r = gridRows; r >= 1; r--) {
+                // 1. 生成每一行的轴标签 (左侧)
+                const rowLabel = document.createElement('div');
+                rowLabel.className = 'axis-item row-axis';
+                rowLabel.innerHTML = r;
+                gridBoard.appendChild(rowLabel);
+
+                // 2. 生成每一行的格子
+                for (let c = 1; c <= gridCols; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.x = c;
+                    cell.dataset.y = r;
+                    cell.onclick = () => handleCellClick(c, r);
+
+                    cell.innerHTML = `
+                        <div class="dot-placeholder"></div>
+                        <div class="guide-line guide-line-h"></div>
+                        <div class="guide-line guide-line-v"></div>
+                        ${studentSvgStr}
+                    `;
+                    gridBoard.appendChild(cell);
+                }
+            }
+
+            // 循环结束后，生成最后一行：X轴标签
+            // 1. 左下角占位符 (空)
+            const corner = document.createElement('div');
+            gridBoard.appendChild(corner);
+
+            // 2. X轴数字
+            for (let c = 1; c <= gridCols; c++) {
+                const colLabel = document.createElement('div');
+                colLabel.className = 'axis-item col-axis';
+                colLabel.innerHTML = c;
+                gridBoard.appendChild(colLabel);
+            }
+        }
+
+        function updateGridSize() {
+            gridCols = parseInt(document.getElementById('colsRange').value);
+            gridRows = parseInt(document.getElementById('rowsRange').value);
+            document.getElementById('colsVal').innerText = gridCols;
+            document.getElementById('rowsVal').innerText = gridRows;
+            
+            inputX.max = gridCols;
+            inputY.max = gridRows;
+            
+            initGrid();
+            
+            // 如果在学生模式下改变大小，重新生成题目
+            if (currentMode === 'student') {
+                score = 0; // 重置分数
+                updateScoreDisplay();
+                startStudentChallenge();
+            } else {
+                resetState();
+            }
+        }
+
+        // --- 模式切换 ---
+        function setMode(mode, btnElement) {
+            currentMode = mode;
+            
+            // UI 切换动画
+            const offset = btnElement.offsetLeft;
+            modeIndicator.style.transform = `translateX(${offset}px)`;
+            
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+
+            resetState();
+
+            if (mode === 'student') {
+                scoreBoard.style.display = 'block';
+                score = 0;
+                updateScoreDisplay();
+                startStudentChallenge();
+            } else {
+                scoreBoard.style.display = 'none';
+                statusText.innerText = "当前坐标 (数对)";
+                statusText.style.color = "var(--text-secondary)";
+                coordDisplay.innerText = "( - , - )";
+                coordDisplay.style.webkitTextFillColor = ""; // Reset gradient
+            }
+        }
+
+        function resetState() {
+            clearHighlights();
+            inputX.value = '';
+            inputY.value = '';
+            isAnimating = false;
+        }
+
+        // --- 核心交互 ---
+        function handleCellClick(x, y) {
+            if (isAnimating) return;
+
+            if (currentMode === 'teacher') {
+                inputX.value = x;
+                inputY.value = y;
+                performHighlight(x, y, false);
+                updateDisplay(x, y);
+            } else {
+                checkAnswer(x, y);
+            }
+        }
+
+        function manualLocate() {
+            if (isAnimating) return;
+            const x = parseInt(inputX.value);
+            const y = parseInt(inputY.value);
+
+            if (!x || !y || x > gridCols || y > gridRows || x < 1 || y < 1) {
+                alert("超出网格范围或输入无效");
+                return;
+            }
+
+            if (currentMode === 'teacher') {
+                performHighlight(x, y, true);
+                updateDisplay(x, y);
+            } else {
+                checkAnswer(x, y);
+            }
+        }
+
+        function performHighlight(targetX, targetY, withAnimation) {
+            clearHighlights();
+            const cells = document.querySelectorAll('.cell');
+
+            if (withAnimation) {
+                isAnimating = true;
+                
+                // 列扫描
+                cells.forEach(cell => {
+                    if (parseInt(cell.dataset.x) === targetX) cell.classList.add('scan-col');
+                });
+
+                setTimeout(() => {
+                    // 行扫描
+                    cells.forEach(cell => {
+                        cell.classList.remove('scan-col');
+                        if (parseInt(cell.dataset.y) === targetY) cell.classList.add('scan-row');
+                    });
+
+                    setTimeout(() => {
+                        // 锁定
+                        cells.forEach(cell => {
+                            cell.classList.remove('scan-row');
+                            if (parseInt(cell.dataset.x) === targetX && parseInt(cell.dataset.y) === targetY) {
+                                cell.classList.add('selected');
+                            }
+                        });
+                        isAnimating = false;
+                    }, 500); 
+
+                }, 500);
+            } else {
+                const targetCell = document.querySelector(`.cell[data-x="${targetX}"][data-y="${targetY}"]`);
+                if(targetCell) targetCell.classList.add('selected');
+            }
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.cell').forEach(c => {
+                c.className = 'cell'; // 移除 selected, error 等所有状态
+                // 恢复默认结构
+                c.innerHTML = `
+                    <div class="dot-placeholder"></div>
+                    <div class="guide-line guide-line-h"></div>
+                    <div class="guide-line guide-line-v"></div>
+                    ${studentSvgStr}
+                `;
+            });
+        }
+
+        function updateDisplay(x, y) {
+            coordDisplay.innerText = `( ${x} , ${y} )`;
+        }
+
+        // --- 学生模式逻辑 ---
+        function startStudentChallenge() {
+            // 随机生成坐标
+            targetSpot = {
+                x: Math.floor(Math.random() * gridCols) + 1,
+                y: Math.floor(Math.random() * gridRows) + 1
+            };
+            
+            // 更新 UI
+            statusText.innerText = "任务：请找到以下位置";
+            statusText.style.color = "var(--primary-color)";
+            coordDisplay.innerText = `( ${targetSpot.x} , ${targetSpot.y} )`;
+            coordDisplay.style.webkitTextFillColor = "var(--text-main)"; // 暂时不显示渐变，看得更清楚
+            
+            clearHighlights();
+        }
+
+        function checkAnswer(x, y) {
+            if (!targetSpot) return;
+            
+            const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+
+            if (x === targetSpot.x && y === targetSpot.y) {
+                // --- 答对了 ---
+                score++;
+                updateScoreDisplay();
+                
+                // 视觉反馈
+                cell.classList.add('selected');
+                // 换成宝箱
+                cell.innerHTML = `
+                    <div class="guide-line guide-line-h"></div>
+                    <div class="guide-line guide-line-v"></div>
+                    ${chestSvgStr}
+                `;
+                
+                statusText.innerText = "🎉 太棒了！找到宝藏！";
+                statusText.style.color = "var(--secondary-color)";
+                
+                // 自动下一关
+                isAnimating = true; // 锁定操作
+                setTimeout(() => {
+                    isAnimating = false;
+                    startStudentChallenge();
+                }, 1500);
+
+            } else {
+                // --- 答错了 ---
+                // 重置连续得分
+                score = 0;
+                updateScoreDisplay();
+
+                // 错误反馈
+                cell.classList.add('error');
+                
+                // 文字提示
+                statusText.innerText = `❌ 不对哦，这是 (${x}, ${y})`;
+                statusText.style.color = "var(--error-color)";
+                
+                setTimeout(() => {
+                    cell.classList.remove('error');
+                    // 恢复提示
+                    statusText.innerText = "任务：请找到以下位置";
+                    statusText.style.color = "var(--primary-color)";
+                }, 1000);
+            }
+        }
+
+        function updateScoreDisplay() {
+            scoreVal.innerText = score;
+            scoreVal.style.animation = 'none';
+            scoreVal.offsetHeight; /* trigger reflow */
+            scoreVal.style.animation = 'score-bump 0.3s';
+        }
+
+    </script>
+</body>
+</html>

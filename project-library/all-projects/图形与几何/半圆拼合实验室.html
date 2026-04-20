@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>半圆拼合实验室</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ========================================================
+           游戏化童趣风 - 魔法宝石工坊
+           Gamified & Playful (Bento UI + Magic Theme)
+        ======================================================== */
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Outfit', 'Comic Sans MS', cursive, sans-serif;
+            background-color: #2b1055;
+            background-image: 
+                radial-gradient(circle at 20% 20%, #4a1c82 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, #1e3a8a 0%, transparent 40%),
+                url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239c92ac" fill-opacity="0.1"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center; 
+            justify-content: center;
+            position: relative;
+        }
+
+        /* 顶部状态栏 */
+        #header-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ffb703;
+            border: 4px solid #fff;
+            border-radius: 50px;
+            padding: 10px 30px;
+            box-shadow: 0 8px 0 #cc8e00, 0 15px 20px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 100;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        #header-bar:hover {
+            transform: translateX(-50%) scale(1.05);
+        }
+
+        #step-indicator {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #6a040f;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .star-icon {
+            font-size: 1.8rem;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* 画布区域：游戏关卡面板 */
+        #canvas-area {
+            width: 85vw;
+            height: 75vh;
+            max-width: 900px;
+            max-height: 700px;
+            background: #ffffff; 
+            border: 8px solid #4a1c82;
+            border-radius: 40px;
+            box-shadow: 
+                0 15px 0 #311158,
+                0 25px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            z-index: 10;
+        }
+
+        /* 游戏化剧情文本提示 */
+        #narrative-text {
+            position: absolute;
+            top: 30px;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #4a1c82;
+            text-align: center;
+            width: 80%;
+            background: #e0b1cb;
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 3px dashed #4a1c82;
+            box-shadow: 0 6px 0 #a984a0;
+            transition: all 0.5s;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            user-select: none;
+            overflow: visible;
+            filter: drop-shadow(0 15px 20px rgba(74, 28, 130, 0.3));
+            margin-top: 50px;
+        }
+
+        /* ------------------
+         * 保留原有控制动画底层的类名
+         * ------------------ */
+        .transition-opacity { transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .transition-transform { transition: transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .duration-300 { transition-duration: 300ms; }
+        .duration-500 { transition-duration: 500ms; }
+        .duration-1000 { transition-duration: 1000ms; } 
+        .ease-in-out { transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+
+        .opacity-0 { opacity: 0; }
+        .opacity-10 { opacity: 0.1; }
+        .opacity-20 { opacity: 0.2; }
+        .opacity-50 { opacity: 0.5; }
+        .opacity-100 { opacity: 1; }
+        .hidden { display: none; }
+
+        /* ------------------
+         * 底部悬浮控制台 (Game Controller)
+         * ------------------ */
+        #control-panel {
+            position: absolute;
+            z-index: 50;
+            display: flex;
+            bottom: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 2rem;
+            background: #8ecae6;
+            padding: 15px 30px;
+            border-radius: 50px;
+            border: 6px solid #023047;
+            box-shadow: 0 10px 0 #023047;
+        }
+
+        button {
+            border: 4px solid #fff;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            outline: none;
+            width: 5rem; 
+            height: 5rem;
+            background: #ffb703;
+            color: #023047;
+            box-shadow: 0 8px 0 #cc8e00;
+        }
+
+        button:active:not(:disabled) { 
+            transform: translateY(8px); 
+            box-shadow: 0 0 0 #cc8e00; 
+        }
+        
+        button:hover:not(:disabled) { 
+            filter: brightness(1.1);
+        }
+
+        #btn-prev:disabled {
+            background: #ccc;
+            border-color: #999;
+            color: #666;
+            box-shadow: 0 8px 0 #999;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #btn-next {
+            background: #8aecff;
+            color: #023047;
+            box-shadow: 0 8px 0 #0077b6;
+        }
+        
+        #btn-next.restart {
+            background: #ff595e;
+            color: #fff;
+            box-shadow: 0 8px 0 #c23b22;
+        }
+
+        .icon { width: 2.5rem; height: 2.5rem; font-weight: bold; }
+
+        /* SVG内的元素重定义颜色 - 变成宝石色 */
+        :root {
+            --gem-color: #4cc9f0;
+            --gem-highlight: #ff006e;
+            --gem-bg: #8338ec;
+        }
+    </style>
+<!-- EDU_BRAND_STYLE_START -->
+<style id="edu-brand-style">
+  :root {
+    --edu-bg: #eef5f7;
+    --edu-bg-deep: #dfeaf0;
+    --edu-surface: rgba(255, 255, 255, 0.82);
+    --edu-surface-strong: rgba(255, 255, 255, 0.94);
+    --edu-line: rgba(97, 132, 161, 0.24);
+    --edu-shadow: 0 18px 48px rgba(37, 78, 110, 0.12);
+    --edu-shadow-strong: 0 24px 56px rgba(24, 61, 90, 0.16);
+    --edu-text: #17324d;
+    --edu-text-soft: #4a647c;
+    --edu-accent: #0f9d8a;
+    --edu-accent-deep: #0d7b72;
+    --edu-warm: #ff9d6c;
+    --edu-warm-soft: #fff1e8;
+  }
+
+  body.edu-refactor-body {
+    background:
+      radial-gradient(circle at 12% 14%, rgba(15, 157, 138, 0.10), transparent 22%),
+      radial-gradient(circle at 88% 16%, rgba(255, 157, 108, 0.18), transparent 20%),
+      radial-gradient(circle at 50% 100%, rgba(81, 122, 164, 0.10), transparent 28%),
+      linear-gradient(180deg, #f6fbfc 0%, var(--edu-bg) 42%, var(--edu-bg-deep) 100%) !important;
+    color: var(--edu-text) !important;
+  }
+
+  body.edu-refactor-body::before,
+  body.edu-refactor-body::after {
+    content: '';
+    position: fixed;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+    opacity: 0.6;
+  }
+
+  body.edu-refactor-body::before {
+    width: 240px;
+    height: 240px;
+    right: -40px;
+    top: 80px;
+    background: rgba(15, 157, 138, 0.14);
+  }
+
+  body.edu-refactor-body::after {
+    width: 180px;
+    height: 180px;
+    left: -20px;
+    bottom: 80px;
+    background: rgba(255, 157, 108, 0.16);
+  }
+
+  body.edu-refactor-body button,
+  body.edu-refactor-body input[type="button"],
+  body.edu-refactor-body input[type="submit"] {
+    border-radius: 16px !important;
+    border: 1px solid rgba(22, 101, 122, 0.16) !important;
+    box-shadow: 0 10px 24px rgba(33, 76, 111, 0.12) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #edf7f6 100%) !important;
+    color: var(--edu-text) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+  }
+
+  body.edu-refactor-body button:hover,
+  body.edu-refactor-body input[type="button"]:hover,
+  body.edu-refactor-body input[type="submit"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(33, 76, 111, 0.16) !important;
+    filter: saturate(1.04);
+  }
+
+  body.edu-refactor-body input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  body.edu-refactor-body select,
+  body.edu-refactor-body textarea {
+    border-radius: 14px !important;
+    border: 1px solid rgba(82, 119, 148, 0.26) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: var(--edu-text) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px rgba(42, 77, 105, 0.08) !important;
+  }
+
+  body.edu-refactor-body [class*="panel"],
+  body.edu-refactor-body [class*="Panel"],
+  body.edu-refactor-body [class*="card"],
+  body.edu-refactor-body [class*="Card"],
+  body.edu-refactor-body [class*="dialog"],
+  body.edu-refactor-body [class*="Dialog"],
+  body.edu-refactor-body [class*="controls"],
+  body.edu-refactor-body [class*="Controls"],
+  body.edu-refactor-body [class*="toolbar"],
+  body.edu-refactor-body [class*="Toolbar"],
+  body.edu-refactor-body [class*="sidebar"],
+  body.edu-refactor-body [class*="Sidebar"],
+  body.edu-refactor-body [class*="instruction"],
+  body.edu-refactor-body [class*="Instruction"],
+  body.edu-refactor-body [id*="panel"],
+  body.edu-refactor-body [id*="Panel"],
+  body.edu-refactor-body [id*="controls"],
+  body.edu-refactor-body [id*="Controls"] {
+    border-radius: 24px !important;
+    border: 1px solid var(--edu-line) !important;
+    box-shadow: var(--edu-shadow) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  body.edu-refactor-body .page-title,
+  body.edu-refactor-body .header h1,
+  body.edu-refactor-body .header h2,
+  body.edu-refactor-body .title,
+  body.edu-refactor-body .subtitle,
+  body.edu-refactor-body .teacher-text,
+  body.edu-refactor-body #step-indicator,
+  body.edu-refactor-body #narrative-text {
+    color: var(--edu-text) !important;
+    text-shadow: none !important;
+  }
+
+  body.edu-refactor-body .edu-brand-shell {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  body.edu-refactor-body .edu-brand-panel,
+  body.edu-refactor-body .edu-brand-guide {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 251, 0.92) 100%);
+    border: 1px solid rgba(89, 127, 156, 0.22);
+    box-shadow: var(--edu-shadow-strong);
+    backdrop-filter: blur(18px);
+    border-radius: 26px;
+  }
+
+  body.edu-refactor-body .edu-brand-panel {
+    max-width: min(720px, calc(100vw - 280px));
+    padding: 18px 22px 20px;
+  }
+
+  body.edu-refactor-body .edu-brand-guide {
+    width: 220px;
+    padding: 16px 18px;
+  }
+
+  body.edu-refactor-body .edu-brand-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(15, 157, 138, 0.10);
+    color: var(--edu-accent-deep);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  body.edu-refactor-body .edu-brand-title {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.08;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-copy {
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  body.edu-refactor-body .edu-brand-copy strong {
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-brand-shell {
+      flex-direction: column;
+      right: 12px;
+      left: 12px;
+      top: 12px;
+    }
+
+    body.edu-refactor-body .edu-brand-panel,
+    body.edu-refactor-body .edu-brand-guide {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
+
+
+  body.edu-refactor-body .edu-border-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 10001;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(89, 127, 156, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--edu-text, #1f2937);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  body.edu-refactor-body .edu-border-toggle:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  body.edu-refactor-body.edu-hide-brand-panels .edu-brand-shell {
+    display: none !important;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-border-toggle {
+      top: auto;
+      bottom: 12px;
+      right: 12px;
+    }
+  }
+
+</style>
+<!-- EDU_BRAND_STYLE_END -->
+
+
+</head>
+<body class="edu-refactor-body">
+<!-- EDU_BRAND_SHELL_START -->
+<div class="edu-brand-shell" data-brand-shell>
+  <section class="edu-brand-panel" aria-label="页面导语">
+    <div class="edu-brand-kicker">几何转化 · EDU STUDIO</div>
+    <h1 class="edu-brand-title">半圆拼合实验室</h1>
+    <div class="edu-brand-copy">
+      <div><strong>任务目标：</strong>观察两个相同半圆在重合、平移与拼合后的面积关系。</div>
+      <div><strong>操作提示：</strong>跟着页面中的分步操作推进图形变化，再回看每一步的对应关系。</div>
+      <div><strong>理解重点：</strong>把复杂区域转化成熟悉图形，是面积推理里最稳定的方法。</div>
+    </div>
+</section>
+  <aside class="edu-brand-guide" aria-label="操作建议">
+    <h2>建议这样探索</h2>
+    <ul><li>先看原图与目标图是否共享同一条边。</li><li>记录每次平移或旋转后新增的面积片段。</li><li>最终用已知图形面积去解释结论。</li></ul>
+  </aside>
+</div>
+<!-- EDU_BRAND_SHELL_END -->
+
+<button type="button" class="edu-border-toggle" id="edu-border-toggle" aria-pressed="false" aria-label="隐藏说明框" title="隐藏说明框">-</button>
+
+
+    <!-- 顶部状态栏 -->
+    <div id="header-bar">
+        <span class="star-icon">⭐</span>
+        <div id="step-indicator">步骤 1 / 6</div>
+        <span class="star-icon">⭐</span>
+    </div>
+
+    <!-- 画布区域 -->
+    <div id="canvas-area">
+        <div id="narrative-text">这两个半圆区域重叠在一起了，你能判断它们的面积关系吗？</div>
+        
+        <svg viewBox="0 0 300 300">
+            <g transform="translate(20, 10) scale(0.90)" style="isolation: isolate;">
+                
+                <!-- === 1. 逻辑底层 (半圆) === -->
+                <!-- Step 2 (3): 右侧半圆 (静态) -->
+                <path id="logic-semi-right" class="transition-opacity duration-500"
+                      d="M 50 250 A 100 100 0 0 1 250 250 L 50 250 Z" 
+                      fill="var(--gem-color)" stroke="none" opacity="0"/>
+                
+                <!-- Step 3, 4, 5: 左侧半圆 -->
+                <path id="logic-semi-left" class="transition-opacity duration-500"
+                      d="M 50 50 A 100 100 0 0 1 50 250 L 50 50 Z" 
+                      fill="var(--gem-color)" stroke="none" opacity="0"/>
+
+                <!-- === 2. 逻辑减法层 (三角形) === -->
+                <!-- Step 2 (3): 右侧三角形 (动态黑魔法完全镂空) -->
+                <path id="logic-tri-right" class="transition-opacity duration-1000 ease-in-out"
+                      d="M 250 250 L 50 250 L 150 150 Z"
+                      fill="black" style="mix-blend-mode: destination-out;" stroke="none" opacity="0"/>
+                
+                <!-- Step 3, 4, 5: 左侧三角形 (动态黑魔法完全镂空) -->
+                <path id="logic-tri-left" class="transition-opacity duration-1000 ease-in-out"
+                      d="M 50 50 L 50 250 L 150 150 Z"
+                      fill="black" style="mix-blend-mode: destination-out;" stroke="none" opacity="0"/>
+
+                <!-- === 旋转演示组 (Step 5, 6 使用) === -->
+                <!-- 包含右侧的半圆和三角形，用于整体旋转 -->
+                <!-- 旋转中心点 B (50, 250) -->
+                <g id="step4-rotate-group" class="transition-transform" 
+                   style="transform-origin: 50px 250px; opacity: 0; pointer-events: none; isolation: isolate;">
+                    
+                    <!-- 右半圆 (带高亮边框 width=4) -->
+                    <path d="M 50 250 A 100 100 0 0 1 250 250 L 50 250 Z" 
+                          fill="var(--gem-color)" stroke="var(--gem-highlight)" stroke-width="4"/>
+                    
+                    <!-- 右三角形 (镂空) -->
+                    <path d="M 250 250 L 50 250 L 150 150 Z"
+                          fill="black" style="mix-blend-mode: destination-out;"/>
+                          
+                    <!-- 右三角形 (高亮实线) -->
+                    <path d="M 250 250 L 50 250 L 150 150 Z"
+                          fill="none" stroke="var(--gem-highlight)" stroke-width="4" stroke-dasharray="8,6"/>
+                </g>
+
+                <!-- === 3. 基础视觉层 (默认橙色弓形) === -->
+                <path id="visual-leaf-left" class="transition-opacity duration-500"
+                      d="M 50 50 A 100 100 0 0 1 50 250 L 150 150 L 50 50 Z"
+                      fill="var(--gem-color)" stroke="none"/>
+                
+                <path id="visual-leaf-right" class="transition-opacity duration-500"
+                      d="M 50 250 A 100 100 0 0 1 250 250 L 150 150 L 50 250 Z"
+                      fill="var(--gem-color)" stroke="none"/>
+
+                <!-- === 4. 轮廓线与高亮 === -->
+                
+                <!-- Step 2 高亮组 -->
+                <g id="highlight-step2" class="transition-opacity duration-500" opacity="0">
+                    <path d="M 50 250 A 100 100 0 0 1 250 250" fill="none" stroke="var(--gem-highlight)" stroke-width="4"/>
+                    <line x1="50" y1="250" x2="250" y2="250" stroke="var(--gem-highlight)" stroke-width="4"/>
+                    
+                    <path id="highlight-tri-right" class="transition-opacity duration-500"
+                          d="M 250 250 L 50 250 L 150 150 Z"
+                          fill="none" stroke="var(--gem-highlight)" stroke-width="4" stroke-dasharray="8,6" opacity="0"/>
+                </g>
+
+                <!-- Step 3 高亮组 -->
+                <g id="highlight-step3" class="transition-opacity duration-500" opacity="0">
+                    <path d="M 50 50 A 100 100 0 0 1 50 250" fill="none" stroke="var(--gem-highlight)" stroke-width="4"/>
+                    <line x1="50" y1="50" x2="50" y2="250" stroke="var(--gem-highlight)" stroke-width="4"/>
+                    
+                    <path id="highlight-tri-left" class="transition-opacity duration-500"
+                          d="M 50 50 L 50 250 L 150 150 Z"
+                          fill="none" stroke="var(--gem-highlight)" stroke-width="4" stroke-dasharray="8,6" opacity="0"/>
+                </g>
+
+                <!-- 基础轮廓 -->
+                <g id="base-outlines" class="transition-opacity duration-500">
+                    <path d="M 50 50 L 50 250 L 250 250 Z" fill="none" stroke="var(--gem-bg)" stroke-width="4"/>
+                    <path d="M 50 50 A 100 100 0 0 1 50 250" fill="none" stroke="var(--gem-bg)" stroke-width="4"/>
+                    <path d="M 50 250 A 100 100 0 0 1 250 250" fill="none" stroke="var(--gem-bg)" stroke-width="4"/>
+                </g>
+
+                <!-- 辅助线 BD -->
+                <line id="line-bd" class="transition-opacity duration-300"
+                      x1="50" y1="250" x2="150" y2="150" 
+                      stroke="#fb8500" stroke-width="4" stroke-dasharray="8,6" opacity="0"/>
+
+                <!-- 标注 -->
+                <g id="labels" class="transition-opacity duration-500">
+                    <text x="30" y="45" font-size="24" fill="#023047" font-weight="bold">A</text>
+                    <text x="30" y="275" font-size="24" fill="#023047" font-weight="bold">B</text>
+                    <text id="label-c" x="260" y="275" font-size="24" fill="#023047" font-weight="bold">C</text>
+                    <text x="155" y="135" font-size="24" fill="#023047" font-weight="bold">D</text>
+                    
+                    <text id="label-10dm-ab" x="-5" y="155" font-size="18" fill="#fb8500" font-weight="bold" transform="rotate(-90 20,150)">10 dm</text>
+                    <text id="label-10dm-bc" x="130" y="295" font-size="18" fill="#fb8500" font-weight="bold">10 dm</text>
+                </g>
+
+            </g>
+        </svg>
+
+        <!-- 控制区域 -->
+        <div id="control-panel">
+            <div class="btn-group">
+                <button id="btn-prev" title="回看上一步" disabled>
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                </button>
+
+                <button id="btn-next" title="推进观察">
+                    <svg id="icon-arrow-right" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    <svg id="icon-restart" class="icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74-2.74L3 12"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === 状态管理 ===
+        let step = 0;
+        const totalSteps = 6; 
+        let animationTimer = null;
+        let rotateTimer = null;
+
+        const narrativeTexts = [
+            "这两个半圆区域重叠在一起了，你能判断它们的面积关系吗？",
+            "先补上一条辅助线 BD，看看图形内部出现了什么新的结构。",
+            "右侧区域可以理解成“大半圆减去三角形”。",
+            "左侧区域同样可以理解成“大半圆减去三角形”。",
+            "既然左右两块图形完全相同，我们能不能把它们重新拼起来？",
+            "旋转拼合后，它们刚好组成一个边长 10 的正方形，所以面积是 10 × 10 = 100。"
+        ];
+
+        // === DOM 元素获取 ===
+        const els = {
+            stepIndicator: document.getElementById('step-indicator'),
+            narrativeText: document.getElementById('narrative-text'),
+            btnPrev: document.getElementById('btn-prev'),
+            btnNext: document.getElementById('btn-next'),
+            iconArrow: document.getElementById('icon-arrow-right'),
+            iconRestart: document.getElementById('icon-restart'),
+            
+            logicSemiRight: document.getElementById('logic-semi-right'),
+            logicSemiLeft: document.getElementById('logic-semi-left'),
+            logicTriRight: document.getElementById('logic-tri-right'),
+            logicTriLeft: document.getElementById('logic-tri-left'),
+            
+            visualLeafRight: document.getElementById('visual-leaf-right'),
+            visualLeafLeft: document.getElementById('visual-leaf-left'),
+            
+            highlightStep2: document.getElementById('highlight-step2'),
+            highlightTriRight: document.getElementById('highlight-tri-right'),
+            highlightStep3: document.getElementById('highlight-step3'),
+            highlightTriLeft: document.getElementById('highlight-tri-left'),
+            
+            step4RotateGroup: document.getElementById('step4-rotate-group'),
+            
+            baseOutlines: document.getElementById('base-outlines'),
+            lineBd: document.getElementById('line-bd'),
+            labels: document.getElementById('labels'),
+            labelC: document.getElementById('label-c'),
+            label10dmBc: document.getElementById('label-10dm-bc')
+        };
+
+        // === 更新视图的核心函数 ===
+        function updateView() {
+            // 1. UI更新
+            els.stepIndicator.textContent = `步骤 ${step + 1} / ${totalSteps}`;
+            els.narrativeText.textContent = narrativeTexts[step];
+            
+            els.btnPrev.disabled = (step === 0);
+            
+            if (step === totalSteps - 1) {
+                els.btnNext.classList.add('restart');
+                els.btnNext.title = "下一步";
+                els.iconArrow.classList.add('hidden');
+                els.iconRestart.classList.remove('hidden');
+            } else {
+                els.btnNext.classList.remove('restart');
+                els.btnNext.title = "下一步";
+                els.iconArrow.classList.remove('hidden');
+                els.iconRestart.classList.add('hidden');
+            }
+
+            // 2. 重置动画与样式
+            if (animationTimer) clearTimeout(animationTimer);
+            if (rotateTimer) clearTimeout(rotateTimer);
+
+            // 逻辑层重置
+            els.logicSemiRight.style.opacity = '0';
+            els.logicSemiLeft.style.opacity = '0';
+            els.logicTriRight.style.opacity = '0';
+            els.logicTriLeft.style.opacity = '0';
+            
+            // 高亮层重置
+            els.highlightStep2.style.opacity = '0';
+            els.highlightStep3.style.opacity = '0';
+            els.highlightTriRight.style.opacity = '0';
+            els.highlightTriLeft.style.opacity = '0';
+
+            // 旋转组重置
+            els.step4RotateGroup.style.opacity = '0';
+            els.step4RotateGroup.style.transform = 'rotate(0deg)'; 
+
+            // 视觉层默认状态
+            els.visualLeafLeft.style.opacity = '1';
+            els.visualLeafRight.style.opacity = '1';
+            els.baseOutlines.style.opacity = '1';
+            
+            // 默认所有标签显示
+            els.labels.style.opacity = '1';
+            els.labelC.style.opacity = '1';
+            els.label10dmBc.style.opacity = '1';
+
+            // 辅助线 BD 逻辑 (仅 Step 1 显示)
+            els.lineBd.style.opacity = (step === 1) ? '1' : '0';
+
+            // === 3. 步骤逻辑 ===
+
+            if (step === 2) {
+                // Step 2 (UI Step 3): 右侧减法
+                els.logicSemiRight.style.opacity = '1';
+                els.highlightStep2.style.opacity = '1';
+                els.visualLeafRight.style.opacity = '0'; 
+                els.visualLeafLeft.style.opacity = '0.1';
+                els.baseOutlines.style.opacity = '0.2';
+                els.labels.style.opacity = '0.5';
+
+                animationTimer = setTimeout(() => {
+                    els.logicTriRight.style.opacity = '1';
+                    els.highlightTriRight.style.opacity = '1';
+                }, 1000);
+            }
+
+            if (step === 3) {
+                // Step 3 (UI Step 4): 左侧减法
+                els.logicSemiLeft.style.opacity = '1';
+                els.highlightStep3.style.opacity = '1';
+                els.visualLeafLeft.style.opacity = '0';
+                els.visualLeafRight.style.opacity = '0.1';
+                els.baseOutlines.style.opacity = '0.2';
+                els.labels.style.opacity = '0.5';
+
+                animationTimer = setTimeout(() => {
+                    els.logicTriLeft.style.opacity = '1';
+                    els.highlightTriLeft.style.opacity = '1';
+                }, 1000);
+            }
+
+            if (step === 4) {
+                // Step 4 (UI Step 5): 准备旋转 (静态)
+                els.logicSemiLeft.style.opacity = '1';
+                els.logicTriLeft.style.opacity = '1';
+                els.highlightStep3.style.opacity = '1';
+                els.highlightTriLeft.style.opacity = '1';
+                els.visualLeafLeft.style.opacity = '0';
+                els.visualLeafRight.style.opacity = '0';
+                els.baseOutlines.style.opacity = '0'; 
+                els.step4RotateGroup.style.opacity = '1';
+            }
+
+            if (step === 5) {
+                // Step 5 (UI Step 6): 执行旋转 (动态)
+                els.logicSemiLeft.style.opacity = '1';
+                els.logicTriLeft.style.opacity = '1';
+                els.highlightStep3.style.opacity = '1';
+                els.highlightTriLeft.style.opacity = '1';
+                els.visualLeafLeft.style.opacity = '0';
+                els.visualLeafRight.style.opacity = '0';
+                els.baseOutlines.style.opacity = '0'; 
+                els.step4RotateGroup.style.opacity = '1';
+
+                // 隐藏 C 点和 BC 边长
+                els.labelC.style.opacity = '0';
+                els.label10dmBc.style.opacity = '0';
+
+                // 立即触发旋转
+                rotateTimer = setTimeout(() => {
+                    els.step4RotateGroup.style.transform = 'rotate(270deg)';
+                }, 100);
+            }
+        }
+
+        // === 事件监听 ===
+        els.btnNext.addEventListener('click', () => {
+            if (step === totalSteps - 1) {
+                step = 0;
+            } else {
+                step = Math.min(step + 1, totalSteps - 1);
+            }
+            updateView();
+        });
+
+        els.btnPrev.addEventListener('click', () => {
+            step = Math.max(step - 1, 0);
+            updateView();
+        });
+
+        // 初始化
+        updateView();
+
+    </script>
+
+
+
+
+<script>
+(function () {
+  var storageKey = 'edu_hide_brand_panels';
+  var toggleButton = document.getElementById('edu-border-toggle');
+  if (!toggleButton || !document.body) {
+    return;
+  }
+
+  function applyState(hidden) {
+    document.body.classList.toggle('edu-hide-brand-panels', hidden);
+    toggleButton.textContent = hidden ? '+' : '-';
+    toggleButton.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    toggleButton.setAttribute('aria-label', hidden ? '显示说明框' : '隐藏说明框');
+    toggleButton.setAttribute('title', hidden ? '显示说明框' : '隐藏说明框');
+  }
+
+  var hiddenByDefault = false;
+  try {
+    hiddenByDefault = localStorage.getItem(storageKey) === '1';
+  } catch (e) {
+    hiddenByDefault = false;
+  }
+
+  applyState(hiddenByDefault);
+
+  toggleButton.addEventListener('click', function () {
+    var nextHidden = !document.body.classList.contains('edu-hide-brand-panels');
+    applyState(nextHidden);
+    try {
+      localStorage.setItem(storageKey, nextHidden ? '1' : '0');
+    } catch (e) {
+      // no-op
+    }
+  });
+})();
+</script>
+
+
+</body>
+</html>

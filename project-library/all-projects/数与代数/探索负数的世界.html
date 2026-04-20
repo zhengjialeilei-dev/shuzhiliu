@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>负数的认识：多维世界</title>
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #50E3C2;
+            --accent-color: #FF6B6B;
+            --bg-color: #F7F9FC;
+            --text-color: #333;
+            --panel-bg: #FFFFFF;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Header */
+        header {
+            background-color: var(--panel-bg);
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+            color: var(--primary-color);
+        }
+
+        .scene-selector {
+            display: flex;
+            gap: 10px;
+        }
+
+        .scene-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            background-color: #E0E6ED;
+            color: #666;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .scene-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 8px rgba(74, 144, 226, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Main Stage */
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background-color: #eee;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Control Panel */
+        #control-panel {
+            background-color: var(--panel-bg);
+            padding: 20px 30px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .feedback-area {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        #feedback-text {
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .highlight {
+            color: var(--primary-color);
+            font-size: 26px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 50%;
+            height: 12px;
+            background: #ddd;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border: 3px solid white;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        input[type="number"] {
+            width: 80px;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 18px;
+            text-align: center;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        input[type="number"]:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .btn-challenge {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(255, 107, 107, 0.3);
+            transition: all 0.2s;
+        }
+
+        .btn-challenge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-challenge:active {
+            transform: translateY(0);
+        }
+
+        /* Challenge Overlay */
+        #challenge-overlay {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            z-index: 20;
+            border: 2px solid var(--accent-color);
+        }
+
+        #challenge-text {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .btn-confirm {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 15px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .scene-selector {
+                width: 100%;
+                justify-content: center;
+            }
+            .scene-btn {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+            #control-panel {
+                padding: 15px;
+            }
+            .input-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+            input[type="range"] {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>负数的认识：多维世界</h1>
+        <div class="scene-selector">
+            <button class="scene-btn active" onclick="app.switchScene('sea')">深海探险</button>
+            <button class="scene-btn" onclick="app.switchScene('temp')">神奇温度计</button>
+            <button class="scene-btn" onclick="app.switchScene('road')">数轴小车</button>
+        </div>
+    </header>
+
+    <div id="canvas-container">
+        <canvas id="mainCanvas"></canvas>
+        <div id="challenge-overlay">
+            <div id="challenge-text">请找到 -150 的位置</div>
+            <button class="btn-confirm" onclick="app.checkChallenge()">确定</button>
+        </div>
+    </div>
+
+    <div id="control-panel">
+        <div class="feedback-area">
+            <div id="feedback-text">
+                当前位置：<span class="highlight" id="val-display">0</span>
+                <span id="meaning-display">海平面</span>
+            </div>
+        </div>
+        <div class="input-group">
+            <input type="range" id="slider" min="-500" max="500" value="0" step="1">
+            <input type="number" id="num-input" value="0" min="-500" max="500">
+            <button class="btn-challenge" onclick="app.startChallenge()">随机挑战</button>
+        </div>
+    </div>
+
+    <script>
+        class App {
+            constructor() {
+                this.canvas = document.getElementById('mainCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.scene = 'sea'; // sea, temp, road
+                this.value = 0;
+                this.targetValue = 0; // For smooth animation
+                this.challengeMode = false;
+                this.challengeTarget = 0;
+                this.width = 0;
+                this.height = 0;
+
+                // UI Elements
+                this.slider = document.getElementById('slider');
+                this.numInput = document.getElementById('num-input');
+                this.valDisplay = document.getElementById('val-display');
+                this.meaningDisplay = document.getElementById('meaning-display');
+                this.challengeOverlay = document.getElementById('challenge-overlay');
+                this.challengeText = document.getElementById('challenge-text');
+                this.sceneBtns = document.querySelectorAll('.scene-btn');
+
+                // Bind events
+                this.initEvents();
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+
+                // Animation Loop
+                this.animate = this.animate.bind(this);
+                requestAnimationFrame(this.animate);
+            }
+
+            initEvents() {
+                const updateValue = (val) => {
+                    if (this.challengeMode) return; // Disable manual input in challenge mode (except slider drag, handled differently)
+                    this.setValue(val);
+                };
+
+                this.slider.addEventListener('input', (e) => {
+                    const val = parseInt(e.target.value);
+                    if (this.challengeMode) {
+                        this.targetValue = val; // Only update visual, not logical "value" until confirm
+                        this.value = val; 
+                        // In challenge mode, we don't show the value in UI
+                    } else {
+                        updateValue(val);
+                    }
+                });
+
+                this.numInput.addEventListener('input', (e) => {
+                    if(this.challengeMode) return;
+                    let val = parseInt(e.target.value);
+                    if (isNaN(val)) val = 0;
+                    if (val > 500) val = 500;
+                    if (val < -500) val = -500;
+                    updateValue(val);
+                });
+            }
+
+            setValue(val) {
+                this.value = val;
+                this.targetValue = val;
+                this.slider.value = val;
+                this.numInput.value = val;
+                this.updateFeedback();
+            }
+
+            switchScene(sceneName) {
+                this.scene = sceneName;
+                this.sceneBtns.forEach((btn, index) => {
+                    const names = ['sea', 'temp', 'road'];
+                    if (names[index] === sceneName) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                // Exit challenge mode if active
+                if(this.challengeMode) {
+                    this.endChallenge(false);
+                }
+
+                this.updateFeedback();
+            }
+
+            updateFeedback() {
+                if (this.challengeMode) {
+                    this.valDisplay.innerText = "???";
+                    this.meaningDisplay.innerText = " 拖动滑块找到目标位置";
+                    return;
+                }
+
+                const val = this.value;
+                this.valDisplay.innerText = val > 0 ? `+${val}` : val;
+                this.valDisplay.style.color = val > 0 ? '#FF6B6B' : (val < 0 ? '#4A90E2' : '#333');
+
+                let meaning = "";
+                if (this.scene === 'sea') {
+                    if (val === 0) meaning = " 海平面";
+                    else if (val > 0) meaning = ` 海平面以上 ${val} 米`;
+                    else meaning = ` 海平面以下 ${Math.abs(val)} 米`;
+                } else if (this.scene === 'temp') {
+                    if (val === 0) meaning = " 0 度 (冰水混合物)";
+                    else if (val > 0) meaning = ` 零上 ${val} 度 (暖)`;
+                    else meaning = ` 零下 ${Math.abs(val)} 度 (冷)`;
+                } else if (this.scene === 'road') {
+                    if (val === 0) meaning = " 原点 (出发地)";
+                    else if (val > 0) meaning = ` 向东 (右) 行驶 ${val} 米`;
+                    else meaning = ` 向西 (左) 行驶 ${Math.abs(val)} 米`;
+                }
+                this.meaningDisplay.innerText = meaning;
+            }
+
+            resize() {
+                const container = this.canvas.parentElement;
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight;
+                this.width = this.canvas.width;
+                this.height = this.canvas.height;
+            }
+
+            startChallenge() {
+                this.challengeMode = true;
+                this.challengeTarget = Math.floor(Math.random() * 800) - 400; // -400 to 400
+                // Avoid 0 for challenge
+                if (this.challengeTarget === 0) this.challengeTarget = 50;
+
+                this.challengeOverlay.style.display = 'flex';
+                this.challengeText.innerText = `请找到 ${this.challengeTarget} 的位置`;
+                
+                // Hide input number
+                this.numInput.disabled = true;
+                this.numInput.value = "";
+                
+                // Reset slider visual to 0 (or keep current) but user needs to move it
+                this.updateFeedback();
+            }
+
+            checkChallenge() {
+                const diff = Math.abs(this.value - this.challengeTarget);
+                const tolerance = 20; // Allow slight error
+                
+                if (diff <= tolerance) {
+                    alert(`太棒了！你的位置 ${this.value} 非常接近目标 ${this.challengeTarget}！`);
+                    this.endChallenge(true);
+                } else {
+                    alert(`还需要再试一次哦。你现在的位置是 ${this.value}，目标是 ${this.challengeTarget}。`);
+                }
+            }
+
+            endChallenge(success) {
+                this.challengeMode = false;
+                this.challengeOverlay.style.display = 'none';
+                this.numInput.disabled = false;
+                if (success) {
+                    this.setValue(this.challengeTarget);
+                } else {
+                    this.setValue(this.value);
+                }
+            }
+
+            // === Drawing Logic ===
+
+            animate() {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                // Interpolate value for smoother animation if needed
+                // For now, we use direct mapping from this.value which is updated by slider
+                // We can add a "visualValue" for smoother transitions if value jumps
+                
+                if (this.scene === 'sea') this.drawSeaScene();
+                else if (this.scene === 'temp') this.drawTempScene();
+                else if (this.scene === 'road') this.drawRoadScene();
+
+                requestAnimationFrame(this.animate);
+            }
+
+            // Helper: Map value to Y coordinate (Vertical scenes)
+            // Range: -500 (bottom) to +500 (top)
+            // Canvas Y: height (bottom) to 0 (top)
+            // But we want some padding. Let's say usable height is 80%.
+            getVerticalY(val) {
+                const range = 1000; // -500 to 500
+                const center = this.height / 2;
+                const scale = (this.height * 0.8) / range; 
+                return center - (val * scale);
+            }
+
+            // Helper: Map value to X coordinate (Horizontal scenes)
+            getHorizontalX(val) {
+                const range = 1000;
+                const center = this.width / 2;
+                const scale = (this.width * 0.8) / range;
+                return center + (val * scale);
+            }
+
+            drawSeaScene() {
+                const ctx = this.ctx;
+                const centerY = this.height / 2;
+
+                // 1. Background (Sky & Sea)
+                // Sky
+                const skyGrad = ctx.createLinearGradient(0, 0, 0, centerY);
+                skyGrad.addColorStop(0, "#87CEEB");
+                skyGrad.addColorStop(1, "#E0F7FA");
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, this.width, centerY);
+
+                // Sea
+                const seaGrad = ctx.createLinearGradient(0, centerY, 0, this.height);
+                seaGrad.addColorStop(0, "#4A90E2");
+                seaGrad.addColorStop(1, "#003366");
+                ctx.fillStyle = seaGrad;
+                ctx.fillRect(0, centerY, this.width, this.height / 2);
+
+                // 2. Sea Level Line
+                ctx.beginPath();
+                ctx.moveTo(0, centerY);
+                ctx.lineTo(this.width, centerY);
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 2;
+                ctx.setLineDash([10, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = "white";
+                ctx.font = "bold 16px Arial";
+                ctx.fillText("海平面 (0m)", 10, centerY - 10);
+
+                // 3. Ruler (Right side)
+                this.drawVerticalRuler(this.width - 60, centerY);
+
+                // 4. Object
+                const y = this.getVerticalY(this.value);
+                const x = this.width / 2;
+
+                if (this.value >= 0) {
+                    // Hot Air Balloon
+                    this.drawBalloon(ctx, x, y);
+                } else {
+                    // Submarine
+                    this.drawSubmarine(ctx, x, y);
+                }
+            }
+
+            drawBalloon(ctx, x, y) {
+                // Balloon body
+                ctx.save();
+                ctx.translate(x, y);
+                
+                // Float animation
+                const floatY = Math.sin(Date.now() / 500) * 5;
+                ctx.translate(0, floatY - 40); // Anchor at bottom of basket, so move up
+
+                // Balloon
+                ctx.beginPath();
+                ctx.arc(0, -30, 40, 0, Math.PI * 2);
+                const grad = ctx.createRadialGradient(-10, -40, 5, 0, -30, 40);
+                grad.addColorStop(0, "#FF9A9E");
+                grad.addColorStop(1, "#FECFEF");
+                ctx.fillStyle = grad;
+                ctx.fill();
+                
+                // Basket lines
+                ctx.beginPath();
+                ctx.moveTo(-20, 0); // Basket left
+                ctx.lineTo(-30, -15); // Balloon connect left
+                ctx.moveTo(20, 0); // Basket right
+                ctx.lineTo(30, -15); // Balloon connect right
+                ctx.strokeStyle = "#8D6E63";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Basket
+                ctx.fillStyle = "#8D6E63";
+                ctx.fillRect(-20, 0, 40, 25);
+
+                ctx.fillStyle = "white";
+                ctx.font = "bold 14px Arial";
+                ctx.textAlign = "center";
+                if (!this.challengeMode) ctx.fillText(`+${this.value}`, 0, -30);
+
+                ctx.restore();
+            }
+
+            drawSubmarine(ctx, x, y) {
+                ctx.save();
+                ctx.translate(x, y);
+
+                // Float animation
+                const floatY = Math.sin(Date.now() / 800) * 3;
+                ctx.translate(0, floatY);
+
+                // Body
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 60, 30, 0, 0, Math.PI * 2);
+                ctx.fillStyle = "#FFD700";
+                ctx.fill();
+                ctx.strokeStyle = "#DAA520";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Periscope
+                ctx.beginPath();
+                ctx.moveTo(20, -20);
+                ctx.lineTo(20, -50);
+                ctx.lineTo(35, -50);
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = "#DAA520";
+                ctx.stroke();
+
+                // Windows
+                ctx.fillStyle = "#E0F7FA";
+                ctx.beginPath(); ctx.arc(-20, 0, 8, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(10, 0, 8, 0, Math.PI * 2); ctx.fill();
+
+                // Propeller
+                const angle = Date.now() / 100;
+                ctx.translate(-60, 0);
+                ctx.rotate(angle);
+                ctx.fillStyle = "#aaa";
+                ctx.fillRect(-5, -20, 10, 40);
+
+                ctx.restore();
+                
+                // Text
+                ctx.fillStyle = "white";
+                ctx.font = "bold 14px Arial";
+                ctx.textAlign = "center";
+                if (!this.challengeMode) ctx.fillText(`${this.value}`, x, y + 10);
+            }
+
+            drawVerticalRuler(x, zeroY) {
+                const ctx = this.ctx;
+                ctx.strokeStyle = "rgba(0,0,0,0.3)";
+                ctx.fillStyle = "rgba(0,0,0,0.5)";
+                ctx.font = "12px Arial";
+                ctx.textAlign = "right";
+
+                ctx.beginPath();
+                ctx.moveTo(x, 20);
+                ctx.lineTo(x, this.height - 20);
+                ctx.stroke();
+
+                // Ticks
+                for (let v = -500; v <= 500; v += 100) {
+                    const y = this.getVerticalY(v);
+                    ctx.beginPath();
+                    ctx.moveTo(x - 10, y);
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                    ctx.fillText(v, x - 15, y + 4);
+                }
+            }
+
+            drawTempScene() {
+                const ctx = this.ctx;
+                
+                // 1. Dynamic Background
+                // Cold (Blue) to Hot (Red) based on value
+                const t = (this.value + 500) / 1000; // 0 to 1
+                const r = Math.floor(200 * t + 50);
+                const b = Math.floor(255 * (1 - t));
+                const bgCol = `rgb(${r}, 240, ${b})`; // Keep it light
+                
+                ctx.fillStyle = bgCol;
+                ctx.fillRect(0, 0, this.width, this.height);
+
+                // 2. Weather Icon
+                const iconX = this.width * 0.75;
+                const iconY = this.height * 0.3;
+                if (this.value > 0) {
+                    // Sun
+                    ctx.save();
+                    ctx.translate(iconX, iconY);
+                    ctx.rotate(Date.now() / 2000);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 30, 0, Math.PI * 2);
+                    ctx.fillStyle = "#FFD700";
+                    ctx.fill();
+                    // Rays
+                    for (let i = 0; i < 8; i++) {
+                        ctx.rotate(Math.PI / 4);
+                        ctx.beginPath();
+                        ctx.moveTo(40, 0);
+                        ctx.lineTo(60, 0);
+                        ctx.lineWidth = 4;
+                        ctx.strokeStyle = "orange";
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                } else {
+                    // Snowflake
+                    ctx.save();
+                    ctx.translate(iconX, iconY);
+                    ctx.rotate(Date.now() / 2000);
+                    ctx.strokeStyle = "#B3E5FC";
+                    ctx.lineWidth = 4;
+                    for (let i = 0; i < 6; i++) {
+                        ctx.rotate(Math.PI / 3);
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(0, 50);
+                        ctx.stroke();
+                        // branches
+                        ctx.moveTo(0, 30); ctx.lineTo(15, 40);
+                        ctx.moveTo(0, 30); ctx.lineTo(-15, 40);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+
+                // 3. Thermometer
+                const thermoX = this.width * 0.3;
+                const thermoBottom = this.height * 0.85;
+                const thermoTop = this.height * 0.15;
+                const thermoWidth = 40;
+                
+                // Tube Background
+                ctx.fillStyle = "#FFF";
+                ctx.beginPath();
+                ctx.roundRect(thermoX - thermoWidth/2, thermoTop, thermoWidth, thermoBottom - thermoTop, 20);
+                ctx.fill();
+                ctx.strokeStyle = "#ccc";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Bulb
+                ctx.beginPath();
+                ctx.arc(thermoX, thermoBottom, 35, 0, Math.PI * 2);
+                ctx.fillStyle = "#FFF";
+                ctx.fill();
+                ctx.stroke();
+
+                // Liquid
+                const currentY = this.getVerticalY(this.value);
+                // Clamp liquid to tube
+                const liquidY = Math.max(thermoTop + 10, Math.min(thermoBottom - 10, currentY));
+                
+                // Color based on temp
+                const liqColor = this.value > 0 ? "#FF6B6B" : "#4A90E2";
+                if (this.value === 0) ctx.fillStyle = "#999";
+                else ctx.fillStyle = liqColor;
+
+                // Draw column
+                ctx.beginPath();
+                ctx.rect(thermoX - 10, liquidY, 20, thermoBottom - liquidY);
+                ctx.fill();
+
+                // Draw Bulb Liquid
+                ctx.beginPath();
+                ctx.arc(thermoX, thermoBottom, 28, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Ticks (Left of tube)
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#666";
+                ctx.font = "bold 14px Arial";
+                for (let v = -500; v <= 500; v += 100) {
+                    const y = this.getVerticalY(v);
+                    if (y > thermoTop && y < thermoBottom) {
+                        ctx.beginPath();
+                        ctx.moveTo(thermoX - 20, y);
+                        ctx.lineTo(thermoX - 30, y);
+                        ctx.stroke();
+                        ctx.fillText(v + "°", thermoX - 35, y + 5);
+                    }
+                }
+
+                // Zero line
+                const zeroY = this.getVerticalY(0);
+                ctx.strokeStyle = "rgba(0,0,0,0.5)";
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(thermoX - 50, zeroY);
+                ctx.lineTo(thermoX + 50, zeroY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillText("0° (结冰)", thermoX - 55, zeroY + 5);
+            }
+
+            drawRoadScene() {
+                const ctx = this.ctx;
+                const centerY = this.height / 2;
+
+                // 1. Background (Grass)
+                ctx.fillStyle = "#C8E6C9";
+                ctx.fillRect(0, 0, this.width, this.height);
+
+                // 2. Road
+                ctx.fillStyle = "#757575";
+                ctx.fillRect(0, centerY - 60, this.width, 120);
+                
+                // Road markings
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 4;
+                ctx.setLineDash([30, 30]);
+                ctx.beginPath();
+                ctx.moveTo(0, centerY);
+                ctx.lineTo(this.width, centerY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // 3. Origin (Zebra Crossing)
+                const centerX = this.width / 2;
+                ctx.fillStyle = "white";
+                for (let i = -50; i <= 50; i += 20) {
+                    ctx.fillRect(centerX - 15, centerY + i, 30, 10);
+                }
+                
+                ctx.fillStyle = "#333";
+                ctx.font = "bold 16px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("原点 (0)", centerX, centerY + 80);
+
+                // 4. Horizontal Ruler (Bottom)
+                ctx.strokeStyle = "#555";
+                ctx.fillStyle = "#333";
+                ctx.beginPath();
+                ctx.moveTo(20, this.height - 40);
+                ctx.lineTo(this.width - 20, this.height - 40);
+                ctx.stroke();
+
+                for (let v = -500; v <= 500; v += 100) {
+                    const x = this.getHorizontalX(v);
+                    ctx.beginPath();
+                    ctx.moveTo(x, this.height - 40);
+                    ctx.lineTo(x, this.height - 50);
+                    ctx.stroke();
+                    ctx.fillText(v, x, this.height - 20);
+                }
+
+                // 5. Car
+                const carX = this.getHorizontalX(this.value);
+                const carY = centerY - 20;
+                
+                this.drawCar(ctx, carX, carY, this.value >= 0);
+            }
+
+            drawCar(ctx, x, y, facingRight) {
+                ctx.save();
+                ctx.translate(x, y);
+                if (!facingRight) {
+                    ctx.scale(-1, 1); // Flip horizontally
+                }
+
+                // Car Body
+                ctx.fillStyle = "#FF7043";
+                // Main body
+                ctx.beginPath();
+                ctx.roundRect(-40, -20, 80, 30, 5);
+                ctx.fill();
+                // Roof
+                ctx.beginPath();
+                ctx.moveTo(-25, -20);
+                ctx.lineTo(-15, -40);
+                ctx.lineTo(15, -40);
+                ctx.lineTo(25, -20);
+                ctx.fill();
+
+                // Windows
+                ctx.fillStyle = "#B3E5FC";
+                ctx.beginPath();
+                ctx.moveTo(-22, -22);
+                ctx.lineTo(-14, -36);
+                ctx.lineTo(-2, -36);
+                ctx.lineTo(-2, -22);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(22, -22);
+                ctx.lineTo(14, -36);
+                ctx.lineTo(2, -36);
+                ctx.lineTo(2, -22);
+                ctx.fill();
+
+                // Wheels
+                ctx.fillStyle = "#333";
+                ctx.beginPath(); ctx.arc(-25, 10, 10, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(25, 10, 10, 0, Math.PI*2); ctx.fill();
+                
+                // Wheel Rims
+                ctx.strokeStyle = "#ccc";
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(-25, 10, 4, 0, Math.PI*2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(25, 10, 4, 0, Math.PI*2); ctx.stroke();
+
+                ctx.restore();
+
+                // Label above car
+                if (!this.challengeMode) {
+                    ctx.fillStyle = "#333";
+                    ctx.font = "bold 14px Arial";
+                    ctx.textAlign = "center";
+                    ctx.fillText(this.value, x, y - 50);
+                }
+            }
+        }
+
+        // Initialize App
+        const app = new App();
+
+        // Polyfill for roundRect if needed
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+                if (w < 2 * r) r = w / 2;
+                if (h < 2 * r) r = h / 2;
+                this.beginPath();
+                this.moveTo(x + r, y);
+                this.arcTo(x + w, y, x + w, y + h, r);
+                this.arcTo(x + w, y + h, x, y + h, r);
+                this.arcTo(x, y + h, x, y, r);
+                this.arcTo(x, y, x + w, y, r);
+                this.closePath();
+                return this;
+            };
+        }
+    </script>
+</body>
+</html>

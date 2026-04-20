@@ -75,7 +75,7 @@ const ZoneCard: React.FC<ZoneCardProps> = ({ zone, isActive, resourceCount, onCl
           }`}
         >
           <FolderOpen className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-          {resourceCount} 份
+          {resourceCount} 项
         </div>
       </div>
     </button>

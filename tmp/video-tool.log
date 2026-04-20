@@ -1,0 +1,20 @@
+
+> video-transform@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.2 (Turbopack)
+- Local:         http://localhost:3212
+- Network:       http://192.168.0.103:3212
+✓ Ready in 562ms
+  Downloading swc package @next/swc-wasm-nodejs... to C:\Users\p\AppData\Local\next-swc
+⚠ Attempted to load @next/swc-win32-x64-msvc, but an error occurred: The process cannot access the file because it is being used by another process.
+\\?\C:\Users\p\Desktop\video-transform-main\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node
+  Skipping creating a lockfile at C:\Users\p\Desktop\video-transform-main\.next\dev\lock because we're using WASM bindings
+Error: Turbopack is not supported on this platform (win32/x64) because native bindings are not available. Only WebAssembly (WASM) bindings were loaded, and Turbopack requires native bindings.
+
+To use Next.js on this platform, use Webpack instead:
+  next dev --webpack
+
+For more information, see: https://nextjs.org/docs/app/api-reference/turbopack#supported-platforms
+    at ignore-listed frames
+[?25h

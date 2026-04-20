@@ -1,0 +1,26 @@
+[
+  {
+    "id": "seed-tool-gemini-word-change",
+    "title": "Gemini 文案规整",
+    "category": "互动工具",
+    "grade": "通用",
+    "image_url": "/uploads/collections/edu-covers/gemini-word-change.svg",
+    "description": "将 Gemini 输出文案进行规整、生成简报并导出 Word。",
+    "file_path": "http://127.0.0.1:3211",
+    "route_path": "/tools/gemini-word-change",
+    "resource_type": "html",
+    "created_at": "2026-04-10T11:05:00.000Z"
+  },
+  {
+    "id": "seed-tool-video-transform",
+    "title": "视频转 MP4",
+    "category": "互动工具",
+    "grade": "通用",
+    "image_url": "/uploads/collections/edu-covers/video-transform.svg",
+    "description": "提交公开视频链接，异步下载并转换为 MP4。",
+    "file_path": "http://127.0.0.1:3212",
+    "route_path": "/tools/video-transform",
+    "resource_type": "html",
+    "created_at": "2026-04-10T11:06:00.000Z"
+  }
+]

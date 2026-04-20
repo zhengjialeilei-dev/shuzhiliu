@@ -43,7 +43,7 @@ export async function buildApp() {
   });
   await app.register(multipart, {
     limits: {
-      fileSize: 25 * 1024 * 1024,
+      fileSize: config.maxUploadFileSizeMb * 1024 * 1024,
       files: 4,
     },
   });
@@ -59,6 +59,17 @@ export async function buildApp() {
 
   app.setErrorHandler((error, _request, reply) => {
     app.log.error(error);
+    if (
+      error?.code === 'FST_REQ_FILE_TOO_LARGE' ||
+      error?.code === 'FST_FILES_LIMIT' ||
+      error?.statusCode === 413
+    ) {
+      reply.code(413).send({
+        error: `Uploaded file is too large. Max size is ${config.maxUploadFileSizeMb}MB.`,
+      });
+      return;
+    }
+
     const statusCode = error.statusCode || 500;
     reply.code(statusCode).send({
       error: error.message || 'Server error',

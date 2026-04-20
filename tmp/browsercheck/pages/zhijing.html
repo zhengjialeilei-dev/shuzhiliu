@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>圆内线段比较台</title>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', 'Microsoft YaHei', Arial, sans-serif;
+            background: #e0e5ec;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            border-radius: 0;
+            padding: 20px;
+            box-shadow: none;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            border: 2px solid #ddd;
+            border-radius: 30px;
+            background: #fff;
+            cursor: crosshair;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .btn-undo {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-undo:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+        }
+
+        .btn-compare {
+            background: #4ecdc4;
+            color: white;
+        }
+
+        .btn-compare:hover {
+            background: #26a69a;
+            transform: translateY(-2px);
+        }
+
+        .btn-sort {
+            background: #3293e8;
+            color: white;
+        }
+
+        .btn-sort:hover {
+            background: #288ee7;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info {
+            text-align: center;
+            color: #666;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+<!-- EDU_BRAND_STYLE_START -->
+<style id="edu-brand-style">
+  :root {
+    --edu-bg: #eef5f7;
+    --edu-bg-deep: #dfeaf0;
+    --edu-surface: rgba(255, 255, 255, 0.82);
+    --edu-surface-strong: rgba(255, 255, 255, 0.94);
+    --edu-line: rgba(97, 132, 161, 0.24);
+    --edu-shadow: 0 18px 48px rgba(37, 78, 110, 0.12);
+    --edu-shadow-strong: 0 24px 56px rgba(24, 61, 90, 0.16);
+    --edu-text: #17324d;
+    --edu-text-soft: #4a647c;
+    --edu-accent: #0f9d8a;
+    --edu-accent-deep: #0d7b72;
+    --edu-warm: #ff9d6c;
+    --edu-warm-soft: #fff1e8;
+  }
+
+  body.edu-refactor-body {
+    background:
+      radial-gradient(circle at 12% 14%, rgba(15, 157, 138, 0.10), transparent 22%),
+      radial-gradient(circle at 88% 16%, rgba(255, 157, 108, 0.18), transparent 20%),
+      radial-gradient(circle at 50% 100%, rgba(81, 122, 164, 0.10), transparent 28%),
+      linear-gradient(180deg, #f6fbfc 0%, var(--edu-bg) 42%, var(--edu-bg-deep) 100%) !important;
+    color: var(--edu-text) !important;
+  }
+
+  body.edu-refactor-body::before,
+  body.edu-refactor-body::after {
+    content: '';
+    position: fixed;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+    opacity: 0.6;
+  }
+
+  body.edu-refactor-body::before {
+    width: 240px;
+    height: 240px;
+    right: -40px;
+    top: 80px;
+    background: rgba(15, 157, 138, 0.14);
+  }
+
+  body.edu-refactor-body::after {
+    width: 180px;
+    height: 180px;
+    left: -20px;
+    bottom: 80px;
+    background: rgba(255, 157, 108, 0.16);
+  }
+
+  body.edu-refactor-body button,
+  body.edu-refactor-body input[type="button"],
+  body.edu-refactor-body input[type="submit"] {
+    border-radius: 16px !important;
+    border: 1px solid rgba(22, 101, 122, 0.16) !important;
+    box-shadow: 0 10px 24px rgba(33, 76, 111, 0.12) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #edf7f6 100%) !important;
+    color: var(--edu-text) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+  }
+
+  body.edu-refactor-body button:hover,
+  body.edu-refactor-body input[type="button"]:hover,
+  body.edu-refactor-body input[type="submit"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(33, 76, 111, 0.16) !important;
+    filter: saturate(1.04);
+  }
+
+  body.edu-refactor-body input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  body.edu-refactor-body select,
+  body.edu-refactor-body textarea {
+    border-radius: 14px !important;
+    border: 1px solid rgba(82, 119, 148, 0.26) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: var(--edu-text) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px rgba(42, 77, 105, 0.08) !important;
+  }
+
+  body.edu-refactor-body [class*="panel"],
+  body.edu-refactor-body [class*="Panel"],
+  body.edu-refactor-body [class*="card"],
+  body.edu-refactor-body [class*="Card"],
+  body.edu-refactor-body [class*="dialog"],
+  body.edu-refactor-body [class*="Dialog"],
+  body.edu-refactor-body [class*="controls"],
+  body.edu-refactor-body [class*="Controls"],
+  body.edu-refactor-body [class*="toolbar"],
+  body.edu-refactor-body [class*="Toolbar"],
+  body.edu-refactor-body [class*="sidebar"],
+  body.edu-refactor-body [class*="Sidebar"],
+  body.edu-refactor-body [class*="instruction"],
+  body.edu-refactor-body [class*="Instruction"],
+  body.edu-refactor-body [id*="panel"],
+  body.edu-refactor-body [id*="Panel"],
+  body.edu-refactor-body [id*="controls"],
+  body.edu-refactor-body [id*="Controls"] {
+    border-radius: 24px !important;
+    border: 1px solid var(--edu-line) !important;
+    box-shadow: var(--edu-shadow) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  body.edu-refactor-body .page-title,
+  body.edu-refactor-body .header h1,
+  body.edu-refactor-body .header h2,
+  body.edu-refactor-body .title,
+  body.edu-refactor-body .subtitle,
+  body.edu-refactor-body .teacher-text,
+  body.edu-refactor-body #step-indicator,
+  body.edu-refactor-body #narrative-text {
+    color: var(--edu-text) !important;
+    text-shadow: none !important;
+  }
+
+  body.edu-refactor-body .edu-brand-shell {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  body.edu-refactor-body .edu-brand-panel,
+  body.edu-refactor-body .edu-brand-guide {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 251, 0.92) 100%);
+    border: 1px solid rgba(89, 127, 156, 0.22);
+    box-shadow: var(--edu-shadow-strong);
+    backdrop-filter: blur(18px);
+    border-radius: 26px;
+  }
+
+  body.edu-refactor-body .edu-brand-panel {
+    max-width: min(720px, calc(100vw - 280px));
+    padding: 18px 22px 20px;
+  }
+
+  body.edu-refactor-body .edu-brand-guide {
+    width: 220px;
+    padding: 16px 18px;
+  }
+
+  body.edu-refactor-body .edu-brand-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(15, 157, 138, 0.10);
+    color: var(--edu-accent-deep);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  body.edu-refactor-body .edu-brand-title {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.08;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-copy {
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  body.edu-refactor-body .edu-brand-copy strong {
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-brand-shell {
+      flex-direction: column;
+      right: 12px;
+      left: 12px;
+      top: 12px;
+    }
+
+    body.edu-refactor-body .edu-brand-panel,
+    body.edu-refactor-body .edu-brand-guide {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
+
+
+  body.edu-refactor-body .edu-border-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 10001;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(89, 127, 156, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--edu-text, #1f2937);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  body.edu-refactor-body .edu-border-toggle:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  body.edu-refactor-body.edu-hide-brand-panels .edu-brand-shell {
+    display: none !important;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-border-toggle {
+      top: auto;
+      bottom: 12px;
+      right: 12px;
+    }
+  }
+
+</style>
+<!-- EDU_BRAND_STYLE_END -->
+
+
+</head>
+<body class="edu-refactor-body">
+<!-- EDU_BRAND_SHELL_START -->
+<div class="edu-brand-shell" data-brand-shell>
+  <section class="edu-brand-panel" aria-label="页面导语">
+    <div class="edu-brand-kicker">长度关系 · EDU STUDIO</div>
+    <h1 class="edu-brand-title">圆内线段比较台</h1>
+    <div class="edu-brand-copy">
+      <div><strong>任务目标：</strong>拖动端点后比较圆内不同线段的长短关系。</div>
+      <div><strong>操作提示：</strong>移动点位并观察系统给出的排序或比较结果。</div>
+      <div><strong>理解重点：</strong>圆内线段长短往往和它离圆心的距离有关。</div>
+    </div>
+</section>
+  <aside class="edu-brand-guide" aria-label="操作建议">
+    <h2>建议这样探索</h2>
+    <ul><li>先比较经过圆心和不经过圆心的线段。</li><li>再观察离圆心更近的弦。</li><li>每次只改变一个点位。</li></ul>
+  </aside>
+</div>
+<!-- EDU_BRAND_SHELL_END -->
+
+<button type="button" class="edu-border-toggle" id="edu-border-toggle" aria-pressed="false" aria-label="隐藏说明框" title="隐藏说明框">-</button>
+
+<div class="container">
+<h1 class="title">拖动时起点和终点会自动吸附到圆边，支持圆内外开始或结束拖动</h1>
+<div class="controls">
+<button class="btn btn-undo" id="undoBtn">撤销</button>
+<button class="btn btn-compare" id="compareBtn" style="display: none;">比较</button>
+<button class="btn btn-sort" id="sortBtn">排序</button>
+</div>
+<div class="canvas-container">
+<canvas height="600" id="mainCanvas" width="800"></canvas>
+</div>
+</div>
+<script>
+const _0xdbc3=['lineTo','animateComparison','pop','leftCenterX','some','endX','sortBtn','drawRotatingLines','#805AD5','drawAlignmentLines','mousedown','scale','mouseleave','currentY','compareLines','#fff','currentStartX','setupEventListeners','drawMove','resizeCanvas','getElementById','blinkInterval','startBlinkAnimation','fill','sortLines','colorIndex','click','floor','map','currentEndY','sqrt','center','clearRect','fillStyle','targetStartY','#D69E2E','mouseup','arc','getBoundingClientRect','#319795','findIndex','getCircleIntersection','isDrawing','#999','draw','width','moveTo','add','drawComparisonGuideLines','drawEndpoints','mainCanvas','currentRotation','rightAreaY','animatingLines','leftCenterY','pow','isDiameter','ctx','sin','addEventListener','comparedLines','style','startPoint','delete','devicePixelRatio','diameterColor','drawAnimatingLines','currentLine','atan2','rotationAngle','drawLeftCircle','touches','setLineDash','#333','drawStaticComparison','rightAreaX','targetEndY','startY','stroke','color','length','max','dispatchEvent','startAngle','lines','push','textAlign','cos','canvas','clientX','querySelector','height','currentStartY','getMousePos','updateButtons','isDiameterLine','rightAreaWidth','disabled','sortingLines','endY','drawLines','adjustToDiameter','lineWidth','filter','radius','blinkingLines','beginPath','diameterTolerance','diameterLineWidth','strokeStyle','colors','forEach','rotatingLines','animateSortingAndRotation','now','min','preventDefault','mousemove','startX','abs','currentEndX','targetY','init','drawSortingLines','stopDrawing','getContext'];const _0x5e20=function(_0xdbc30d,_0x5e2042){_0xdbc30d=_0xdbc30d-0x0;let _0x468e0b=_0xdbc3[_0xdbc30d];return _0x468e0b;};class LineDrawingTool{constructor(){this['canvas']=document['getElementById'](_0x5e20('0x32'));this['ctx']=this[_0x5e20('0x58')][_0x5e20('0x7d')]('2d');this['resizeCanvas']();window[_0x5e20('0x3b')]('resize',()=>this[_0x5e20('0x13')]());this[_0x5e20('0x54')]=[];this[_0x5e20('0x3c')]=[];this[_0x5e20('0x6e')]=['#E53E3E','#38A169','#3182CE',_0x5e20('0x8'),_0x5e20('0x23'),'#DD6B20',_0x5e20('0x27'),'#C53030'];this['colorIndex']=0x0;this['isDrawing']=![];this[_0x5e20('0x3e')]=null;this[_0x5e20('0x43')]=null;this[_0x5e20('0x35')]=[];this[_0x5e20('0x6b')]=0xa;this['isDiameter']=![];this['diameterColor']='#000000';this['diameterLineWidth']=0x3;this['blinkingLines']=new Set();this['blinkInterval']=null;this['init']();}['resizeCanvas'](){const _0x3a7e58=document[_0x5e20('0x5a')]('.canvas-container');const _0x74538a=_0x3a7e58['getBoundingClientRect']();const _0x12282c=Math['floor'](_0x74538a[_0x5e20('0x2d')]*0.95);const _0x442676=Math['floor'](_0x74538a[_0x5e20('0x5b')]*0.95);const _0x4e8437=window[_0x5e20('0x40')]||0x1;this[_0x5e20('0x58')]['style'][_0x5e20('0x2d')]=_0x12282c+'px';this['canvas']['style'][_0x5e20('0x5b')]=_0x442676+'px';this['canvas'][_0x5e20('0x2d')]=_0x12282c*_0x4e8437;this['canvas']['height']=_0x442676*_0x4e8437;this['ctx'][_0x5e20('0xb')](_0x4e8437,_0x4e8437);this[_0x5e20('0x3')]=_0x12282c*0.25;this['leftCenterY']=_0x442676*0.5;this[_0x5e20('0x68')]=Math[_0x5e20('0x73')](_0x12282c*0.2,_0x442676*0.3);this['rightAreaX']=_0x12282c*0.55;this['rightAreaY']=0x32;this['rightAreaWidth']=_0x12282c*0.35;if(this[_0x5e20('0x54')]){this['draw']();}}['setupHighDPI'](){const _0x4c206a=window['devicePixelRatio']||0x1;const _0x14da7a=this[_0x5e20('0x58')][_0x5e20('0x26')]();this[_0x5e20('0x58')]['width']=_0x14da7a[_0x5e20('0x2d')]*_0x4c206a;this[_0x5e20('0x58')][_0x5e20('0x5b')]=_0x14da7a[_0x5e20('0x5b')]*_0x4c206a;this[_0x5e20('0x58')][_0x5e20('0x3d')][_0x5e20('0x2d')]=_0x14da7a['width']+'px';this['canvas']['style'][_0x5e20('0x5b')]=_0x14da7a[_0x5e20('0x5b')]+'px';this[_0x5e20('0x39')]['scale'](_0x4c206a,_0x4c206a);}[_0x5e20('0x7a')](){this['draw']();this[_0x5e20('0x11')]();this[_0x5e20('0x5e')]();this[_0x5e20('0x16')]();}[_0x5e20('0x2c')](){this[_0x5e20('0x39')][_0x5e20('0x20')](0x0,0x0,this[_0x5e20('0x58')]['width'],this[_0x5e20('0x58')][_0x5e20('0x5b')]);this[_0x5e20('0x46')]();this['drawRightArea']();if(this[_0x5e20('0x70')]&&this['rotatingLines'][_0x5e20('0x50')]>0x0){}else{this[_0x5e20('0x64')]();}this[_0x5e20('0x42')]();this[_0x5e20('0x4a')]();}['drawLeftCircle'](){this['ctx'][_0x5e20('0x6a')]();this['ctx']['arc'](this['leftCenterX'],this['leftCenterY'],this['radius'],0x0,0x2*Math['PI']);this['ctx']['strokeStyle']=_0x5e20('0x49');this['ctx']['lineWidth']=0x2;this['ctx'][_0x5e20('0x4e')]();this[_0x5e20('0x39')]['beginPath']();this[_0x5e20('0x39')]['arc'](this[_0x5e20('0x3')],this['leftCenterY'],0x4,0x0,0x2*Math['PI']);this['ctx']['fillStyle']='#333';this['ctx'][_0x5e20('0x17')]();}['drawRightArea'](){this['ctx']['fillStyle']='#ffffff';const _0x234cd0=this['canvas']['height']/(window[_0x5e20('0x40')]||0x1);const _0x50e053=_0x234cd0-this[_0x5e20('0x34')]-0x32;this[_0x5e20('0x39')]['fillRect'](this[_0x5e20('0x4b')],this['rightAreaY'],this[_0x5e20('0x60')],_0x50e053);}[_0x5e20('0x64')](){this['lines'][_0x5e20('0x6f')](_0x348c47=>{this['drawLine'](_0x348c47);this['drawEndpoints'](_0x348c47);});}['drawLine'](_0x5535aa){this['ctx'][_0x5e20('0x6a')]();this[_0x5e20('0x39')]['moveTo'](_0x5535aa[_0x5e20('0x76')],_0x5535aa[_0x5e20('0x4d')]);this[_0x5e20('0x39')]['lineTo'](_0x5535aa[_0x5e20('0x5')],_0x5535aa['endY']);if(_0x5535aa[_0x5e20('0x38')]){const _0xa7fc83=this['blinkingLines']['has'](_0x5535aa)&&Math[_0x5e20('0x1b')](Date['now']()/0x1f4)%0x2===0x0;if(_0xa7fc83){this['ctx']['strokeStyle']='transparent';}else{this['ctx']['strokeStyle']=this['diameterColor'];}this[_0x5e20('0x39')]['lineWidth']=this[_0x5e20('0x6c')];}else{this[_0x5e20('0x39')]['strokeStyle']=_0x5535aa['color'];this['ctx'][_0x5e20('0x66')]=0x4;}this['ctx']['stroke']();}['drawDiameterIndicator'](_0xd6ac4f){this['ctx'][_0x5e20('0x6a')]();this[_0x5e20('0x39')]['moveTo'](_0xd6ac4f['startX'],_0xd6ac4f['startY']);this['ctx']['lineTo'](_0xd6ac4f['endX'],_0xd6ac4f[_0x5e20('0x63')]);this[_0x5e20('0x39')]['strokeStyle']='#FFD700';this[_0x5e20('0x39')]['lineWidth']=0x8;this['ctx']['setLineDash']([0x8,0x4]);this['ctx'][_0x5e20('0x4e')]();this[_0x5e20('0x39')]['setLineDash']([]);const _0x2fda58=(_0xd6ac4f['startX']+_0xd6ac4f[_0x5e20('0x5')])/0x2;const _0x59905e=(_0xd6ac4f[_0x5e20('0x4d')]+_0xd6ac4f[_0x5e20('0x63')])/0x2;this['ctx']['fillStyle']='#FFD700';this['ctx']['font']='bold\x2016px\x20Arial';this[_0x5e20('0x39')][_0x5e20('0x56')]=_0x5e20('0x1f');this[_0x5e20('0x39')]['textBaseline']='middle';this[_0x5e20('0x39')]['fillText']('D',_0x2fda58,_0x59905e-0x14);}[_0x5e20('0x31')](_0x2db3d0){this['ctx']['beginPath']();this[_0x5e20('0x39')]['arc'](_0x2db3d0[_0x5e20('0x76')],_0x2db3d0['startY'],0x4,0x0,0x2*Math['PI']);this['ctx']['fillStyle']=_0x2db3d0[_0x5e20('0x4f')];this['ctx'][_0x5e20('0x17')]();this['ctx'][_0x5e20('0x6d')]='#fff';this[_0x5e20('0x39')]['lineWidth']=0x2;this['ctx']['stroke']();this[_0x5e20('0x39')]['beginPath']();this[_0x5e20('0x39')]['arc'](_0x2db3d0['endX'],_0x2db3d0[_0x5e20('0x63')],0x4,0x0,0x2*Math['PI']);this['ctx']['fillStyle']=_0x2db3d0[_0x5e20('0x4f')];this['ctx']['fill']();this[_0x5e20('0x39')][_0x5e20('0x6d')]='#fff';this['ctx']['lineWidth']=0x2;this[_0x5e20('0x39')]['stroke']();}[_0x5e20('0x42')](){this['animatingLines'][_0x5e20('0x6f')](_0x2e4995=>{this['ctx']['beginPath']();this['ctx'][_0x5e20('0x2e')](_0x2e4995['currentStartX'],_0x2e4995['currentStartY']);this[_0x5e20('0x39')][_0x5e20('0x0')](_0x2e4995['currentEndX'],_0x2e4995['currentEndY']);this['ctx'][_0x5e20('0x6d')]=_0x2e4995['color'];this[_0x5e20('0x39')]['lineWidth']=0x4;this[_0x5e20('0x39')][_0x5e20('0x4e')]();this['ctx'][_0x5e20('0x6a')]();this['ctx'][_0x5e20('0x25')](_0x2e4995[_0x5e20('0x10')],_0x2e4995['currentStartY'],0x4,0x0,0x2*Math['PI']);this['ctx'][_0x5e20('0x21')]=_0x2e4995['color'];this['ctx'][_0x5e20('0x17')]();this[_0x5e20('0x39')]['strokeStyle']='#fff';this[_0x5e20('0x39')]['lineWidth']=0x2;this['ctx']['stroke']();this['ctx']['beginPath']();this['ctx'][_0x5e20('0x25')](_0x2e4995[_0x5e20('0x78')],_0x2e4995[_0x5e20('0x1d')],0x4,0x0,0x2*Math['PI']);this[_0x5e20('0x39')]['fillStyle']=_0x2e4995['color'];this[_0x5e20('0x39')][_0x5e20('0x17')]();this['ctx']['strokeStyle']=_0x5e20('0xf');this['ctx']['lineWidth']=0x2;this['ctx'][_0x5e20('0x4e')]();});}['setupEventListeners'](){this['canvas'][_0x5e20('0x3b')](_0x5e20('0xa'),_0x5488df=>this['startDrawing'](_0x5488df));this['canvas'][_0x5e20('0x3b')](_0x5e20('0x75'),_0x488484=>this[_0x5e20('0x12')](_0x488484));this[_0x5e20('0x58')]['addEventListener'](_0x5e20('0x24'),()=>this[_0x5e20('0x7c')]());this['canvas']['addEventListener'](_0x5e20('0xc'),()=>this['stopDrawing']());this[_0x5e20('0x58')][_0x5e20('0x3b')]('touchstart',_0x2f9be7=>{_0x2f9be7[_0x5e20('0x74')]();const _0x1b5434=_0x2f9be7['touches'][0x0];const _0x53e5dd=new MouseEvent(_0x5e20('0xa'),{'clientX':_0x1b5434[_0x5e20('0x59')],'clientY':_0x1b5434['clientY']});this['canvas'][_0x5e20('0x52')](_0x53e5dd);});this[_0x5e20('0x58')]['addEventListener']('touchmove',_0x4d3c3f=>{_0x4d3c3f[_0x5e20('0x74')]();const _0x55a696=_0x4d3c3f[_0x5e20('0x47')][0x0];const _0x46867f=new MouseEvent(_0x5e20('0x75'),{'clientX':_0x55a696['clientX'],'clientY':_0x55a696['clientY']});this['canvas']['dispatchEvent'](_0x46867f);});this[_0x5e20('0x58')]['addEventListener']('touchend',_0x1cce8d=>{_0x1cce8d['preventDefault']();const _0xb76d20=new MouseEvent(_0x5e20('0x24'),{});this[_0x5e20('0x58')]['dispatchEvent'](_0xb76d20);});document['getElementById']('undoBtn')['addEventListener']('click',()=>this['undo']());document['getElementById']('compareBtn')['addEventListener']('click',()=>this[_0x5e20('0xe')]());document[_0x5e20('0x14')]('sortBtn')[_0x5e20('0x3b')](_0x5e20('0x1a'),()=>this[_0x5e20('0x18')]());}['getMousePos'](_0x58e67b){const _0x116921=this['canvas'][_0x5e20('0x26')]();return{'x':_0x58e67b[_0x5e20('0x59')]-_0x116921['left'],'y':_0x58e67b['clientY']-_0x116921['top']};}[_0x5e20('0x29')](_0x52f464,_0x34f37f){const _0x20ada1=_0x52f464-this['leftCenterX'];const _0x1d2fae=_0x34f37f-this[_0x5e20('0x36')];const _0x2eb1ca=Math['sqrt'](_0x20ada1*_0x20ada1+_0x1d2fae*_0x1d2fae);if(_0x2eb1ca<0x5){return{'x':this['leftCenterX']+this['radius'],'y':this['leftCenterY']};}const _0x1f0776=this['radius']/_0x2eb1ca;return{'x':this[_0x5e20('0x3')]+_0x20ada1*_0x1f0776,'y':this['leftCenterY']+_0x1d2fae*_0x1f0776};}[_0x5e20('0x5f')](_0x313a71,_0x4a2210,_0x4eac37,_0x4157c2){const _0x1f12d2=Math['sqrt']((_0x4eac37-_0x313a71)**0x2+(_0x4157c2-_0x4a2210)**0x2);const _0x5d5d71=this[_0x5e20('0x68')]*0x2;if(Math['abs'](_0x1f12d2-_0x5d5d71)>this['diameterTolerance']){return![];}const _0x5981ef=(_0x313a71+_0x4eac37)/0x2;const _0x26de1a=(_0x4a2210+_0x4157c2)/0x2;const _0x543cc0=Math[_0x5e20('0x1e')]((_0x5981ef-this[_0x5e20('0x3')])**0x2+(_0x26de1a-this['leftCenterY'])**0x2);return _0x543cc0<=this['diameterTolerance'];}[_0x5e20('0x65')](_0x52b07f,_0x3ff2d5,_0x5b3a44,_0x25b057){const _0x3ed839=this[_0x5e20('0x3')]-_0x52b07f;const _0x1bb2bd=this['leftCenterY']-_0x3ff2d5;const _0x2bf65b=Math['sqrt'](_0x3ed839*_0x3ed839+_0x1bb2bd*_0x1bb2bd);if(_0x2bf65b<0x5){const _0x499bf7=_0x5b3a44-_0x52b07f;const _0x4c7bb3=_0x25b057-_0x3ff2d5;const _0x2a00f3=Math[_0x5e20('0x1e')](_0x499bf7*_0x499bf7+_0x4c7bb3*_0x4c7bb3);if(_0x2a00f3>0x0){const _0xa7bce8=_0x499bf7/_0x2a00f3;const _0x4ad186=_0x4c7bb3/_0x2a00f3;return{'startX':_0x52b07f,'startY':_0x3ff2d5,'endX':_0x52b07f+this['radius']*0x2*_0xa7bce8,'endY':_0x3ff2d5+this[_0x5e20('0x68')]*0x2*_0x4ad186};}}const _0x275cbb=_0x3ed839/_0x2bf65b;const _0x4b150a=_0x1bb2bd/_0x2bf65b;const _0x5a047b=this['leftCenterX']+_0x275cbb*this[_0x5e20('0x68')];const _0x74513c=this[_0x5e20('0x36')]+_0x4b150a*this['radius'];return{'startX':_0x52b07f,'startY':_0x3ff2d5,'endX':_0x5a047b,'endY':_0x74513c};}['startDrawing'](_0xbed179){const _0x1b4b21=this[_0x5e20('0x5d')](_0xbed179);this[_0x5e20('0x2a')]=!![];const _0x3f1c98=this[_0x5e20('0x29')](_0x1b4b21['x'],_0x1b4b21['y']);this[_0x5e20('0x43')]={'startX':_0x3f1c98['x'],'startY':_0x3f1c98['y'],'endX':_0x3f1c98['x'],'endY':_0x3f1c98['y'],'color':this['colors'][this[_0x5e20('0x19')]%this[_0x5e20('0x6e')]['length']]};}['drawMove'](_0x5697ee){if(!this[_0x5e20('0x2a')]||!this['currentLine'])return;const _0x563635=this['getMousePos'](_0x5697ee);const _0xdc012a=this[_0x5e20('0x29')](_0x563635['x'],_0x563635['y']);this['currentLine']['endX']=_0xdc012a['x'];this['currentLine']['endY']=_0xdc012a['y'];this[_0x5e20('0x38')]=this['isDiameterLine'](this['currentLine']['startX'],this['currentLine']['startY'],this[_0x5e20('0x43')][_0x5e20('0x5')],this[_0x5e20('0x43')]['endY']);if(this['isDiameter']){const _0xd27438=this['adjustToDiameter'](this[_0x5e20('0x43')][_0x5e20('0x76')],this[_0x5e20('0x43')]['startY'],this[_0x5e20('0x43')]['endX'],this[_0x5e20('0x43')][_0x5e20('0x63')]);this['currentLine'][_0x5e20('0x76')]=_0xd27438['startX'];this[_0x5e20('0x43')][_0x5e20('0x4d')]=_0xd27438[_0x5e20('0x4d')];this[_0x5e20('0x43')][_0x5e20('0x5')]=_0xd27438[_0x5e20('0x5')];this['currentLine'][_0x5e20('0x63')]=_0xd27438['endY'];this['currentLine'][_0x5e20('0x4f')]=this['diameterColor'];}else{this[_0x5e20('0x43')][_0x5e20('0x4f')]=this[_0x5e20('0x6e')][this[_0x5e20('0x19')]%this[_0x5e20('0x6e')]['length']];}this[_0x5e20('0x2c')]();this['drawLine'](this[_0x5e20('0x43')]);this[_0x5e20('0x31')](this[_0x5e20('0x43')]);if(this[_0x5e20('0x38')]){}}['stopDrawing'](){if(this[_0x5e20('0x2a')]&&this[_0x5e20('0x43')]){const _0x319d09=Math[_0x5e20('0x1e')]((this['currentLine'][_0x5e20('0x5')]-this['currentLine'][_0x5e20('0x76')])**0x2+(this[_0x5e20('0x43')][_0x5e20('0x63')]-this['currentLine']['startY'])**0x2);if(_0x319d09>0xa){this[_0x5e20('0x43')][_0x5e20('0x38')]=this[_0x5e20('0x38')];if(this[_0x5e20('0x38')]){this['blinkingLines'][_0x5e20('0x2f')](this[_0x5e20('0x43')]);}this['lines'][_0x5e20('0x55')]({...this['currentLine']});this[_0x5e20('0x19')]++;this[_0x5e20('0xe')]();}}this[_0x5e20('0x2a')]=![];this[_0x5e20('0x43')]=null;this['isDiameter']=![];this['draw']();this[_0x5e20('0x5e')]();}['undo'](){if(this['lines']['length']>0x0){const _0xd4d6c0=this['lines'][_0x5e20('0x2')]();this[_0x5e20('0x69')][_0x5e20('0x3f')](_0xd4d6c0);this[_0x5e20('0x3c')]=this[_0x5e20('0x3c')][_0x5e20('0x67')](_0x2b057c=>!(_0x2b057c['startX']===_0xd4d6c0['startX']&&_0x2b057c['startY']===_0xd4d6c0['startY']&&_0x2b057c['endX']===_0xd4d6c0['endX']&&_0x2b057c['endY']===_0xd4d6c0[_0x5e20('0x63')]));this[_0x5e20('0x2c')]();this['updateButtons']();}}[_0x5e20('0xe')](){if(this[_0x5e20('0x54')]['length']===0x0)return;const _0x1a3f72=this[_0x5e20('0x54')][this['lines']['length']-0x1];const _0x311bcf=this[_0x5e20('0x3c')][_0x5e20('0x4')](_0x2c6db9=>_0x2c6db9['startX']===_0x1a3f72['startX']&&_0x2c6db9[_0x5e20('0x4d')]===_0x1a3f72[_0x5e20('0x4d')]&&_0x2c6db9['endX']===_0x1a3f72['endX']&&_0x2c6db9[_0x5e20('0x63')]===_0x1a3f72[_0x5e20('0x63')]);if(_0x311bcf)return;const _0xbd48e8=Math[_0x5e20('0x1e')]((_0x1a3f72[_0x5e20('0x5')]-_0x1a3f72['startX'])**0x2+(_0x1a3f72[_0x5e20('0x63')]-_0x1a3f72['startY'])**0x2);const _0x126235={..._0x1a3f72,'length':_0xbd48e8,'index':this['comparedLines'][_0x5e20('0x50')]};this['comparedLines'][_0x5e20('0x55')](_0x126235);const _0x19ebf7=this['rightAreaY']+0x32+this['comparedLines']['length']*0x28;const _0x5028e2=this[_0x5e20('0x4b')]+0x14;const _0x3ceed4=_0x5028e2+_0xbd48e8;const _0x4f1efc={..._0x1a3f72,'length':_0xbd48e8,'currentStartX':_0x1a3f72[_0x5e20('0x76')],'currentStartY':_0x1a3f72['startY'],'currentEndX':_0x1a3f72[_0x5e20('0x5')],'currentEndY':_0x1a3f72['endY'],'targetStartX':_0x5028e2,'targetStartY':_0x19ebf7,'targetEndX':_0x3ceed4,'targetEndY':_0x19ebf7,'progress':0x0,'index':this['comparedLines'][_0x5e20('0x50')]-0x1};this[_0x5e20('0x35')]['push'](_0x4f1efc);this[_0x5e20('0x1')]();}[_0x5e20('0x18')](){if(this[_0x5e20('0x3c')][_0x5e20('0x50')]===0x0)return;const _0x5c0aef=this[_0x5e20('0x3c')][_0x5e20('0x1c')]((_0xa5132d,_0x24d432)=>({..._0xa5132d,'currentY':this[_0x5e20('0x34')]+0x32+(_0x24d432+0x1)*0x28,'originalIndex':_0x24d432}));const _0x2af0b8=[...this[_0x5e20('0x3c')]]['sort']((_0x5acc31,_0x5bc761)=>_0x5bc761[_0x5e20('0x50')]-_0x5acc31['length']);this[_0x5e20('0x62')]=[];_0x5c0aef['forEach']((_0x2c5ef6,_0x52caae)=>{const _0x3a55b7=_0x2af0b8[_0x5e20('0x28')](_0x241e04=>_0x241e04[_0x5e20('0x76')]===_0x2c5ef6['startX']&&_0x241e04[_0x5e20('0x4d')]===_0x2c5ef6[_0x5e20('0x4d')]&&_0x241e04[_0x5e20('0x5')]===_0x2c5ef6['endX']&&_0x241e04[_0x5e20('0x63')]===_0x2c5ef6['endY']);const _0x8d88a3=this['rightAreaY']+0x32+(_0x3a55b7+0x1)*0x28;this['sortingLines'][_0x5e20('0x55')]({..._0x2c5ef6,'currentY':_0x2c5ef6['currentY'],'targetY':_0x8d88a3,'startX':this[_0x5e20('0x4b')]+0x14,'endX':this['rightAreaX']+0x14+_0x2c5ef6['length']});});this[_0x5e20('0x3c')]=_0x2af0b8;this['rotatingLines']=[];this[_0x5e20('0x54')][_0x5e20('0x6f')](_0x47ad5d=>{const _0x211969=Math['atan2'](_0x47ad5d[_0x5e20('0x4d')]-this['leftCenterY'],_0x47ad5d[_0x5e20('0x76')]-this['leftCenterX']);const _0xcb4f5c=Math['atan2'](_0x47ad5d[_0x5e20('0x63')]-this[_0x5e20('0x36')],_0x47ad5d['endX']-this[_0x5e20('0x3')]);const _0x3b6d5b=Math[_0x5e20('0x44')](_0x47ad5d[_0x5e20('0x63')]-_0x47ad5d[_0x5e20('0x4d')],_0x47ad5d['endX']-_0x47ad5d['startX']);let _0x2c0311=0x0;if(Math['abs'](_0x3b6d5b-Math['PI'])<Math['abs'](_0x3b6d5b)){_0x2c0311=Math['PI'];}else if(Math[_0x5e20('0x77')](_0x3b6d5b+Math['PI'])<Math[_0x5e20('0x77')](_0x3b6d5b)){_0x2c0311=-Math['PI'];}let _0x5cbf05=_0x2c0311-_0x3b6d5b;while(_0x5cbf05>Math['PI'])_0x5cbf05-=0x2*Math['PI'];while(_0x5cbf05<-Math['PI'])_0x5cbf05+=0x2*Math['PI'];const _0x373d77=_0x211969+_0x5cbf05;const _0x2fc93e=_0xcb4f5c+_0x5cbf05;const _0xd467f5=this[_0x5e20('0x3')]+this[_0x5e20('0x68')]*Math[_0x5e20('0x57')](_0x373d77);const _0x599dee=this[_0x5e20('0x36')]+this[_0x5e20('0x68')]*Math[_0x5e20('0x3a')](_0x373d77);const _0x26220c=this[_0x5e20('0x3')]+this[_0x5e20('0x68')]*Math['cos'](_0x2fc93e);const _0x3fc4e7=this[_0x5e20('0x36')]+this[_0x5e20('0x68')]*Math[_0x5e20('0x3a')](_0x2fc93e);this['rotatingLines']['push']({..._0x47ad5d,'originalStartX':_0x47ad5d['startX'],'originalStartY':_0x47ad5d['startY'],'originalEndX':_0x47ad5d['endX'],'originalEndY':_0x47ad5d[_0x5e20('0x63')],'currentStartX':_0x47ad5d[_0x5e20('0x76')],'currentStartY':_0x47ad5d['startY'],'currentEndX':_0x47ad5d[_0x5e20('0x5')],'currentEndY':_0x47ad5d[_0x5e20('0x63')],'targetStartX':_0xd467f5,'targetStartY':_0x599dee,'targetEndX':_0x26220c,'targetEndY':_0x3fc4e7,'startAngle':_0x211969,'endAngle':_0xcb4f5c,'rotationAngle':_0x5cbf05,'currentRotation':0x0});});this[_0x5e20('0x71')]();}['animateSortingAndRotation'](){const _0xecc2=0x320;const _0x4a0e5b=Date['now']();const _0x8d9bc9=()=>{const _0x5bb45d=Date['now']()-_0x4a0e5b;const _0x21cb38=Math['min'](_0x5bb45d/_0xecc2,0x1);const _0x52c76a=0x1-Math['pow'](0x1-_0x21cb38,0x3);if(this[_0x5e20('0x62')]){this[_0x5e20('0x62')][_0x5e20('0x6f')](_0x4deb1e=>{_0x4deb1e['currentY']=_0x4deb1e[_0x5e20('0xd')]+(_0x4deb1e['targetY']-_0x4deb1e[_0x5e20('0xd')])*_0x52c76a*0.1;});}if(this['rotatingLines']){this['rotatingLines']['forEach'](_0x4f6d15=>{_0x4f6d15['currentRotation']=_0x4f6d15[_0x5e20('0x45')]*_0x52c76a;const _0x5bddf7=_0x4f6d15[_0x5e20('0x53')]+_0x4f6d15[_0x5e20('0x33')];const _0x42d93f=_0x4f6d15['endAngle']+_0x4f6d15['currentRotation'];_0x4f6d15['currentStartX']=this['leftCenterX']+this[_0x5e20('0x68')]*Math[_0x5e20('0x57')](_0x5bddf7);_0x4f6d15['currentStartY']=this[_0x5e20('0x36')]+this[_0x5e20('0x68')]*Math['sin'](_0x5bddf7);_0x4f6d15[_0x5e20('0x78')]=this['leftCenterX']+this['radius']*Math['cos'](_0x42d93f);_0x4f6d15['currentEndY']=this['leftCenterY']+this[_0x5e20('0x68')]*Math[_0x5e20('0x3a')](_0x42d93f);});}this['draw']();this[_0x5e20('0x7b')]();this[_0x5e20('0x7')]();if(_0x21cb38<0x1){requestAnimationFrame(_0x8d9bc9);}else{if(this[_0x5e20('0x70')]){this['rotatingLines'][_0x5e20('0x6f')]((_0x59c27a,_0xc971ff)=>{if(this['lines'][_0xc971ff]){this['lines'][_0xc971ff]['startX']=_0x59c27a[_0x5e20('0x10')];this['lines'][_0xc971ff][_0x5e20('0x4d')]=_0x59c27a[_0x5e20('0x5c')];this[_0x5e20('0x54')][_0xc971ff]['endX']=_0x59c27a[_0x5e20('0x78')];this['lines'][_0xc971ff][_0x5e20('0x63')]=_0x59c27a[_0x5e20('0x1d')];}});}this[_0x5e20('0x62')]=[];this['rotatingLines']=[];this['draw']();this[_0x5e20('0x5e')]();}};_0x8d9bc9();}['drawRotatingLines'](){if(!this['rotatingLines'])return;this[_0x5e20('0x70')][_0x5e20('0x6f')](_0xc524ec=>{this[_0x5e20('0x39')][_0x5e20('0x6a')]();this[_0x5e20('0x39')]['moveTo'](_0xc524ec['currentStartX'],_0xc524ec[_0x5e20('0x5c')]);this['ctx']['lineTo'](_0xc524ec[_0x5e20('0x78')],_0xc524ec['currentEndY']);if(_0xc524ec[_0x5e20('0x38')]){const _0x1caf02=this['blinkingLines']['has'](_0xc524ec)&&Math['floor'](Date['now']()/0x1f4)%0x2===0x0;if(_0x1caf02){this['ctx']['strokeStyle']='transparent';}else{this['ctx']['strokeStyle']=this[_0x5e20('0x41')];}this['ctx'][_0x5e20('0x66')]=this[_0x5e20('0x6c')];}else{this[_0x5e20('0x39')]['strokeStyle']=_0xc524ec[_0x5e20('0x4f')];this[_0x5e20('0x39')]['lineWidth']=0x4;}this[_0x5e20('0x39')][_0x5e20('0x4e')]();this['ctx'][_0x5e20('0x6a')]();this[_0x5e20('0x39')][_0x5e20('0x25')](_0xc524ec[_0x5e20('0x10')],_0xc524ec['currentStartY'],0x4,0x0,0x2*Math['PI']);this[_0x5e20('0x39')]['fillStyle']=_0xc524ec['color'];this['ctx'][_0x5e20('0x17')]();this[_0x5e20('0x39')][_0x5e20('0x6d')]='#fff';this[_0x5e20('0x39')]['lineWidth']=0x2;this['ctx']['stroke']();this[_0x5e20('0x39')][_0x5e20('0x6a')]();this['ctx']['arc'](_0xc524ec['currentEndX'],_0xc524ec['currentEndY'],0x4,0x0,0x2*Math['PI']);this['ctx'][_0x5e20('0x21')]=_0xc524ec['color'];this['ctx']['fill']();this[_0x5e20('0x39')][_0x5e20('0x6d')]=_0x5e20('0xf');this[_0x5e20('0x39')]['lineWidth']=0x2;this[_0x5e20('0x39')]['stroke']();});}['animateSorting'](){const _0x43573b=0x320;const _0x29fd2d=Date['now']();const _0x436d78=()=>{const _0x5ca086=Date['now']()-_0x29fd2d;const _0x4e1255=Math[_0x5e20('0x73')](_0x5ca086/_0x43573b,0x1);const _0x244cba=0x1-Math['pow'](0x1-_0x4e1255,0x3);this[_0x5e20('0x62')][_0x5e20('0x6f')](_0x3ce308=>{_0x3ce308['currentY']=_0x3ce308[_0x5e20('0xd')]+(_0x3ce308[_0x5e20('0x79')]-_0x3ce308['currentY'])*_0x244cba*0.1;});this[_0x5e20('0x2c')]();this['drawSortingLines']();if(_0x4e1255<0x1){requestAnimationFrame(_0x436d78);}else{this[_0x5e20('0x62')]=[];this['draw']();this['updateButtons']();}};_0x436d78();}['drawSortingLines'](){if(!this[_0x5e20('0x62')])return;this['sortingLines']['forEach'](_0x1c2eb5=>{this[_0x5e20('0x39')]['beginPath']();this['ctx']['moveTo'](_0x1c2eb5['startX'],_0x1c2eb5[_0x5e20('0xd')]);this[_0x5e20('0x39')][_0x5e20('0x0')](_0x1c2eb5[_0x5e20('0x5')],_0x1c2eb5['currentY']);this[_0x5e20('0x39')]['strokeStyle']=_0x1c2eb5[_0x5e20('0x4f')];this['ctx'][_0x5e20('0x66')]=0x4;this[_0x5e20('0x39')]['stroke']();this['ctx']['beginPath']();this[_0x5e20('0x39')][_0x5e20('0x2e')](_0x1c2eb5[_0x5e20('0x76')],_0x1c2eb5[_0x5e20('0xd')]-0x8);this['ctx']['lineTo'](_0x1c2eb5['startX'],_0x1c2eb5[_0x5e20('0xd')]+0x2);this['ctx'][_0x5e20('0x6d')]=_0x1c2eb5['color'];this[_0x5e20('0x39')][_0x5e20('0x66')]=0x3;this['ctx'][_0x5e20('0x4e')]();this[_0x5e20('0x39')][_0x5e20('0x6a')]();this['ctx'][_0x5e20('0x2e')](_0x1c2eb5[_0x5e20('0x5')],_0x1c2eb5['currentY']-0x8);this[_0x5e20('0x39')][_0x5e20('0x0')](_0x1c2eb5['endX'],_0x1c2eb5[_0x5e20('0xd')]+0x2);this['ctx'][_0x5e20('0x6d')]=_0x1c2eb5['color'];this['ctx']['lineWidth']=0x3;this[_0x5e20('0x39')][_0x5e20('0x4e')]();});}['animateComparison'](){const _0x9acdc4=0x3e8;const _0x39e4e0=Date['now']();const _0x17f35e=()=>{const _0xc6891a=Date[_0x5e20('0x72')]()-_0x39e4e0;const _0x146867=Math['min'](_0xc6891a/_0x9acdc4,0x1);const _0x482e29=0x1-Math[_0x5e20('0x37')](0x1-_0x146867,0x3);this[_0x5e20('0x35')]['forEach'](_0x31dcdd=>{_0x31dcdd[_0x5e20('0x10')]=_0x31dcdd['startX']+(_0x31dcdd['targetStartX']-_0x31dcdd['startX'])*_0x482e29;_0x31dcdd['currentStartY']=_0x31dcdd['startY']+(_0x31dcdd[_0x5e20('0x22')]-_0x31dcdd['startY'])*_0x482e29;_0x31dcdd['currentEndX']=_0x31dcdd['endX']+(_0x31dcdd['targetEndX']-_0x31dcdd['endX'])*_0x482e29;_0x31dcdd['currentEndY']=_0x31dcdd['endY']+(_0x31dcdd[_0x5e20('0x4c')]-_0x31dcdd[_0x5e20('0x63')])*_0x482e29;});this[_0x5e20('0x2c')]();if(_0x146867>0.5){this['drawAlignmentLines']();}if(_0x146867<0x1){requestAnimationFrame(_0x17f35e);}else{this['animatingLines']=[];this['draw']();}};_0x17f35e();}[_0x5e20('0x9')](){this['ctx'][_0x5e20('0x6d')]='#ccc';this['ctx']['lineWidth']=0x1;this['ctx']['setLineDash']([0x3,0x3]);const _0x1da171=this[_0x5e20('0x58')][_0x5e20('0x5b')]/(window[_0x5e20('0x40')]||0x1);const _0x1c3433=this[_0x5e20('0x34')]+(_0x1da171-this['rightAreaY']-0x32);this['animatingLines'][_0x5e20('0x6f')](_0x409fe0=>{if(_0x409fe0['currentStartY']>=this[_0x5e20('0x34')]&&_0x409fe0[_0x5e20('0x5c')]<=_0x1c3433){this[_0x5e20('0x39')]['beginPath']();this[_0x5e20('0x39')][_0x5e20('0x2e')](this[_0x5e20('0x4b')],_0x409fe0[_0x5e20('0x5c')]);this['ctx'][_0x5e20('0x0')](_0x409fe0[_0x5e20('0x10')],_0x409fe0[_0x5e20('0x5c')]);this['ctx']['stroke']();}});this[_0x5e20('0x39')][_0x5e20('0x48')]([]);}['drawStaticComparison'](){this['comparedLines']['forEach']((_0x303e73,_0x10fba5)=>{const _0x2f136b=this[_0x5e20('0x34')]+0x32+(_0x10fba5+0x1)*0x28;const _0x69259e=this[_0x5e20('0x4b')]+0x14;const _0xfe05e9=_0x69259e+_0x303e73[_0x5e20('0x50')];this[_0x5e20('0x39')]['beginPath']();this['ctx'][_0x5e20('0x2e')](_0x69259e,_0x2f136b);this['ctx']['lineTo'](_0xfe05e9,_0x2f136b);this[_0x5e20('0x39')]['strokeStyle']=_0x303e73['color'];this['ctx'][_0x5e20('0x66')]=0x4;this[_0x5e20('0x39')][_0x5e20('0x4e')]();this['ctx']['beginPath']();this['ctx'][_0x5e20('0x2e')](_0x69259e,_0x2f136b-0x8);this['ctx']['lineTo'](_0x69259e,_0x2f136b+0x2);this['ctx'][_0x5e20('0x6d')]=_0x303e73[_0x5e20('0x4f')];this[_0x5e20('0x39')]['lineWidth']=0x3;this[_0x5e20('0x39')]['stroke']();this['ctx'][_0x5e20('0x6a')]();this[_0x5e20('0x39')]['moveTo'](_0xfe05e9,_0x2f136b-0x8);this[_0x5e20('0x39')]['lineTo'](_0xfe05e9,_0x2f136b+0x2);this['ctx'][_0x5e20('0x6d')]=_0x303e73[_0x5e20('0x4f')];this['ctx'][_0x5e20('0x66')]=0x3;this[_0x5e20('0x39')]['stroke']();});this['drawComparisonGuideLines']();}[_0x5e20('0x30')](){if(this[_0x5e20('0x3c')]['length']===0x0)return;this['ctx']['strokeStyle']=_0x5e20('0x2b');this[_0x5e20('0x39')]['lineWidth']=0x1;this[_0x5e20('0x39')][_0x5e20('0x48')]([0x5,0x5]);const _0x27b909=this['rightAreaX']+0x14;const _0x1d02ba=this['rightAreaY']+0x1e;const _0xabf2b0=this['rightAreaY']+this[_0x5e20('0x58')]['height']-0x96;this[_0x5e20('0x39')]['beginPath']();this['ctx']['moveTo'](_0x27b909,_0x1d02ba);this[_0x5e20('0x39')]['lineTo'](_0x27b909,_0xabf2b0);this[_0x5e20('0x39')]['stroke']();const _0xeb52c1=Math[_0x5e20('0x51')](...this[_0x5e20('0x3c')]['map'](_0x59c71b=>_0x59c71b[_0x5e20('0x50')]));const _0x5600c9=_0x27b909+_0xeb52c1;this[_0x5e20('0x39')][_0x5e20('0x6a')]();this[_0x5e20('0x39')]['moveTo'](_0x5600c9,_0x1d02ba);this[_0x5e20('0x39')][_0x5e20('0x0')](_0x5600c9,_0xabf2b0);this['ctx']['stroke']();this['ctx'][_0x5e20('0x48')]([]);}['startBlinkAnimation'](){if(this['blinkInterval']){clearInterval(this[_0x5e20('0x15')]);}this[_0x5e20('0x15')]=setInterval(()=>{if(this[_0x5e20('0x69')]['size']>0x0){this['draw']();}},0x1f4);}['stopBlinkAnimation'](){if(this['blinkInterval']){clearInterval(this[_0x5e20('0x15')]);this['blinkInterval']=null;}}['updateButtons'](){document['getElementById']('undoBtn')['disabled']=this[_0x5e20('0x54')]['length']===0x0;document['getElementById']('compareBtn')[_0x5e20('0x61')]=this['lines']['length']===0x0;document['getElementById'](_0x5e20('0x6'))[_0x5e20('0x61')]=this[_0x5e20('0x3c')][_0x5e20('0x50')]===0x0;}}document[_0x5e20('0x3b')]('DOMContentLoaded',()=>{new LineDrawingTool();});
+    </script>
+
+
+
+
+<script>
+(function () {
+  var storageKey = 'edu_hide_brand_panels';
+  var toggleButton = document.getElementById('edu-border-toggle');
+  if (!toggleButton || !document.body) {
+    return;
+  }
+
+  function applyState(hidden) {
+    document.body.classList.toggle('edu-hide-brand-panels', hidden);
+    toggleButton.textContent = hidden ? '+' : '-';
+    toggleButton.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    toggleButton.setAttribute('aria-label', hidden ? '显示说明框' : '隐藏说明框');
+    toggleButton.setAttribute('title', hidden ? '显示说明框' : '隐藏说明框');
+  }
+
+  var hiddenByDefault = false;
+  try {
+    hiddenByDefault = localStorage.getItem(storageKey) === '1';
+  } catch (e) {
+    hiddenByDefault = false;
+  }
+
+  applyState(hiddenByDefault);
+
+  toggleButton.addEventListener('click', function () {
+    var nextHidden = !document.body.classList.contains('edu-hide-brand-panels');
+    applyState(nextHidden);
+    try {
+      localStorage.setItem(storageKey, nextHidden ? '1' : '0');
+    } catch (e) {
+      // no-op
+    }
+  });
+})();
+</script>
+
+
+</body>
+</html>

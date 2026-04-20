@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>古代客栈停车场</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+
+    /* ========== CSS变量 - 配色系统 ========== */
+    :root {
+      --primary: #8b4513; /* 木头色 */
+      --primary-light: #deb887;
+      --primary-hover: #a0522d;
+      --bg-main: #f5deb3; /* 纸张色 */
+      --bg-card: #ffebcd;
+      --text-dark: #3e2723;
+      --text-gray: #5d4037;
+      --accent-orange: #d2691e;
+      --accent-yellow: #cd853f;
+      --accent-green: #556b2f;
+      --white: #ffffff;
+      --max-width: 1200px;
+    }
+
+    /* ========== 全局样式 ========== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+      background: var(--bg-main);
+      
+      color: var(--text-dark);
+      line-height: 1.6;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* ========== 响应式布局基础 ========== */
+    @media (max-width: 767px) {
+      html { font-size: 14px; }
+    }
+    @media (min-width: 768px) {
+      html { font-size: 16px; }
+    }
+
+    /* ========== 头部区域 ========== */
+    header {
+      background: rgba(139, 69, 19, 0.9);
+      backdrop-filter: blur(10px);
+      border-bottom: 3px solid #8b4513;
+      padding: 12px 2rem;
+      z-index: 100;
+    }
+
+    .header-inner {
+      max-width: var(--max-width);
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin: 0;
+      font-weight: 800;
+      color: #fff8dc;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    /* ========== Tab切换导航 ========== */
+    .tab-nav {
+      display: flex;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      background: rgba(255, 248, 220, 0.2);
+      padding: 6px;
+      border-radius: 50px;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .tab-btn {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: #fff8dc;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+
+    .tab-btn:hover {
+      color: var(--primary-light);
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 0 15px rgba(139, 69, 19, 0.5);
+    }
+
+    /* ========== 主内容区域 ========== */
+    .container {
+      width: 100%;
+      max-width: var(--max-width);
+      margin: 20px auto;
+      padding: 0 1rem;
+      flex: 1 0 auto;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ========== 内容区域 ========== */
+    .content-section {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      padding: 24px;
+      margin: 1.5rem 0;
+      border-radius: 10px;
+      border: 2px solid #deb887;
+      box-shadow: 5px 5px 15px rgba(139, 69, 19, 0.2);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .content-section:hover {
+      transform: translateY(-2px);
+      box-shadow: 8px 8px 20px rgba(139, 69, 19, 0.3);
+    }
+
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .grid-layout {
+        grid-template-columns: 1fr 1.5fr;
+      }
+    }
+
+    /* ========== 控制面板 ========== */
+    .control-panel { padding: 0; }
+
+    .problem-desc {
+      background: rgba(255, 248, 220, 0.6);
+      padding: 16px 24px;
+      border-radius: 10px;
+      font-size: 1.3rem;
+      font-weight: 600;
+      text-align: center;
+      color: var(--text-dark);
+      border: 2px dashed #cd853f;
+    }
+
+    .problem-desc .highlight {
+      color: #8b0000;
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      height: 10px;
+      border-radius: 5px;
+      background: #deb887;
+      outline: none;
+      appearance: none;
+    }
+
+    input[type="range"]::slider-thumb {
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #8b4513;
+      border: 3px solid #fff8dc;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    input[type="range"]::slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    .value-display {
+      min-width: 50px;
+      text-align: center;
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #8b0000;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 8px;
+      padding: 4px 8px;
+      border: 2px solid #deb887;
+    }
+
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 1rem;
+      font-size: 1.2rem;
+      background: rgba(255, 248, 220, 0.6);
+      border-radius: 10px;
+      border: 1px solid #deb887;
+    }
+
+    .result-item .label {
+      color: var(--text-gray);
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .result-item .value {
+      font-weight: 800;
+      font-size: 1.8rem;
+    }
+
+    .result-item .value.heads { color: var(--primary-light); }
+    .result-item .value.legs { color: var(--accent-orange); }
+
+    /* ========== 按钮样式 ========== */
+    .btn {
+      padding: 0.8rem 1.8rem;
+      border: none;
+      border-radius: 15px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      background: var(--primary-hover);
+      box-shadow: 0 6px 16px rgba(139, 92, 246, 0.6);
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: var(--primary-light);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      background: rgba(139, 92, 246, 0.2);
+      color: #ffffff;
+    }
+
+    .btn-record {
+      background: var(--accent-green);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    .btn-record:hover {
+      background: #059669;
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
+      transform: translateY(-2px);
+    }
+
+    /* ========== 动画展示区域 ========== */
+    .animation-area {
+      padding: 0;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .animals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+      gap: 1rem;
+      width: 100%;
+      margin: 0;
+    }
+
+    .animals-grid.assumption-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+
+    .animals-grid.ancient-grid {
+      grid-template-columns: repeat(10, 1fr);
+      gap: 0.5rem;
+    }
+
+    .animal {
+      font-size: 3.5rem;
+      text-align: center;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      position: relative;
+      background: rgba(255, 248, 220, 0.8);
+      border-radius: 10px;
+      padding: 10px;
+      border: 2px solid #deb887;
+      box-shadow: 2px 2px 8px rgba(139, 69, 19, 0.1);
+    }
+
+    .animal:hover {
+      transform: scale(1.1) translateY(-4px);
+      background: #fff8dc;
+      box-shadow: 4px 4px 12px rgba(139, 69, 19, 0.2);
+      border-color: #8b4513;
+    }
+
+    .animal-legs {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #a0522d;
+      margin-top: -4px;
+      font-family: monospace;
+    }
+
+    .animal-legs .old-legs {
+      text-decoration: line-through;
+      color: var(--text-gray);
+      margin-right: 0.3rem;
+      opacity: 0.6;
+    }
+
+    .new-legs {
+      color: var(--accent-orange);
+      font-weight: 900;
+    }
+
+    /* ========== 表格样式 ========== */
+    .record-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: transparent;
+      overflow-x: auto;
+      display: block;
+    }
+
+    .record-table table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: separate;
+      border-spacing: 4px;
+    }
+
+    .record-table th, .record-table td {
+      padding: 12px;
+      text-align: center;
+      border-radius: 10px;
+    }
+
+    .record-table td {
+      background: rgba(255, 248, 220, 0.6);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      transition: all 0.3s ease;
+      border: 1px solid #deb887;
+    }
+
+    .record-table td:first-child {
+      width: 130px;
+      background: rgba(139, 69, 19, 0.1);
+      font-weight: 800;
+      color: #8b4513;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      border-color: #cd853f;
+    }
+
+    .record-table td:not(:first-child) {
+      width: calc((100% - 130px) / 9);
+      font-family: var(--font-family, 'Outfit'), monospace;
+    }
+
+    .record-table .correct-column {
+      background: rgba(34, 139, 34, 0.2) !important;
+      color: #006400;
+      box-shadow: 0 0 10px rgba(34, 139, 34, 0.3);
+      border-color: #228b22;
+      transform: scale(1.02);
+    }
+
+    .animal.transform {
+      animation: transformAnimal 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes transformAnimal {
+      0% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.2) rotate(180deg); opacity: 0.5; filter: blur(2px) hue-rotate(90deg); }
+      100% { transform: scale(1) rotate(360deg); }
+    }
+
+    .formula-display {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #8b4513;
+      margin: 1.5rem 0 0;
+      padding: 1rem 2rem;
+      background: rgba(255, 248, 220, 0.8);
+      border-radius: 10px;
+      text-align: center;
+      border: 2px dashed #cd853f;
+      font-family: inherit;
+    }
+
+    /* ========== 庆祝动画 ========== */
+    .celebration {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 6rem;
+      z-index: 1000;
+      animation: celebrate 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+      filter: drop-shadow(0 0 20px rgba(253, 224, 71, 0.8));
+    }
+
+    @keyframes celebrate {
+      0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+      20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+      80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+    }
+
+    .animal-pose {
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .animal-pose.lift-one {
+      transform: rotate(-15deg) translateY(-5px);
+      filter: drop-shadow(0 0 8px rgba(139, 69, 19, 0.3));
+    }
+
+    .animal-pose.lift-two {
+      opacity: 0.4;
+      transform: scale(0.6) translateY(-10px);
+      filter: grayscale(0.5);
+    }
+
+    .animal-pose.standing {
+      transform: scaleY(1.15) translateY(-5px);
+      box-shadow: 0 0 15px rgba(210, 105, 30, 0.4);
+      border-color: #d2691e;
+    }
+  </style>
+</head>
+<body>
+  <!-- 头部 -->
+  <header>
+    <div class="header-inner">
+      <h1>客栈外停了两轮车和马车，共 <strong class="highlight">8辆</strong>，数一数共有 <strong class="highlight">26个轮子</strong>。</h1>
+      <nav class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab(0)">穷举扫描法</button>
+        <button class="tab-btn" onclick="switchTab(1)">假设法</button>
+        <button class="tab-btn" onclick="switchTab(2)">抬腿法</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <div class="container">
+    <!-- Tab 1: 穷举扫描法 -->
+    <div class="tab-content active" id="tab1">
+      <div class="content-section">
+        <div class="problem-desc">
+          问题：客栈外停了两轮车(2轮)和马车(4轮)，一共 <strong class="highlight">8辆车</strong>，数一数共有 <strong class="highlight">26个轮子</strong>，请问它们各有几辆？
+        </div>
+      </div>
+
+      <div class="content-section">
+        <div class="record-table">
+          <table id="recordTable">
+            <tbody id="recordTableBody">
+              <tr id="chickenRow">
+                <td>🚲 两轮车(2)</td>
+                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+              </tr>
+              <tr id="rabbitRow">
+                <td>🦼 马车(4)</td>
+                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+              </tr>
+              <tr id="legsRow">
+                <td>总轮子</td>
+                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="content-section">
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: nowrap; margin-bottom: 1rem;">
+          <div style="flex: 1; min-width: 200px;">
+            <label style="font-size: 1.2rem; font-weight: bold;display: block;color:var(--primary-hover)">🚲 两轮车：</label>
+            <div class="slider-container" style="flex-direction: row-reverse;">
+              <input type="range" id="chickenSlider" min="0" max="8" value="0" oninput="updateGuess()">
+              <span class="value-display" id="chickenValue" style="margin-right: 1rem; margin-left: 0;">0</span>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 200px;">
+            <label style="font-size: 1.2rem; font-weight: bold;display: block;color:var(--accent-orange)">🦼 马车：</label>
+            <div class="slider-container" style="flex-direction: row-reverse;">
+              <input type="range" id="rabbitSlider" min="0" max="8" value="8" oninput="updateGuess()">
+              <span class="value-display" id="rabbitValue" style="margin-right: 1rem; margin-left: 0;">8</span>
+            </div>
+          </div>
+          <button class="btn btn-record" onclick="recordAttempt()" style="flex: 0 0 auto; margin-top: 0;">
+            📋 记录
+          </button>
+        </div>
+        
+      <div class="formula-display" id="guessFormula" style="font-size: 2.5rem;">
+        🚲 × 2 + 🦼 × 4 = ?
+      </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: 假设法 -->
+    <div class="tab-content" id="tab2">
+      <div class="content-section">
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div class="problem-desc" id="assumptionProblem" style="flex: 1; margin: 0;">
+            共 <strong class="highlight">8辆车</strong>，<strong class="highlight">26个轮子</strong>。使用假设法：假设全是【两轮车】！
+          </div>
+          <button class="btn btn-primary" onclick="nextAssumptionStep()" id="assumptionNextBtn" style="flex: 0 0 auto;">
+            ▶️ 下一步运算
+          </button>
+        </div>
+      </div>
+
+      <div class="content-section">
+        <div class="grid-layout">
+          <div class="control-panel">
+            <div id="assumptionSteps" style="line-height: 1.5; min-height: 200px; color: var(--text-dark);">
+              <strong style="color: #a0522d; font-size: 2.2rem;">① 假设全是两轮车：</strong><br><span style="font-size: 2.2rem;">8 × 2 = 16（个）</span>
+            </div>
+          </div>
+          <div class="animation-area">
+            <div class="animals-grid assumption-grid" id="assumptionAnimals"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: 抬腿法 -->
+    <div class="tab-content" id="tab3">
+      <div class="content-section">
+        <div class="problem-desc">
+          发现 <strong class="highlight">35辆车</strong>，<strong class="highlight">94个轮子</strong>，让我们使用拆轮法（抬腿法）！
+        </div>
+      </div>
+
+      <div class="content-section">
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div class="result-item" style="flex: 1; min-width: 150px;">
+            <span class="label">车总数：</span>
+            <span class="value heads" id="ancientHeads">35</span>
+          </div>
+          <div class="result-item" style="flex: 1; min-width: 150px;">
+            <span class="label">在地上的轮子数：</span>
+            <span class="value legs" id="ancientLegs">94</span>
+          </div>
+          <button class="btn btn-primary" onclick="startAncient()" style="flex: 0 0 auto;">
+            🔄 重新开始
+          </button>
+          <button class="btn btn-secondary" onclick="liftHalfLegs()" id="liftHalfBtn" style="flex: 0 0 auto;">
+            🌌 拆除一半轮子
+          </button>
+          <button class="btn btn-secondary" onclick="nextAncientStep()" id="ancientNextBtn" style="flex: 0 0 auto;">
+            🌌 拆除一个轮子
+          </button>
+        </div>
+      </div>
+
+      <div class="content-section">
+        <div class="animals-grid ancient-grid" id="ancientAnimals"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentTab = 0;
+    let assumptionStep = 0;
+    let ancientStep = 0;
+
+    function switchTab(index) {
+      currentTab = index;
+      const tabs = document.querySelectorAll('.tab-btn');
+      tabs.forEach((tab, i) => tab.classList.toggle('active', i === index));
+      const contents = document.querySelectorAll('.tab-content');
+      contents.forEach((content, i) => content.classList.toggle('active', i === index));
+
+      if (index === 0) initGuessTab();
+      else if (index === 1) { resetAssumption(); document.getElementById('assumptionNextBtn').disabled = false; }
+      else if (index === 2) resetAncient();
+    }
+
+    function initGuessTab() {
+      const chickenRow = document.getElementById('chickenRow');
+      const rabbitRow = document.getElementById('rabbitRow');
+      const legsRow = document.getElementById('legsRow');
+      
+      for (let i = 1; i <= 9; i++) {
+        chickenRow.cells[i].textContent = '';
+        rabbitRow.cells[i].textContent = '';
+        legsRow.cells[i].textContent = '';
+        chickenRow.cells[i].classList.remove('correct-column');
+        rabbitRow.cells[i].classList.remove('correct-column');
+        legsRow.cells[i].classList.remove('correct-column');
+      }
+      
+      document.getElementById('chickenSlider').value = 0;
+      document.getElementById('rabbitSlider').value = 8;
+      updateGuess();
+    }
+
+    function updateGuess() {
+      const chickenSlider = document.getElementById('chickenSlider');
+      const rabbitSlider = document.getElementById('rabbitSlider');
+      let chickens = parseInt(chickenSlider.value);
+      let rabbits = parseInt(rabbitSlider.value);
+      
+      const total = chickens + rabbits;
+      if (total !== 8) {
+        if (event && event.target.id === 'chickenSlider') {
+          rabbits = 8 - chickens;
+          rabbitSlider.value = rabbits;
+        } else {
+          chickens = 8 - rabbits;
+          chickenSlider.value = chickens;
+        }
+      }
+
+      document.getElementById('chickenValue').textContent = chickens;
+      document.getElementById('rabbitValue').textContent = rabbits;
+
+      const formula = document.getElementById('guessFormula');
+      formula.textContent = '🚲 × 2 + 🦼 × 4 = ?';
+      formula.style.color = '#8b4513';
+    }
+
+    function recordAttempt() {
+      const chickens = parseInt(document.getElementById('chickenSlider').value);
+      const rabbits = parseInt(document.getElementById('rabbitSlider').value);
+      const totalLegs = chickens * 2 + rabbits * 4;
+      
+      const columnIndex = chickens + 1;
+      
+      const chickenRow = document.getElementById('chickenRow');
+      const rabbitRow = document.getElementById('rabbitRow');
+      const legsRow = document.getElementById('legsRow');
+      
+      const chickenCell = chickenRow.cells[columnIndex];
+      const rabbitCell = rabbitRow.cells[columnIndex];
+      const legsCell = legsRow.cells[columnIndex];
+      
+      chickenCell.textContent = chickens;
+      rabbitCell.textContent = rabbits;
+      legsCell.textContent = totalLegs;
+      
+      for (let i = 1; i <= 9; i++) {
+        chickenRow.cells[i].classList.remove('correct-column');
+        rabbitRow.cells[i].classList.remove('correct-column');
+        legsRow.cells[i].classList.remove('correct-column');
+      }
+      
+      if (totalLegs === 26) {
+        chickenCell.classList.add('correct-column');
+        rabbitCell.classList.add('correct-column');
+        legsCell.classList.add('correct-column');
+        legsCell.innerHTML = totalLegs + ' 🔓';
+      }
+    }
+
+    function showCelebration() {
+      const celebration = document.createElement('div');
+      celebration.className = 'celebration';
+      celebration.textContent = '🧬 破解成功！';
+      document.body.appendChild(celebration);
+      setTimeout(() => celebration.remove(), 2000);
+    }
+
+    let assumptionMode = 'chicken'; 
+    
+    function resetAssumption() {
+      assumptionStep = 0;
+      assumptionMode = 'chicken';
+      
+      document.getElementById('assumptionProblem').innerHTML = 
+        '共 <strong class="highlight">8辆车</strong>，<strong class="highlight">26个轮子</strong>。使用假设法：假设全是【两轮车】！';
+      
+      document.getElementById('assumptionSteps').innerHTML = 
+        '<strong style="color: #a0522d; font-size: 2.2rem;">① 假设全是两轮车：</strong><br><span style="font-size: 2.2rem;">8 × 2 = 16（个）</span>';
+      
+      document.getElementById('assumptionNextBtn').innerHTML = '▶️ 下一步运算';
+      document.getElementById('assumptionNextBtn').onclick = nextAssumptionStep;
+      
+      const animalsContainer = document.getElementById('assumptionAnimals');
+      animalsContainer.innerHTML = '';
+      
+      for (let i = 0; i < 8; i++) {
+        const wrapper = document.createElement('div');
+        wrapper.style.textAlign = 'center';
+        
+        const animal = document.createElement('div');
+        animal.className = 'animal';
+        animal.id = `assumption-animal-${i}`;
+        animal.textContent = '🚲';
+        const legs = document.createElement('div');
+        legs.className = 'animal-legs';
+        legs.id = `assumption-legs-${i}`;
+        legs.textContent = '2个';
+        
+        wrapper.appendChild(animal);
+        wrapper.appendChild(legs);
+        animalsContainer.appendChild(wrapper);
+      }
+    }
+
+    function nextAssumptionStep() {
+      const stepsContainer = document.getElementById('assumptionSteps');
+      
+      if (assumptionMode === 'chicken') {
+        if (assumptionStep === 0) {
+          stepsContainer.innerHTML += '<br><strong style="color: #d2691e; font-size: 2.2rem;">② 轮子差值：</strong><br><span style="font-size: 2.2rem;">26 - 16 = 10（个）</span>';
+          assumptionStep++;
+        } else if (assumptionStep === 1) {
+          stepsContainer.innerHTML += '<br><strong style="color: #556b2f; font-size: 2.2rem;">③ 补齐轮子变马车：</strong><br><span style="font-size: 2.2rem;">每辆补2个轮子，需变马车 10÷(4-2) = 5（辆）</span>';
+          
+          for (let i = 0; i < 5; i++) {
+            const animal = document.getElementById(`assumption-animal-${i}`);
+            const legs = document.getElementById(`assumption-legs-${i}`);
+            animal.classList.add('transform');
+            setTimeout(() => {
+              animal.textContent = '🦼';
+              legs.textContent = '4个';
+              animal.classList.remove('transform');
+            }, 400);
+          }
+          assumptionStep++;
+        } else if (assumptionStep === 2) {
+          stepsContainer.innerHTML += '<br><strong style="color: #006400; font-size: 2.2rem;">④ 破解结果：</strong><br><span style="font-size: 2.2rem;">3（辆）两轮车 + 5（辆）马车 = 26（个） 🔓</span>';
+          showCelebration();
+          document.getElementById('assumptionNextBtn').innerHTML = '🔄 假设全是马车';
+          document.getElementById('assumptionNextBtn').onclick = switchToRabbitMode;
+          assumptionStep++;
+        }
+      } else {
+        if (assumptionStep === 0) {
+          stepsContainer.innerHTML += '<br><strong style="color: #d2691e; font-size: 2.2rem;">② 轮子差值：</strong><br><span style="font-size: 2.2rem;">32 - 26 = 6（个）</span>';
+          assumptionStep++;
+        } else if (assumptionStep === 1) {
+          stepsContainer.innerHTML += '<br><strong style="color: #556b2f; font-size: 2.2rem;">③ 拆掉轮子变两轮车：</strong><br><span style="font-size: 2.2rem;">每辆减2个，需变两轮车 6÷(4-2) = 3（辆）</span>';
+          
+          for (let i = 0; i < 3; i++) {
+            const animal = document.getElementById(`assumption-animal-${i}`);
+            const legs = document.getElementById(`assumption-legs-${i}`);
+            animal.classList.add('transform');
+            setTimeout(() => {
+              animal.textContent = '🚲';
+              legs.textContent = '2个';
+              animal.classList.remove('transform');
+            }, 400);
+          }
+          assumptionStep++;
+        } else if (assumptionStep === 2) {
+          stepsContainer.innerHTML += '<br><strong style="color: #006400; font-size: 2.2rem;">④ 破解结果：</strong><br><span style="font-size: 2.2rem;">3（辆）两轮车 + 5（辆）马车 = 26（个） 🔓</span>';
+          showCelebration();
+          document.getElementById('assumptionNextBtn').innerHTML = '🔄 假设全是两轮车';
+          document.getElementById('assumptionNextBtn').onclick = switchToChickenMode;
+          assumptionStep++;
+        }
+      }
+    }
+
+    function switchToRabbitMode() {
+      assumptionStep = 0;
+      assumptionMode = 'rabbit';
+      document.getElementById('assumptionProblem').innerHTML = 
+        '共 <strong class="highlight">8辆车</strong>，<strong class="highlight">26个轮子</strong>。使用假设法：假设全是【马车】！';
+      document.getElementById('assumptionSteps').innerHTML = 
+        '<strong style="color: #a0522d; font-size: 2.2rem;">① 假设全是马车：</strong><br><span style="font-size: 2.2rem;">8 × 4 = 32（个）</span>';
+      document.getElementById('assumptionNextBtn').innerHTML = '▶️ 下一步运算';
+      document.getElementById('assumptionNextBtn').onclick = nextAssumptionStep;
+      
+      const animalsContainer = document.getElementById('assumptionAnimals');
+      animalsContainer.innerHTML = '';
+      for (let i = 0; i < 8; i++) {
+        const wrapper = document.createElement('div');
+        wrapper.style.textAlign = 'center';
+        const animal = document.createElement('div');
+        animal.className = 'animal';
+        animal.id = `assumption-animal-${i}`;
+        animal.textContent = '🦼';
+        const legs = document.createElement('div');
+        legs.className = 'animal-legs';
+        legs.id = `assumption-legs-${i}`;
+        legs.textContent = '4个';
+        wrapper.appendChild(animal);
+        wrapper.appendChild(legs);
+        animalsContainer.appendChild(wrapper);
+      }
+    }
+
+    function switchToChickenMode() { resetAssumption(); }
+
+    let halfLiftStep = 0;
+
+    function liftHalfLegs() {
+      if (halfLiftStep === 0) {
+        halfLiftStep = 1;
+        const currentLegs = 94 - 23 * 1 - 12 * 2;
+        document.getElementById('ancientLegs').innerHTML = `<span class="new-legs">${currentLegs}</span>`;
+        
+        for (let i = 0; i < 35; i++) {
+          const animal = document.getElementById(`ancient-animal-${i}`);
+          const legs = document.getElementById(`ancient-legs-${i}`);
+          const originalLegs = parseInt(animal.dataset.legs);
+          
+          if (animal.textContent === '🚲') {
+            legs.innerHTML = `<span class="old-legs">${originalLegs}</span>${originalLegs - 1}个`;
+            animal.classList.add('lift-one');
+          } else {
+            legs.innerHTML = `<span class="old-legs">${originalLegs}</span>${originalLegs - 2}个`;
+            animal.classList.add('standing');
+          }
+        }
+        
+        const btn = document.getElementById('liftHalfBtn');
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+      }
+    }
+
+    function resetAncient() { ancientStep = 0; halfLiftStep = 0; startAncient(); }
+
+    function startAncient() {
+      ancientStep = 0;
+      halfLiftStep = 0;
+      const animalsContainer = document.getElementById('ancientAnimals');
+      animalsContainer.innerHTML = '';
+      
+      const animals = [];
+      for (let i = 0; i < 23; i++) animals.push({ type: '🚲', legs: 2 });
+      for (let i = 0; i < 12; i++) animals.push({ type: '🦼', legs: 4 });
+      
+      for (let i = animals.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [animals[i], animals[j]] = [animals[j], animals[i]];
+      }
+      
+      for (let i = 0; i < 35; i++) {
+        const wrapper = document.createElement('div');
+        wrapper.style.textAlign = 'center';
+        
+        const animal = document.createElement('div');
+        animal.className = 'animal animal-pose';
+        animal.id = `ancient-animal-${i}`;
+        animal.textContent = animals[i].type;
+        animal.dataset.legs = animals[i].legs;
+        
+        const legs = document.createElement('div');
+        legs.className = 'animal-legs';
+        legs.id = `ancient-legs-${i}`;
+        legs.textContent = animals[i].legs + '个';
+        legs.style.visibility = 'visible';
+        
+        wrapper.appendChild(animal);
+        wrapper.appendChild(legs);
+        animalsContainer.appendChild(wrapper);
+      }
+      
+      document.getElementById('ancientHeads').textContent = '35';
+      document.getElementById('ancientLegs').innerHTML = '94';
+      
+      const liftHalfBtn = document.getElementById('liftHalfBtn');
+      liftHalfBtn.disabled = false;
+      liftHalfBtn.style.opacity = '1';
+      liftHalfBtn.style.cursor = 'pointer';
+      
+      const nextBtn = document.getElementById('ancientNextBtn');
+      nextBtn.disabled = false;
+      nextBtn.style.opacity = '1';
+      nextBtn.style.cursor = 'pointer';
+    }
+
+    function nextAncientStep() {
+      if (halfLiftStep === 0) {
+        ancientStep++;
+        if (ancientStep === 1) {
+          document.getElementById('ancientLegs').innerHTML = `<span class="new-legs">${94 - 35}</span>`;
+          for (let i = 0; i < 35; i++) {
+            const animal = document.getElementById(`ancient-animal-${i}`);
+            const legs = document.getElementById(`ancient-legs-${i}`);
+            const originalLegs = parseInt(animal.dataset.legs);
+            legs.innerHTML = `<span class="old-legs">${originalLegs}</span>${originalLegs - 1}个`;
+            animal.classList.add('lift-one');
+          }
+        } else if (ancientStep === 2) {
+          document.getElementById('ancientLegs').innerHTML = `<span class="new-legs">${94 - 35 * 2}</span>`;
+          for (let i = 0; i < 35; i++) {
+            const animal = document.getElementById(`ancient-animal-${i}`);
+            const legs = document.getElementById(`ancient-legs-${i}`);
+            const originalLegs = parseInt(animal.dataset.legs);
+            animal.classList.remove('lift-one');
+            
+            if (animal.textContent === '🚲') {
+              animal.classList.add('lift-two');
+              legs.style.visibility = 'hidden';
+            } else {
+              animal.classList.add('standing');
+              legs.innerHTML = `<span class="old-legs">${originalLegs - 1}</span>${originalLegs - 2}个`;
+            }
+          }
+          setTimeout(showCelebration, 1000);
+        }
+      } else if (halfLiftStep === 1) {
+        halfLiftStep = 2;
+        document.getElementById('ancientLegs').innerHTML = `<span class="new-legs">${47 - 35}</span>`;
+        for (let i = 0; i < 35; i++) {
+          const animal = document.getElementById(`ancient-animal-${i}`);
+          const legs = document.getElementById(`ancient-legs-${i}`);
+          animal.classList.remove('lift-one', 'standing');
+          
+          if (animal.textContent === '🚲') {
+            animal.classList.add('lift-two');
+            legs.style.visibility = 'hidden';
+          } else {
+            legs.innerHTML = `<span class="old-legs">2</span>1个`;
+            animal.classList.add('standing');
+          }
+        }
+        const btn = document.getElementById('ancientNextBtn');
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+      }
+    }
+
+    window.onload = function() { initGuessTab(); };
+  </script>
+</body>
+</html>

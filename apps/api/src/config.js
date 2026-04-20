@@ -54,6 +54,11 @@ export const config = {
   pgDatabase: process.env.PGDATABASE || '',
   storageDriver: (process.env.STORAGE_DRIVER || 'local').toLowerCase(),
   uploadDir: process.env.UPLOAD_DIR || path.join(rootDir, 'uploads'),
+  resourceSeedFile:
+    process.env.RESOURCE_SEED_FILE || path.join(rootDir, 'seed', 'resources.local.json'),
+  allowSeedWithoutDb:
+    optionalBoolean('ALLOW_SEED_WITHOUT_DB', false) ||
+    fs.existsSync(process.env.RESOURCE_SEED_FILE || path.join(rootDir, 'seed', 'resources.local.json')),
   publicAssetBaseUrl: process.env.PUBLIC_ASSET_BASE_URL || '',
   s3Endpoint: process.env.S3_ENDPOINT || '',
   s3Region: process.env.S3_REGION || 'ap-guangzhou',
@@ -66,6 +71,10 @@ export const config = {
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean),
+  htmlProxyTimeoutMs: optionalInt('HTML_PROXY_TIMEOUT_MS', 10000),
+  htmlProxyCacheTtlMs: optionalInt('HTML_PROXY_CACHE_TTL_MS', 5 * 60 * 1000),
+  htmlProxyCacheMaxEntries: optionalInt('HTML_PROXY_CACHE_MAX_ENTRIES', 200),
+  maxUploadFileSizeMb: optionalInt('MAX_UPLOAD_FILE_SIZE_MB', 200),
 };
 
 export function validateRuntimeConfig() {
@@ -81,9 +90,9 @@ export function validateRuntimeConfig() {
     throw new Error('Missing required environment variable: CORS_ORIGINS');
   }
 
-  if (!config.databaseUrl && !(config.pgHost && config.pgUser && config.pgDatabase)) {
+  if (!config.databaseUrl && !(config.pgHost && config.pgUser && config.pgDatabase) && !config.allowSeedWithoutDb) {
     throw new Error(
-      'Missing PostgreSQL configuration. Set DATABASE_URL or PGHOST/PGUSER/PGPASSWORD/PGDATABASE.'
+      'Missing PostgreSQL configuration. Set DATABASE_URL or PGHOST/PGUSER/PGPASSWORD/PGDATABASE, or provide a local resource seed file.'
     );
   }
 

@@ -1,18 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  AlertCircle,
-  ArrowLeft,
-  Edit3,
-  FileText,
-  FolderOpen,
-  Loader2,
-  Lock,
-  LogOut,
-  Save,
-  Trash2,
-  Upload,
-  X,
-} from 'lucide-react';
+import { AlertCircle, ArrowLeft, Edit3, FileText, FolderOpen, Loader2, Lock, LogOut, Save, Trash2, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   deleteResource,
@@ -27,19 +14,10 @@ import {
   uploadAdminResource,
 } from '../../lib/api';
 import type { Resource, TeachingResource } from '../../lib/types';
-
-const AI_CATEGORIES = [
-  '数与代数',
-  '图形与几何',
-  '统计与概率',
-  '综合实践',
-  '微课',
-  '习题',
-  '其他',
-] as const;
+import { AI_CATEGORIES, ALL_RESOURCE_CATEGORIES, GAME_CATEGORY, TOOL_CATEGORY } from '../../lib/resourceCategories';
+import { formatCategoryLabel } from '../../lib/displayLabels';
 
 const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '通用', '拓展'] as const;
-
 const TEACHING_ZONES = [
   { id: 'standard', label: '课标' },
   { id: 'textbook', label: '课本' },
@@ -47,28 +25,18 @@ const TEACHING_ZONES = [
   { id: 'courseware', label: '课件' },
 ] as const;
 
-type Section = 'ai' | 'tools' | 'teaching';
+type Section = 'ai' | 'games' | 'tools' | 'teaching';
 type Mode = 'upload' | 'manage';
-type AiFormState = { title: string; description: string; category: string; grade: string };
-type ToolsFormState = { title: string; description: string };
-type TeachingFormState = { title: string; description: string; zone: string };
-type EditingState =
+type ResourceForm = { title: string; description: string; category: string; grade: string };
+type TeachingForm = { title: string; description: string; zone: string };
+type EditState =
   | { type: 'resource'; id: string; title: string; description: string; category: string; grade: string }
   | { type: 'teaching'; id: string; title: string; description: string; zone: string };
 
-const emptyAiForm: AiFormState = {
-  title: '',
-  description: '',
-  category: AI_CATEGORIES[0],
-  grade: GRADES[0],
-};
-
-const emptyToolsForm: ToolsFormState = { title: '', description: '' };
-const emptyTeachingForm: TeachingFormState = {
-  title: '',
-  description: '',
-  zone: TEACHING_ZONES[0].id,
-};
+const emptyAiForm: ResourceForm = { title: '', description: '', category: AI_CATEGORIES[0], grade: GRADES[0] };
+const emptyGameForm: ResourceForm = { title: '', description: '', category: GAME_CATEGORY, grade: '通用' };
+const emptyToolForm: ResourceForm = { title: '', description: '', category: TOOL_CATEGORY, grade: '通用' };
+const emptyTeachingForm: TeachingForm = { title: '', description: '', zone: TEACHING_ZONES[0].id };
 
 export default function AdminUpload() {
   const navigate = useNavigate();
@@ -83,19 +51,20 @@ export default function AdminUpload() {
   const [refreshing, setRefreshing] = useState(false);
   const [resources, setResources] = useState<Resource[]>([]);
   const [teachingResources, setTeachingResources] = useState<TeachingResource[]>([]);
-  const [editing, setEditing] = useState<EditingState | null>(null);
-  const [deleting, setDeleting] = useState<{ type: 'resource' | 'teaching'; id: string; title: string } | null>(
-    null
-  );
+  const [editing, setEditing] = useState<EditState | null>(null);
+  const [deleting, setDeleting] = useState<{ type: 'resource' | 'teaching'; id: string; title: string } | null>(null);
 
   const [aiForm, setAiForm] = useState(emptyAiForm);
-  const [toolsForm, setToolsForm] = useState(emptyToolsForm);
+  const [gameForm, setGameForm] = useState(emptyGameForm);
+  const [toolForm, setToolForm] = useState(emptyToolForm);
   const [teachingForm, setTeachingForm] = useState(emptyTeachingForm);
 
   const [aiHtmlFile, setAiHtmlFile] = useState<File | null>(null);
   const [aiCoverFile, setAiCoverFile] = useState<File | null>(null);
-  const [toolsHtmlFile, setToolsHtmlFile] = useState<File | null>(null);
-  const [toolsCoverFile, setToolsCoverFile] = useState<File | null>(null);
+  const [gameHtmlFile, setGameHtmlFile] = useState<File | null>(null);
+  const [gameCoverFile, setGameCoverFile] = useState<File | null>(null);
+  const [toolHtmlFile, setToolHtmlFile] = useState<File | null>(null);
+  const [toolCoverFile, setToolCoverFile] = useState<File | null>(null);
   const [teachingFile, setTeachingFile] = useState<File | null>(null);
 
   const clearStatusSoon = useCallback(() => {
@@ -121,9 +90,7 @@ export default function AdminUpload() {
       try {
         const session = await getAdminSession();
         setIsAuthenticated(session.authenticated);
-        if (session.authenticated) {
-          await fetchLists();
-        }
+        if (session.authenticated) await fetchLists();
       } catch {
         setIsAuthenticated(false);
       } finally {
@@ -140,14 +107,12 @@ export default function AdminUpload() {
   }, [fetchLists, isAuthenticated, mode]);
 
   const aiResources = useMemo(
-    () => resources.filter((item) => item.category !== '赋能教学'),
+    () => resources.filter((item) => item.category !== TOOL_CATEGORY && item.category !== GAME_CATEGORY),
     [resources]
   );
-  const toolResources = useMemo(
-    () => resources.filter((item) => item.category === '赋能教学'),
-    [resources]
-  );
-  const currentList = section === 'teaching' ? teachingResources : section === 'ai' ? aiResources : toolResources;
+  const gameResources = useMemo(() => resources.filter((item) => item.category === GAME_CATEGORY), [resources]);
+  const toolResources = useMemo(() => resources.filter((item) => item.category === TOOL_CATEGORY), [resources]);
+  const currentList = section === 'teaching' ? teachingResources : section === 'games' ? gameResources : section === 'tools' ? toolResources : aiResources;
 
   const setMessage = (message: string) => {
     setSuccess(message);
@@ -185,13 +150,12 @@ export default function AdminUpload() {
     setSubmitting(true);
     setError(null);
     setSuccess(null);
-
     try {
       const formData = new FormData();
-      formData.set('section', section);
 
       if (section === 'ai') {
         if (!aiHtmlFile || !aiCoverFile) throw new Error('请上传 HTML 文件和封面图');
+        formData.set('section', 'ai');
         formData.set('title', aiForm.title);
         formData.set('description', aiForm.description);
         formData.set('category', aiForm.category);
@@ -200,16 +164,27 @@ export default function AdminUpload() {
         formData.set('coverFile', aiCoverFile);
       }
 
+      if (section === 'games') {
+        if (!gameHtmlFile || !gameCoverFile) throw new Error('请上传 HTML 文件和封面图');
+        formData.set('section', 'games');
+        formData.set('title', gameForm.title);
+        formData.set('description', gameForm.description);
+        formData.set('htmlFile', gameHtmlFile);
+        formData.set('coverFile', gameCoverFile);
+      }
+
       if (section === 'tools') {
-        if (!toolsHtmlFile || !toolsCoverFile) throw new Error('请上传 HTML 文件和封面图');
-        formData.set('title', toolsForm.title);
-        formData.set('description', toolsForm.description);
-        formData.set('htmlFile', toolsHtmlFile);
-        formData.set('coverFile', toolsCoverFile);
+        if (!toolHtmlFile || !toolCoverFile) throw new Error('请上传 HTML 文件和封面图');
+        formData.set('section', 'tools');
+        formData.set('title', toolForm.title);
+        formData.set('description', toolForm.description);
+        formData.set('htmlFile', toolHtmlFile);
+        formData.set('coverFile', toolCoverFile);
       }
 
       if (section === 'teaching') {
         if (!teachingFile) throw new Error('请上传教学资源文件');
+        formData.set('section', 'teaching');
         formData.set('title', teachingForm.title);
         formData.set('description', teachingForm.description);
         formData.set('zone', teachingForm.zone);
@@ -220,12 +195,15 @@ export default function AdminUpload() {
       await fetchLists();
       setMessage('上传成功');
       setAiForm(emptyAiForm);
-      setToolsForm(emptyToolsForm);
+      setGameForm(emptyGameForm);
+      setToolForm(emptyToolForm);
       setTeachingForm(emptyTeachingForm);
       setAiHtmlFile(null);
       setAiCoverFile(null);
-      setToolsHtmlFile(null);
-      setToolsCoverFile(null);
+      setGameHtmlFile(null);
+      setGameCoverFile(null);
+      setToolHtmlFile(null);
+      setToolCoverFile(null);
       setTeachingFile(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '上传失败');
@@ -262,7 +240,6 @@ export default function AdminUpload() {
     if (!editing) return;
     setSubmitting(true);
     setError(null);
-
     try {
       if (editing.type === 'resource') {
         await updateResource(editing.id, {
@@ -293,7 +270,6 @@ export default function AdminUpload() {
     if (!deleting) return;
     setSubmitting(true);
     setError(null);
-
     try {
       if (deleting.type === 'resource') {
         await deleteResource(deleting.id);
@@ -385,27 +361,20 @@ export default function AdminUpload() {
           <TabButton active={mode === 'manage'} onClick={() => setMode('manage')} label="管理资源" />
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
           <TabButton active={section === 'ai'} onClick={() => setSection('ai')} label="AI 应用" />
-          <TabButton active={section === 'tools'} onClick={() => setSection('tools')} label="互动工具" />
+          <TabButton active={section === 'games'} onClick={() => setSection('games')} label="互动游戏" />
+          <TabButton active={section === 'tools'} onClick={() => setSection('tools')} label="实用工具" />
           <TabButton active={section === 'teaching'} onClick={() => setSection('teaching')} label="教学专区" />
         </div>
 
-        {error && (
-          <div className="mb-4">
-            <MessageBar tone="error" message={error} />
-          </div>
-        )}
-        {success && (
-          <div className="mb-4">
-            <MessageBar tone="success" message={success} />
-          </div>
-        )}
+        {error && <div className="mb-4"><MessageBar tone="error" message={error} /></div>}
+        {success && <div className="mb-4"><MessageBar tone="success" message={success} /></div>}
 
         {mode === 'upload' ? (
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
             <h2 className="text-lg font-bold text-slate-800 mb-2">
-              上传{section === 'ai' ? ' AI 应用' : section === 'tools' ? '互动工具' : '教学资源'}
+              上传{section === 'ai' ? ' AI 应用' : section === 'games' ? '互动游戏' : section === 'tools' ? '实用工具' : '教学资源'}
             </h2>
             <p className="text-sm text-slate-500 mb-6">文件会先上传到后端，再由后端写入 PostgreSQL。</p>
 
@@ -413,27 +382,21 @@ export default function AdminUpload() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <LabeledInput
                   label="标题"
-                  value={
-                    section === 'ai' ? aiForm.title : section === 'tools' ? toolsForm.title : teachingForm.title
-                  }
+                  value={section === 'ai' ? aiForm.title : section === 'games' ? gameForm.title : section === 'tools' ? toolForm.title : teachingForm.title}
                   onChange={(value) => {
                     if (section === 'ai') setAiForm((prev) => ({ ...prev, title: value }));
-                    if (section === 'tools') setToolsForm((prev) => ({ ...prev, title: value }));
+                    if (section === 'games') setGameForm((prev) => ({ ...prev, title: value }));
+                    if (section === 'tools') setToolForm((prev) => ({ ...prev, title: value }));
                     if (section === 'teaching') setTeachingForm((prev) => ({ ...prev, title: value }));
                   }}
                 />
                 <LabeledTextarea
                   label="描述"
-                  value={
-                    section === 'ai'
-                      ? aiForm.description
-                      : section === 'tools'
-                        ? toolsForm.description
-                        : teachingForm.description
-                  }
+                  value={section === 'ai' ? aiForm.description : section === 'games' ? gameForm.description : section === 'tools' ? toolForm.description : teachingForm.description}
                   onChange={(value) => {
                     if (section === 'ai') setAiForm((prev) => ({ ...prev, description: value }));
-                    if (section === 'tools') setToolsForm((prev) => ({ ...prev, description: value }));
+                    if (section === 'games') setGameForm((prev) => ({ ...prev, description: value }));
+                    if (section === 'tools') setToolForm((prev) => ({ ...prev, description: value }));
                     if (section === 'teaching') setTeachingForm((prev) => ({ ...prev, description: value }));
                   }}
                 />
@@ -441,31 +404,24 @@ export default function AdminUpload() {
 
               {section === 'ai' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <LabeledSelect
-                    label="分类"
-                    value={aiForm.category}
-                    onChange={(value) =>
-                      setAiForm((prev) => ({ ...prev, category: value as (typeof AI_CATEGORIES)[number] }))
-                    }
-                    options={AI_CATEGORIES}
-                  />
-                  <LabeledSelect
-                    label="年级"
-                    value={aiForm.grade}
-                    onChange={(value) =>
-                      setAiForm((prev) => ({ ...prev, grade: value as (typeof GRADES)[number] }))
-                    }
-                    options={GRADES}
-                  />
+                  <LabeledSelect label="分类" value={aiForm.category} onChange={(value) => setAiForm((prev) => ({ ...prev, category: value }))} options={AI_CATEGORIES} />
+                  <LabeledSelect label="年级" value={aiForm.grade} onChange={(value) => setAiForm((prev) => ({ ...prev, grade: value }))} options={GRADES} />
                   <LabeledFile label="HTML 文件" accept=".html,.htm" onChange={setAiHtmlFile} />
                   <LabeledFile label="封面图片" accept="image/*" onChange={setAiCoverFile} />
                 </div>
               )}
 
+              {section === 'games' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <LabeledFile label="HTML 文件" accept=".html,.htm" onChange={setGameHtmlFile} />
+                  <LabeledFile label="封面图片" accept="image/*" onChange={setGameCoverFile} />
+                </div>
+              )}
+
               {section === 'tools' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <LabeledFile label="HTML 文件" accept=".html,.htm" onChange={setToolsHtmlFile} />
-                  <LabeledFile label="封面图片" accept="image/*" onChange={setToolsCoverFile} />
+                  <LabeledFile label="HTML 文件" accept=".html,.htm" onChange={setToolHtmlFile} />
+                  <LabeledFile label="封面图片" accept="image/*" onChange={setToolCoverFile} />
                 </div>
               )}
 
@@ -478,11 +434,7 @@ export default function AdminUpload() {
                     options={TEACHING_ZONES.map((item) => item.id)}
                     renderOption={(value) => TEACHING_ZONES.find((item) => item.id === value)?.label || value}
                   />
-                  <LabeledFile
-                    label="教学文件"
-                    accept=".pdf,.doc,.docx,.ppt,.pptx"
-                    onChange={setTeachingFile}
-                  />
+                  <LabeledFile label="教学文件" accept=".pdf,.doc,.docx,.ppt,.pptx" onChange={setTeachingFile} />
                 </div>
               )}
 
@@ -503,11 +455,7 @@ export default function AdminUpload() {
                 <h2 className="text-lg font-bold text-slate-800">资源列表</h2>
                 <p className="text-xs text-slate-400">共 {currentList.length} 个资源</p>
               </div>
-              <button
-                onClick={fetchLists}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200"
-                title="刷新"
-              >
+              <button onClick={fetchLists} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200" title="刷新">
                 <Loader2 className={`w-4 h-4 text-slate-600 ${refreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
@@ -527,7 +475,7 @@ export default function AdminUpload() {
                       key={item.id}
                       title={item.title}
                       description={item.description}
-                      meta={[item.category, item.grade]}
+                      meta={[formatCategoryLabel(item.category), item.grade]}
                       imageUrl={item.image_url}
                       onEdit={() => openEdit(item, 'resource')}
                       onDelete={() => setDeleting({ type: 'resource', id: item.id, title: item.title })}
@@ -572,9 +520,7 @@ export default function AdminUpload() {
               <LabeledTextarea
                 label="描述"
                 value={editing.description}
-                onChange={(value) =>
-                  setEditing((prev) => (prev ? { ...prev, description: value } : prev))
-                }
+                onChange={(value) => setEditing((prev) => (prev ? { ...prev, description: value } : prev))}
               />
               {editing.type === 'resource' ? (
                 <div className="grid grid-cols-2 gap-4">
@@ -582,19 +528,16 @@ export default function AdminUpload() {
                     label="分类"
                     value={editing.category}
                     onChange={(value) =>
-                      setEditing((prev) =>
-                        prev && prev.type === 'resource' ? { ...prev, category: value } : prev
-                      )
+                      setEditing((prev) => (prev && prev.type === 'resource' ? { ...prev, category: value } : prev))
                     }
-                    options={[...AI_CATEGORIES, '赋能教学']}
+                    options={ALL_RESOURCE_CATEGORIES}
+                    renderOption={formatCategoryLabel}
                   />
                   <LabeledSelect
                     label="年级"
                     value={editing.grade}
                     onChange={(value) =>
-                      setEditing((prev) =>
-                        prev && prev.type === 'resource' ? { ...prev, grade: value } : prev
-                      )
+                      setEditing((prev) => (prev && prev.type === 'resource' ? { ...prev, grade: value } : prev))
                     }
                     options={GRADES}
                   />
@@ -604,9 +547,7 @@ export default function AdminUpload() {
                   label="分区"
                   value={editing.zone}
                   onChange={(value) =>
-                    setEditing((prev) =>
-                      prev && prev.type === 'teaching' ? { ...prev, zone: value } : prev
-                    )
+                    setEditing((prev) => (prev && prev.type === 'teaching' ? { ...prev, zone: value } : prev))
                   }
                   options={TEACHING_ZONES.map((item) => item.id)}
                   renderOption={(value) => TEACHING_ZONES.find((item) => item.id === value)?.label || value}

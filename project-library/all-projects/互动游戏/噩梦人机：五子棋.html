@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>欢乐五子棋 - 小学生版</title>
+    <style>
+        :root {
+            /* 默认主题：森林大冒险 (Forest) */
+            --bg-color: #e8f5e9;
+            --panel-bg: #ffffff;
+            --panel-shadow: rgba(27, 94, 32, 0.15);
+            
+            --primary-color: #4caf50;
+            --primary-shadow: #2e7d32;
+            --secondary-color: #a5d6a7;
+            
+            --board-bg: #dcedc8;
+            --board-border: #8d6e63;
+            --line-color: #5d4037;
+            
+            --black-piece-bg: radial-gradient(circle at 30% 30%, #424242, #000000);
+            --black-piece-shadow: rgba(0,0,0,0.5);
+            --white-piece-bg: radial-gradient(circle at 30% 30%, #ffffff, #e0e0e0);
+            --white-piece-shadow: rgba(0,0,0,0.2);
+            
+            --text-color: #1b5e20;
+            --radius: 16px;
+        }
+
+        /* 糖果梦工厂 (Candy) */
+        [data-theme="candy"] {
+            --bg-color: #fff0f5;
+            --panel-bg: #ffffff;
+            --panel-shadow: rgba(233, 30, 99, 0.15);
+            
+            --primary-color: #ff4081;
+            --primary-shadow: #c2185b;
+            --secondary-color: #f8bbd0;
+            
+            --board-bg: #ffe0b2;
+            --board-border: #ffab91;
+            --line-color: #e64a19;
+            
+            --black-piece-bg: radial-gradient(circle at 30% 30%, #795548, #3e2723); /* 巧克力 */
+            --black-piece-shadow: rgba(62, 39, 35, 0.5);
+            --white-piece-bg: radial-gradient(circle at 30% 30%, #fff9c4, #fbc02d); /* 柠檬糖 */
+            --white-piece-shadow: rgba(249, 168, 37, 0.2);
+            
+            --text-color: #880e4f;
+        }
+
+        /* 银河护卫队 (Galaxy) */
+        [data-theme="galaxy"] {
+            --bg-color: #1a237e;
+            --panel-bg: #283593;
+            --panel-shadow: rgba(0, 0, 0, 0.5);
+            
+            --primary-color: #00e5ff;
+            --primary-shadow: #00b8d4;
+            --secondary-color: #3949ab;
+            
+            --board-bg: #121858;
+            --board-border: #304ffe;
+            --line-color: rgba(64, 196, 255, 0.3);
+            
+            --black-piece-bg: radial-gradient(circle at 30% 30%, #311b92, #000000); /* 深紫星 */
+            --black-piece-shadow: rgba(0,0,0,0.8);
+            --white-piece-bg: radial-gradient(circle at 30% 30%, #e0f7fa, #00e5ff); /* 亮蓝星 */
+            --white-piece-shadow: rgba(0, 229, 255, 0.4);
+            
+            --text-color: #e1f5fe;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Varela Round', 'Nunito', 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px 10px;
+            transition: background-color 0.5s;
+        }
+
+        /* 控制面板 */
+        .game-panel {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: var(--radius);
+            box-shadow: 0 8px 20px var(--panel-shadow);
+            width: 100%;
+            max-width: 600px; /* 稍微宽一点适应五子棋 */
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border: 3px solid rgba(0,0,0,0.05);
+            transition: all 0.5s;
+        }
+
+        .header { text-align: center; }
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.05);
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        /* 可爱按钮组 */
+        select, button {
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: none;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, filter 0.2s;
+            outline: none;
+            font-family: inherit;
+        }
+
+        select {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+            text-align: center;
+            appearance: none;
+        }
+        select:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.1);
+        }
+
+        button.start-btn {
+            background-color: var(--primary-color);
+            color: #fff;
+            box-shadow: 0 4px 0 var(--primary-shadow);
+            min-width: 100px;
+        }
+        button.start-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 var(--primary-shadow);
+        }
+
+        .theme-btn {
+            background: transparent;
+            font-size: 1.5rem;
+            padding: 5px 10px;
+            border: 2px solid var(--secondary-color);
+        }
+
+        /* 状态栏 */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.03);
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        
+        .turn-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .mini-piece {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+        }
+        .mini-piece.black { background: var(--black-piece-bg); }
+        .mini-piece.white { background: var(--white-piece-bg); }
+
+        /* 棋盘容器 */
+        .board-wrapper {
+            width: 100%;
+            max-width: 600px; /* 控制最大宽度 */
+            padding: 10px;
+            background: var(--board-border);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .board {
+            width: 100%;
+            aspect-ratio: 1; /* 保持正方形 */
+            background-color: var(--board-bg);
+            border-radius: 4px;
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            grid-template-rows: repeat(15, 1fr);
+            position: relative;
+            cursor: crosshair;
+        }
+
+        /* 格子样式 - 绘制交叉线 */
+        .cell {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 横线 */
+        .cell::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background-color: var(--line-color);
+            transform: translateY(-50%);
+        }
+
+        /* 竖线 */
+        .cell::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            height: 100%;
+            width: 1px;
+            background-color: var(--line-color);
+            transform: translateX(-50%);
+        }
+
+        /* 天元和星位点缀 (可选) */
+        .cell[data-star="true"]::before {
+            width: 100%; 
+        }
+        /* 用一个小圆点标记星位 */
+        .cell[data-star="true"] .star-point {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background-color: var(--line-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+        }
+
+        /* 棋子 */
+        .piece {
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            position: absolute;
+            top: 10%;
+            left: 10%;
+            z-index: 2;
+            transform: scale(0); /* 初始缩放 */
+            animation: bounceIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .piece.black {
+            background: var(--black-piece-bg);
+            box-shadow: 2px 2px 4px var(--black-piece-shadow);
+        }
+
+        .piece.white {
+            background: var(--white-piece-bg);
+            box-shadow: 2px 2px 4px var(--white-piece-shadow);
+        }
+
+        /* 最后一步标记 */
+        .last-move-mark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30%;
+            height: 30%;
+            background-color: #ff1744;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 4px #ff1744;
+            z-index: 3;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes bounceIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.9); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            100% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.9); }
+        }
+
+        /* 弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal {
+            background: var(--panel-bg);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-width: 80%;
+        }
+
+        .modal h2 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 2rem;
+        }
+        
+        .modal p {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: var(--text-color);
+        }
+
+        @keyframes popUp {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+    </style>
+</head>
+<body data-theme="forest">
+
+    <div class="game-panel">
+        <div class="header">
+            <h1>🎲 欢乐五子棋</h1>
+        </div>
+        
+        <div class="controls">
+            <button class="theme-btn" onclick="setTheme('forest')" title="森林大冒险">🌿</button>
+            <button class="theme-btn" onclick="setTheme('candy')" title="糖果梦工厂">🍭</button>
+            <button class="theme-btn" onclick="setTheme('galaxy')" title="银河护卫队">🚀</button>
+
+            <select id="modeSelect" onchange="updateDifficultyVisibility()">
+                <option value="pve">🤖 人机对战</option>
+                <option value="pvp">👥 双人对战</option>
+            </select>
+
+            <select id="difficultySelect">
+                <option value="easy">🥈 倔强青铜</option>
+                <option value="medium" selected>💎 永恒钻石</option>
+                <option value="hard">👑 荣耀王者</option>
+            </select>
+
+            <button class="start-btn" onclick="startGame()">🔄以此配置重开</button>
+        </div>
+
+        <div class="status-bar">
+            <div class="turn-indicator">
+                当前回合: 
+                <div id="turnIcon" class="mini-piece black"></div>
+                <span id="turnText">黑棋</span>
+            </div>
+            <div id="gameStatus">游戏进行中...</div>
+        </div>
+    </div>
+
+    <div class="board-wrapper">
+        <div id="board" class="board"></div>
+    </div>
+
+    <div id="gameOverModal" class="modal-overlay">
+        <div class="modal">
+            <h2 id="winnerText">黑棋获胜!</h2>
+            <p>太棒了！要再来一局吗？</p>
+            <button class="start-btn" onclick="closeModal()">再来一局</button>
+        </div>
+    </div>
+
+    <script>
+        // ================= 配置与状态 =================
+        const SIZE = 15;
+        const EMPTY = 0;
+        const BLACK = 1;
+        const WHITE = 2;
+
+        let boardData = [];
+        let currentPlayer = BLACK;
+        let isGameActive = false;
+        let gameMode = 'pve';
+        let difficulty = 'medium';
+        let lastMove = null; // {r, c}
+        let moveStack = [];
+        let currentHash = 0;
+        let zobrist = null;
+        let LINES = [];
+
+        // ================= UI 逻辑 =================
+        const boardEl = document.getElementById('board');
+        const turnIcon = document.getElementById('turnIcon');
+        const turnText = document.getElementById('turnText');
+        const statusText = document.getElementById('gameStatus');
+        const modal = document.getElementById('gameOverModal');
+        const winnerText = document.getElementById('winnerText');
+
+        function setTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+        }
+
+        function updateDifficultyVisibility() {
+            const mode = document.getElementById('modeSelect').value;
+            document.getElementById('difficultySelect').style.display = mode === 'pvp' ? 'none' : 'block';
+        }
+
+        function initBoard() {
+            boardEl.innerHTML = '';
+            // 标记星位 (3, 3), (11, 3), (7, 7), (3, 11), (11, 11) -> 0-indexed
+            const stars = [
+                [3,3], [11,3], [7,7], [3,11], [11,11]
+            ];
+
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.r = r;
+                    cell.dataset.c = c;
+                    
+                    // 检查是否是星位
+                    if (stars.some(s => s[0]===r && s[1]===c)) {
+                        cell.setAttribute('data-star', 'true');
+                        const starPoint = document.createElement('div');
+                        starPoint.className = 'star-point';
+                        cell.appendChild(starPoint);
+                    }
+
+                    cell.onclick = () => handleInput(r, c);
+                    boardEl.appendChild(cell);
+                }
+            }
+        }
+
+        function renderMove(r, c, player) {
+            const cell = document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`);
+            if (!cell) return;
+
+            // 移除之前的最后一步标记
+            const oldMark = document.querySelector('.last-move-mark');
+            if (oldMark) oldMark.remove();
+
+            // 创建棋子
+            const piece = document.createElement('div');
+            piece.className = `piece ${player === BLACK ? 'black' : 'white'}`;
+            
+            // 创建新标记
+            const mark = document.createElement('div');
+            mark.className = 'last-move-mark';
+            piece.appendChild(mark);
+
+            cell.appendChild(piece);
+        }
+
+        function updateUI() {
+            turnIcon.className = `mini-piece ${currentPlayer === BLACK ? 'black' : 'white'}`;
+            turnText.innerText = currentPlayer === BLACK ? '黑棋' : '白棋';
+            turnText.style.color = currentPlayer === BLACK ? '#000' : '#666';
+        }
+
+        function showWinModal(winner) {
+            let text = '';
+            if (winner === BLACK) text = '🏆 黑棋获胜!';
+            else if (winner === WHITE) text = '🎉 白棋获胜!';
+            else text = '🤝 平局!';
+            
+            winnerText.innerText = text;
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            startGame();
+        }
+
+        // ================= 游戏核心逻辑 =================
+        function startGame() {
+            gameMode = document.getElementById('modeSelect').value;
+            difficulty = document.getElementById('difficultySelect').value;
+            
+            boardData = Array(SIZE).fill(null).map(() => Array(SIZE).fill(EMPTY));
+            currentPlayer = BLACK;
+            isGameActive = true;
+            lastMove = null;
+            moveStack = [];
+            currentHash = 0;
+            
+            statusText.innerText = '游戏进行中...';
+            initBoard(); // 重绘棋盘
+            updateUI();
+        }
+
+        function handleInput(r, c) {
+            if (!isGameActive) return;
+            if (boardData[r][c] !== EMPTY) return;
+            
+            // PVE模式下，如果是AI的回合，玩家不能点
+            if (gameMode === 'pve' && currentPlayer === WHITE) return;
+
+            placePiece(r, c);
+        }
+
+        function placePiece(r, c) {
+            doMove(r, c, currentPlayer, true, true);
+
+            // 检查胜利
+            if (checkWin(r, c, currentPlayer)) {
+                isGameActive = false;
+                statusText.innerText = currentPlayer === BLACK ? '黑棋胜' : '白棋胜';
+                setTimeout(() => showWinModal(currentPlayer), 300);
+                return;
+            }
+
+            // 检查平局
+            if (checkDraw()) {
+                isGameActive = false;
+                statusText.innerText = '平局';
+                showWinModal(0);
+                return;
+            }
+
+            // 切换回合
+            currentPlayer = 3 - currentPlayer; // 1->2, 2->1
+            updateUI();
+
+            // AI 回合
+            if (isGameActive && gameMode === 'pve' && currentPlayer === WHITE) {
+                statusText.innerText = 'AI思考中...';
+                setTimeout(aiMove, 500); // 延迟一点，让玩家看清
+            } else {
+                statusText.innerText = '请落子';
+            }
+        }
+
+        function checkWin(r, c, player) {
+            const directions = [
+                [1, 0],  // 横向
+                [0, 1],  // 纵向
+                [1, 1],  // \ 方向
+                [1, -1]  // / 方向
+            ];
+
+            for (let [dr, dc] of directions) {
+                let count = 1;
+                
+                // 正向检查
+                let i = 1;
+                while (true) {
+                    let nr = r + dr * i;
+                    let nc = c + dc * i;
+                    if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) break;
+                    if (boardData[nr][nc] === player) count++;
+                    else break;
+                    i++;
+                }
+
+                // 反向检查
+                i = 1;
+                while (true) {
+                    let nr = r - dr * i;
+                    let nc = c - dc * i;
+                    if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) break;
+                    if (boardData[nr][nc] === player) count++;
+                    else break;
+                    i++;
+                }
+
+                if (count >= 5) return true;
+            }
+            return false;
+        }
+
+        function checkDraw() {
+            return boardData.every(row => row.every(cell => cell !== EMPTY));
+        }
+
+        // ================= AI 算法 =================
+
+        function aiMove() {
+            let move = null;
+            const start = performance.now();
+
+            if (difficulty === 'easy') {
+                move = getEasyMove();
+            } else if (difficulty === 'medium') {
+                move = getMediumMove();
+            } else {
+                move = getHardMove();
+            }
+
+            const end = performance.now();
+            console.log(`AI time: ${(end - start).toFixed(2)}ms`);
+
+            if (move) {
+                placePiece(move.r, move.c);
+            } else {
+                // 棋盘满了
+            }
+        }
+
+        // --- 简单：随机 + 简单进攻 ---
+        function getEasyMove() {
+            // 1. 如果能赢，直接赢
+            let winMove = findInstantWin(WHITE);
+            if (winMove) return winMove;
+            
+            // 2. 如果玩家要赢，堵住
+            let blockMove = findInstantWin(BLACK);
+            if (blockMove) return blockMove;
+
+            const candidates = generateCandidateMoves(2);
+            if (candidates.length === 0) return null;
+            const scored = candidates.map(m => ({
+                r: m.r,
+                c: m.c,
+                s: pointHeuristic(m.r, m.c, WHITE) + pointHeuristic(m.r, m.c, BLACK) * 0.7 + centerBonus(m.r, m.c)
+            }));
+            scored.sort((a, b) => b.s - a.s);
+            const top = scored.slice(0, Math.min(8, scored.length));
+            return top[Math.floor(Math.random() * top.length)];
+        }
+
+        // --- 中等：贪心评分 ---
+        function getMediumMove() {
+            // 1. 必杀判断
+            let winMove = findInstantWin(WHITE);
+            if (winMove) return winMove;
+            let blockMove = findInstantWin(BLACK);
+            if (blockMove) return blockMove;
+
+            const candidates = generateCandidateMoves(2);
+            if (candidates.length === 0) return {r: 7, c: 7};
+
+            let bestScore = -Infinity;
+            let bestMoves = [];
+            for (const m of candidates) {
+                const attackScore = pointHeuristic(m.r, m.c, WHITE);
+                const defendScore = pointHeuristic(m.r, m.c, BLACK);
+                const score = attackScore * 1.15 + defendScore * 1.05 + centerBonus(m.r, m.c) * 0.6;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMoves = [{r: m.r, c: m.c}];
+                } else if (score === bestScore) {
+                    bestMoves.push({r: m.r, c: m.c});
+                }
+            }
+            bestMoves.sort((a, b) => (centerBonus(b.r, b.c) - centerBonus(a.r, a.c)));
+            return bestMoves[Math.floor(Math.random() * Math.min(3, bestMoves.length))];
+        }
+
+        // --- 困难：迭代加深 Minimax (带剪枝与置换表) ---
+        function getHardMove() {
+            const center = {r: 7, c: 7};
+            if (moveStack.length === 0) return center;
+
+            let winMove = findInstantWin(WHITE);
+            if (winMove) return winMove;
+            let blockMove = findInstantWin(BLACK);
+            if (blockMove) return blockMove;
+
+            const forceAttack = findOpenFourMove(WHITE) || findDoubleOpenThreeMove(WHITE);
+            if (forceAttack) return forceAttack;
+
+            const forceDefend = findOpenFourMove(BLACK) || findDoubleOpenThreeMove(BLACK);
+            if (forceDefend) return forceDefend;
+
+            return searchBestMove(4, 550);
+        }
+
+        // ================= 辅助函数 =================
+
+        function doMove(r, c, player, shouldRender = false, shouldUpdateLast = false) {
+            boardData[r][c] = player;
+            moveStack.push({r, c, player});
+            currentHash ^= zobrist[r][c][player];
+            if (shouldRender) renderMove(r, c, player);
+            if (shouldUpdateLast) lastMove = {r, c};
+        }
+
+        function undoMove() {
+            const m = moveStack.pop();
+            if (!m) return;
+            boardData[m.r][m.c] = EMPTY;
+            currentHash ^= zobrist[m.r][m.c][m.player];
+        }
+
+        function hasNeighbor(r, c, dist=1) {
+            for (let i = r-dist; i <= r+dist; i++) {
+                for (let j = c-dist; j <= c+dist; j++) {
+                    if (i>=0 && i<SIZE && j>=0 && j<SIZE) {
+                        if (boardData[i][j] !== EMPTY) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function findInstantWin(player) {
+            // 寻找能不能一步连5
+            const candidates = generateCandidateMoves(1);
+            for (const m of candidates) {
+                doMove(m.r, m.c, player);
+                const ok = checkWin(m.r, m.c, player);
+                undoMove();
+                if (ok) return {r: m.r, c: m.c};
+            }
+            return null;
+        }
+
+        function generateCandidateMoves(dist = 2) {
+            if (moveStack.length === 0) return [{r: 7, c: 7}];
+
+            const keySet = new Set();
+            const out = [];
+            for (const m of moveStack) {
+                for (let r = m.r - dist; r <= m.r + dist; r++) {
+                    for (let c = m.c - dist; c <= m.c + dist; c++) {
+                        if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) continue;
+                        if (boardData[r][c] !== EMPTY) continue;
+                        const k = r * SIZE + c;
+                        if (keySet.has(k)) continue;
+                        keySet.add(k);
+                        out.push({r, c});
+                    }
+                }
+            }
+            return out;
+        }
+
+        function analyzeMove(r, c, player) {
+            const dirs = [[1,0], [0,1], [1,1], [1,-1]];
+            const result = [];
+            for (const [dr, dc] of dirs) {
+                let cnt1 = 0, cnt2 = 0;
+                let open1 = 0, open2 = 0;
+
+                let i = 1;
+                while (true) {
+                    const nr = r + dr * i, nc = c + dc * i;
+                    if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) break;
+                    if (boardData[nr][nc] === player) cnt1++;
+                    else { if (boardData[nr][nc] === EMPTY) open1 = 1; break; }
+                    i++;
+                }
+                i = 1;
+                while (true) {
+                    const nr = r - dr * i, nc = c - dc * i;
+                    if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) break;
+                    if (boardData[nr][nc] === player) cnt2++;
+                    else { if (boardData[nr][nc] === EMPTY) open2 = 1; break; }
+                    i++;
+                }
+
+                const total = 1 + cnt1 + cnt2;
+                const openEnds = open1 + open2;
+                result.push({total, openEnds});
+            }
+            return result;
+        }
+
+        function pointHeuristic(r, c, player) {
+            if (boardData[r][c] !== EMPTY) return -Infinity;
+            const info = analyzeMove(r, c, player);
+            let score = 0;
+            for (const d of info) {
+                if (d.total >= 5) score += 1000000000;
+                else if (d.total === 4) score += (d.openEnds === 2 ? 8000000 : (d.openEnds === 1 ? 600000 : 0));
+                else if (d.total === 3) score += (d.openEnds === 2 ? 180000 : (d.openEnds === 1 ? 18000 : 0));
+                else if (d.total === 2) score += (d.openEnds === 2 ? 2500 : (d.openEnds === 1 ? 250 : 0));
+            }
+            return score;
+        }
+
+        function centerBonus(r, c) {
+            const d = Math.abs(r - 7) + Math.abs(c - 7);
+            return Math.max(0, 10 - d);
+        }
+
+        function findOpenFourMove(player) {
+            const candidates = generateCandidateMoves(2);
+            for (const m of candidates) {
+                const info = analyzeMove(m.r, m.c, player);
+                if (info.some(d => d.total === 4 && d.openEnds === 2)) return {r: m.r, c: m.c};
+            }
+            return null;
+        }
+
+        function findDoubleOpenThreeMove(player) {
+            const candidates = generateCandidateMoves(2);
+            let best = null;
+            let bestScore = -Infinity;
+            for (const m of candidates) {
+                const info = analyzeMove(m.r, m.c, player);
+                const openThrees = info.filter(d => d.total === 3 && d.openEnds === 2).length;
+                const openFours = info.filter(d => d.total === 4 && d.openEnds === 2).length;
+                if (openFours > 0) return {r: m.r, c: m.c};
+                if (openThrees >= 2) {
+                    const s = pointHeuristic(m.r, m.c, player) + centerBonus(m.r, m.c);
+                    if (s > bestScore) { bestScore = s; best = {r: m.r, c: m.c}; }
+                }
+            }
+            return best;
+        }
+
+        function countOverlapping(str, pat) {
+            let count = 0;
+            let idx = 0;
+            while (true) {
+                idx = str.indexOf(pat, idx);
+                if (idx === -1) break;
+                count++;
+                idx = idx + 1;
+            }
+            return count;
+        }
+
+        function scoreLineForPlayer(chars) {
+            const patterns = [
+                ["PPPPP", 1000000000],
+                ["0PPPP0", 10000000],
+                ["OPPPP0", 1200000],
+                ["0PPPPO", 1200000],
+                ["PPPP0", 200000],
+                ["0PPPP", 200000],
+                ["0PPP0", 60000],
+                ["0PP0P0", 50000],
+                ["0P0PP0", 50000],
+                ["00PPP0", 12000],
+                ["0PPP00", 12000],
+                ["0PP0", 2200],
+                ["0P0P0", 600]
+            ];
+            let score = 0;
+            for (const [pat, w] of patterns) {
+                const n = countOverlapping(chars, pat);
+                if (n) score += n * w;
+            }
+            return score;
+        }
+
+        function evaluateBoard() {
+            let w = 0;
+            let b = 0;
+
+            for (const line of LINES) {
+                let sW = "";
+                let sB = "";
+                for (const [r, c] of line) {
+                    const v = boardData[r][c];
+                    sW += (v === EMPTY ? "0" : (v === WHITE ? "P" : "O"));
+                    sB += (v === EMPTY ? "0" : (v === BLACK ? "P" : "O"));
+                }
+                w += scoreLineForPlayer(sW);
+                b += scoreLineForPlayer(sB);
+            }
+
+            let center = 0;
+            for (const m of moveStack) {
+                const s = centerBonus(m.r, m.c);
+                center += (m.player === WHITE ? s : -s);
+            }
+
+            return (w - b * 1.05) + center * 25;
+        }
+
+        function ttKey(player, depth) {
+            return (BigInt(currentHash >>> 0) << 16n) | BigInt((player << 8) | depth);
+        }
+
+        function orderMoves(moves, player) {
+            const opp = 3 - player;
+            const scored = moves.map(m => ({
+                r: m.r,
+                c: m.c,
+                s: pointHeuristic(m.r, m.c, player) * 1.1 + pointHeuristic(m.r, m.c, opp) + centerBonus(m.r, m.c) * 0.8
+            }));
+            scored.sort((a, b) => b.s - a.s);
+            return scored.map(x => ({r: x.r, c: x.c}));
+        }
+
+        function minimax(depth, alpha, beta, player, table, deadline, ply) {
+            if (performance.now() > deadline) return evaluateBoard();
+            if (depth === 0) return evaluateBoard();
+
+            const key = ttKey(player, depth);
+            const cached = table.get(key);
+            if (cached && cached.depth >= depth) {
+                if (cached.flag === 0) return cached.value;
+                if (cached.flag === 1) alpha = Math.max(alpha, cached.value);
+                else if (cached.flag === 2) beta = Math.min(beta, cached.value);
+                if (alpha >= beta) return cached.value;
+            }
+
+            const nextPlayer = 3 - player;
+            let moves = generateCandidateMoves(2);
+            moves = orderMoves(moves, player);
+            const limit = depth >= 3 ? 10 : 14;
+            moves = moves.slice(0, Math.min(limit, moves.length));
+
+            if (moves.length === 0) return evaluateBoard();
+
+            const alphaOrig = alpha;
+            const betaOrig = beta;
+
+            let best = (player === WHITE) ? -Infinity : Infinity;
+            for (const m of moves) {
+                doMove(m.r, m.c, player);
+                let val;
+                if (checkWin(m.r, m.c, player)) {
+                    val = (player === WHITE) ? (1000000000 - ply) : (-1000000000 + ply);
+                } else {
+                    val = minimax(depth - 1, alpha, beta, nextPlayer, table, deadline, ply + 1);
+                }
+                undoMove();
+
+                if (player === WHITE) {
+                    if (val > best) best = val;
+                    if (best > alpha) alpha = best;
+                    if (alpha >= beta) break;
+                } else {
+                    if (val < best) best = val;
+                    if (best < beta) beta = best;
+                    if (beta <= alpha) break;
+                }
+            }
+
+            let flag = 0;
+            if (best <= alphaOrig) flag = 2;
+            else if (best >= betaOrig) flag = 1;
+            table.set(key, {depth, value: best, flag});
+
+            return best;
+        }
+
+        function searchBestMove(maxDepth, timeLimitMs) {
+            const deadline = performance.now() + timeLimitMs;
+            const table = new Map();
+
+            let rootMoves = generateCandidateMoves(2);
+            rootMoves = orderMoves(rootMoves, WHITE);
+            rootMoves = rootMoves.slice(0, Math.min(18, rootMoves.length));
+            if (rootMoves.length === 0) return {r: 7, c: 7};
+
+            let bestMove = rootMoves[0];
+            let bestScore = -Infinity;
+
+            for (let depth = 1; depth <= maxDepth; depth++) {
+                if (performance.now() > deadline) break;
+
+                let localBestMove = bestMove;
+                let localBestScore = -Infinity;
+                let alpha = -Infinity;
+                let beta = Infinity;
+
+                for (const m of rootMoves) {
+                    if (performance.now() > deadline) break;
+                    doMove(m.r, m.c, WHITE);
+                    let val;
+                    if (checkWin(m.r, m.c, WHITE)) {
+                        val = 1000000000;
+                    } else {
+                        val = minimax(depth - 1, alpha, beta, BLACK, table, deadline, 1);
+                    }
+                    undoMove();
+
+                    if (val > localBestScore) {
+                        localBestScore = val;
+                        localBestMove = m;
+                    }
+                    if (val > alpha) alpha = val;
+                }
+
+                if (performance.now() <= deadline) {
+                    bestMove = localBestMove;
+                    bestScore = localBestScore;
+                    rootMoves = [bestMove, ...rootMoves.filter(x => x.r !== bestMove.r || x.c !== bestMove.c)];
+                }
+            }
+
+            return bestMove || {r: 7, c: 7};
+        }
+
+        function initZobristAndLines() {
+            let seed = 0x9e3779b9;
+            function rand32() {
+                seed ^= seed << 13; seed >>>= 0;
+                seed ^= seed >>> 17; seed >>>= 0;
+                seed ^= seed << 5; seed >>>= 0;
+                return seed >>> 0;
+            }
+
+            zobrist = Array(SIZE).fill(null).map(() =>
+                Array(SIZE).fill(null).map(() => {
+                    const a = [0, 0, 0];
+                    a[BLACK] = rand32();
+                    a[WHITE] = rand32();
+                    return a;
+                })
+            );
+
+            LINES = [];
+            for (let r = 0; r < SIZE; r++) {
+                const line = [];
+                for (let c = 0; c < SIZE; c++) line.push([r, c]);
+                LINES.push(line);
+            }
+            for (let c = 0; c < SIZE; c++) {
+                const line = [];
+                for (let r = 0; r < SIZE; r++) line.push([r, c]);
+                LINES.push(line);
+            }
+            for (let c = 0; c < SIZE; c++) {
+                let r = 0, cc = c;
+                const line = [];
+                while (r < SIZE && cc < SIZE) { line.push([r, cc]); r++; cc++; }
+                if (line.length >= 5) LINES.push(line);
+            }
+            for (let r0 = 1; r0 < SIZE; r0++) {
+                let r = r0, c = 0;
+                const line = [];
+                while (r < SIZE && c < SIZE) { line.push([r, c]); r++; c++; }
+                if (line.length >= 5) LINES.push(line);
+            }
+            for (let c = 0; c < SIZE; c++) {
+                let r = SIZE - 1, cc = c;
+                const line = [];
+                while (r >= 0 && cc < SIZE) { line.push([r, cc]); r--; cc++; }
+                if (line.length >= 5) LINES.push(line);
+            }
+            for (let r0 = SIZE - 2; r0 >= 0; r0--) {
+                let r = r0, c = 0;
+                const line = [];
+                while (r >= 0 && c < SIZE) { line.push([r, c]); r--; c++; }
+                if (line.length >= 5) LINES.push(line);
+            }
+        }
+
+        // 启动
+        initZobristAndLines();
+        startGame();
+        updateDifficultyVisibility();
+    </script>
+</body>
+</html>

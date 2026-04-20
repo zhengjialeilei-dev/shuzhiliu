@@ -1,0 +1,174 @@
+[
+  {
+    "route": "/lab/bydp",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fbydp (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/cft",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fcft (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/czxd",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fczxd (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/dbx",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fdbx (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/fenshu",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Ffenshu (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/hgz",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fhgz (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/hzrj",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fhzrj (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/jcfx",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fjcfx (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/ldjl",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fldjl (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/ltxl",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fltxl (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/ltzx",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fltzx (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/lu",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Flu (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/mjyd",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fmjyd (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/moshu",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fmoshu (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/nyr",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fnyr (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/pjf",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fpjf (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/pxsbx",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fpxsbx (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/sdjqr",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fsdjqr (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/shuitong",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fshuitong (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/sjc",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fsjc (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/sjxsg",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fsjxsg (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/sys",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fsys (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/syx",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fsyx (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/szbm",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fszbm (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/szhrd",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fszhrd (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/tjsm",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Ftjsm (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/wzft",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fwzft (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/wzq",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fwzq (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/xiaogou",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fxiaogou (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/xlmj",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fxlmj (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/ygdf",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fygdf (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/yinshu",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fyinshu (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/ymj",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fymj (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/yqdph",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fyqdph (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/yuanrao",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fyuanrao (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/yuanzy",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fyuanzy (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/yybfzc1",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fyybfzc1 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/yysgx",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fyysgx (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/zcyd",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fzcyd (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/zfsjyd",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fzfsjyd (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/zhijing",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fzhijing (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/zhishu",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fzhishu (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  },
+  {
+    "route": "/lab/zxc",
+    "error": "HTTPSConnectionPool(host='sparkaiedu.com', port=443): Max retries exceeded with url: /api/resources/resolve?path=%2Flab%2Fzxc (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1032)')))"
+  }
+]

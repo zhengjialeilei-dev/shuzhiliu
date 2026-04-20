@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>比例的意义 - 魔法实验室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .highlight-outer { color: #EF4444; font-weight: bold; transform: scale(1.2); display: inline-block; transition: all 0.3s; }
+        .highlight-inner { color: #3B82F6; font-weight: bold; transform: scale(1.2); display: inline-block; transition: all 0.3s; }
+        .normal-term { color: #374151; font-weight: normal; transform: scale(1); display: inline-block; transition: all 0.3s; }
+        
+        /* 网格背景，帮助观察形变 */
+        .grid-bg {
+            background-image: linear-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(90deg, #cbd5e1 1px, transparent 1px);
+            background-size: 10% 10%;
+            background-position: center center;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-8 text-gray-800">
+
+    <div class="max-w-4xl mx-auto space-y-8">
+        <!-- 头部标题 -->
+        <header class="text-center space-y-4">
+            <h1 class="text-4xl font-extrabold text-indigo-600 tracking-tight">✨ 比例魔法实验室 ✨</h1>
+            <p class="text-lg text-gray-600">欢迎来到六年级数学魔法室！今天我们将通过三个实验来破解“比例的秘密”。</p>
+        </header>
+
+        <!-- 实验一：相片缩放仪 (视觉化“比值相等”) -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">📸</span>
+                <h2 class="text-2xl font-bold text-gray-800">实验一：神奇相片缩放仪（对比实验）</h2>
+            </div>
+            <p class="text-gray-600 mb-6">试着拖动两边的滑块。为什么左边的笑脸不变丑，右边的却变形了？<strong class="text-indigo-600">秘密就藏在下方的“比值”里！</strong></p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- 左侧：等比例放大 -->
+                <div class="bg-green-50 p-5 rounded-xl border-2 border-green-200 flex flex-col items-center">
+                    <h3 class="font-bold text-green-700 mb-2 text-lg">✅ 等比例放大</h3>
+                    <p class="text-xs text-green-600 mb-4">长和宽同时放大，保持步调一致</p>
+                    <input type="range" id="sliderGood" min="1" max="2" step="0.1" value="1" class="w-full mb-6 accent-green-600 cursor-pointer">
+                    
+                    <!-- 动态盒子 -->
+                    <div class="flex items-center justify-center h-[200px]">
+                        <div class="relative bg-white border-2 border-green-400 overflow-hidden grid-bg shadow-md transition-all duration-75" id="boxGood" style="width: 150px; height: 100px;">
+                            <!-- 超可爱的小黄鸡 SVG -->
+                            <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="w-full h-full" style="position:absolute; inset:0;">
+                                <!-- 鸡头/身体 -->
+                                <circle cx="50" cy="55" r="35" fill="#fde047" stroke="#fbbf24" stroke-width="2"/>
+                                <!-- 头顶的小呆毛 -->
+                                <path d="M 45 20 Q 50 10 55 20" stroke="#fbbf24" stroke-width="3" fill="transparent" stroke-linecap="round"/>
+                                <path d="M 50 20 Q 55 5 60 20" stroke="#fbbf24" stroke-width="3" fill="transparent" stroke-linecap="round"/>
+                                <!-- 大大的眼睛 (左) -->
+                                <circle cx="35" cy="48" r="8" fill="#1f2937"/>
+                                <circle cx="37" cy="46" r="3" fill="#ffffff"/> <!-- 高光 -->
+                                <!-- 大大的眼睛 (右) -->
+                                <circle cx="65" cy="48" r="8" fill="#1f2937"/>
+                                <circle cx="67" cy="46" r="3" fill="#ffffff"/> <!-- 高光 -->
+                                <!-- 可爱的红晕 -->
+                                <ellipse cx="22" cy="55" rx="5" ry="3" fill="#fca5a5" opacity="0.8"/>
+                                <ellipse cx="78" cy="55" rx="5" ry="3" fill="#fca5a5" opacity="0.8"/>
+                                <!-- 嘟嘟的小嘴巴 -->
+                                <path d="M 45 55 L 55 55 L 50 62 Z" fill="#f97316" stroke="#ea580c" stroke-width="1" stroke-linejoin="round"/>
+                                <!-- 小手/翅膀 -->
+                                <path d="M 15 65 Q 5 55 15 50" stroke="#fbbf24" stroke-width="4" fill="transparent" stroke-linecap="round"/>
+                                <path d="M 85 65 Q 95 55 85 50" stroke="#fbbf24" stroke-width="4" fill="transparent" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <!-- 数据监控面板 -->
+                    <div class="mt-4 text-center w-full bg-white p-3 rounded-lg shadow-sm border border-green-100">
+                        <p class="text-sm text-gray-500 mb-1">当前尺寸: 长 <span id="wGood" class="font-bold text-gray-700">300</span> × 宽 <span id="hGood" class="font-bold text-gray-700">200</span></p>
+                        <div class="bg-green-100 p-2 rounded">
+                            <p class="font-mono font-bold">长:宽 = <span id="wGoodText">300</span> : <span id="hGoodText">200</span> = <span class="text-green-600 text-2xl ml-1" id="ratioGood">1.5</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：瞎拉伸 -->
+                <div class="bg-red-50 p-5 rounded-xl border-2 border-red-200 flex flex-col items-center">
+                    <h3 class="font-bold text-red-700 mb-2 text-lg">❌ 随意拉伸</h3>
+                    <p class="text-xs text-red-600 mb-4">只把长度拉长，宽度保持不变</p>
+                    <input type="range" id="sliderBad" min="1" max="2" step="0.1" value="1" class="w-full mb-6 accent-red-600 cursor-pointer">
+                    
+                    <!-- 动态盒子 -->
+                    <div class="flex items-center justify-center h-[200px]">
+                        <div class="relative bg-white border-2 border-red-400 overflow-hidden grid-bg shadow-md transition-all duration-75" id="boxBad" style="width: 150px; height: 100px;">
+                            <!-- 超可爱的小黄鸡 SVG -->
+                            <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="w-full h-full" style="position:absolute; inset:0;">
+                                <!-- 鸡头/身体 -->
+                                <circle cx="50" cy="55" r="35" fill="#fde047" stroke="#fbbf24" stroke-width="2"/>
+                                <!-- 头顶的小呆毛 -->
+                                <path d="M 45 20 Q 50 10 55 20" stroke="#fbbf24" stroke-width="3" fill="transparent" stroke-linecap="round"/>
+                                <path d="M 50 20 Q 55 5 60 20" stroke="#fbbf24" stroke-width="3" fill="transparent" stroke-linecap="round"/>
+                                <!-- 大大的眼睛 (左) -->
+                                <circle cx="35" cy="48" r="8" fill="#1f2937"/>
+                                <circle cx="37" cy="46" r="3" fill="#ffffff"/> <!-- 高光 -->
+                                <!-- 大大的眼睛 (右) -->
+                                <circle cx="65" cy="48" r="8" fill="#1f2937"/>
+                                <circle cx="67" cy="46" r="3" fill="#ffffff"/> <!-- 高光 -->
+                                <!-- 可爱的红晕 -->
+                                <ellipse cx="22" cy="55" rx="5" ry="3" fill="#fca5a5" opacity="0.8"/>
+                                <ellipse cx="78" cy="55" rx="5" ry="3" fill="#fca5a5" opacity="0.8"/>
+                                <!-- 嘟嘟的小嘴巴 -->
+                                <path d="M 45 55 L 55 55 L 50 62 Z" fill="#f97316" stroke="#ea580c" stroke-width="1" stroke-linejoin="round"/>
+                                <!-- 小手/翅膀 -->
+                                <path d="M 15 65 Q 5 55 15 50" stroke="#fbbf24" stroke-width="4" fill="transparent" stroke-linecap="round"/>
+                                <path d="M 85 65 Q 95 55 85 50" stroke="#fbbf24" stroke-width="4" fill="transparent" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <!-- 数据监控面板 -->
+                    <div class="mt-4 text-center w-full bg-white p-3 rounded-lg shadow-sm border border-red-100">
+                        <p class="text-sm text-gray-500 mb-1">当前尺寸: 长 <span id="wBad" class="font-bold text-gray-700">300</span> × 宽 <span id="hBad" class="font-bold text-gray-700">200</span></p>
+                        <div class="bg-red-100 p-2 rounded transition-colors" id="ratioBadBox">
+                            <p class="font-mono font-bold">长:宽 = <span id="wBadText">300</span> : <span id="hBadText">200</span> = <span class="text-red-600 text-2xl ml-1" id="ratioBad">1.5</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 结论框 -->
+            <div class="mt-8 p-5 bg-yellow-50 rounded-xl border-2 border-yellow-300 text-center shadow-sm">
+                <p class="text-xl text-gray-800">结论：只有当 <strong>放大后的比值 = 原来的比值</strong> 时，照片才不会变形！</p>
+                <p class="mt-3 text-gray-700 font-bold text-lg">
+                    像这样比值相等的两个比，可以用等号连起来：
+                    <span class="font-mono text-indigo-700 bg-indigo-100 px-3 py-1 rounded-lg mx-1 text-2xl">300 : 200 = 450 : 300</span>
+                </p>
+                <p class="mt-3 text-xl font-bold text-red-500">✨ 表示两个比相等的式子，就叫做【比例】！✨</p>
+            </div>
+        </section>
+
+        <!-- 实验二：比例X光机 (认识内项与外项) -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">🔍</span>
+                <h2 class="text-2xl font-bold text-gray-800">实验二：比例X光机</h2>
+            </div>
+            <p class="text-gray-600 mb-6">点击下方按钮，使用X光机透视比例的“外项”和“内项”。</p>
+
+            <div class="flex flex-col items-center justify-center space-y-8">
+                <div class="text-5xl font-mono tracking-widest bg-gray-50 p-8 rounded-xl border-2 border-gray-200">
+                    <span id="term1" class="normal-term">2</span> : 
+                    <span id="term2" class="normal-term">3</span> = 
+                    <span id="term3" class="normal-term">4</span> : 
+                    <span id="term4" class="normal-term">6</span>
+                </div>
+
+                <div class="flex gap-4">
+                    <button onclick="highlightOuter()" class="px-6 py-3 bg-red-100 hover:bg-red-200 text-red-700 font-bold rounded-lg transition-colors border border-red-300">
+                        🔴 透视外项 (两端的项)
+                    </button>
+                    <button onclick="highlightInner()" class="px-6 py-3 bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold rounded-lg transition-colors border border-blue-300">
+                        🔵 透视内项 (中间的项)
+                    </button>
+                    <button onclick="resetTerms()" class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg transition-colors border border-gray-300">
+                        恢复原状
+                    </button>
+                </div>
+                
+                <p id="termMessage" class="text-lg font-semibold h-6 text-gray-600"></p>
+            </div>
+        </section>
+
+        <!-- 实验三：比例鉴定局 (实战演练) -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">⚖️</span>
+                <h2 class="text-2xl font-bold text-gray-800">实验三：比例鉴定局</h2>
+            </div>
+            <p class="text-gray-600 mb-6">输入四个数字，局长帮你鉴定它们能否组成比例！(方法：看两个比的比值是否相等)</p>
+
+            <div class="flex flex-col md:flex-row items-center justify-center gap-4 mb-8 text-2xl font-mono">
+                <input type="number" id="num1" value="5" class="w-24 text-center border-b-2 border-gray-300 focus:border-indigo-500 outline-none bg-transparent">
+                <span>:</span>
+                <input type="number" id="num2" value="2" class="w-24 text-center border-b-2 border-gray-300 focus:border-indigo-500 outline-none bg-transparent">
+                <span class="mx-4 text-gray-400">?=?</span>
+                <input type="number" id="num3" value="15" class="w-24 text-center border-b-2 border-gray-300 focus:border-indigo-500 outline-none bg-transparent">
+                <span>:</span>
+                <input type="number" id="num4" value="6" class="w-24 text-center border-b-2 border-gray-300 focus:border-indigo-500 outline-none bg-transparent">
+            </div>
+
+            <div class="text-center">
+                <button onclick="checkProportion()" class="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full shadow-lg transform hover:scale-105 transition-all text-lg">
+                    开始鉴定
+                </button>
+            </div>
+
+            <div id="resultBox" class="mt-8 p-6 rounded-xl hidden text-center text-lg space-y-2">
+                <!-- 结果将在这里显示 -->
+            </div>
+        </section>
+    </div>
+
+    <!-- 交互逻辑 -->
+    <script>
+        // --- 实验一：对比缩放仪逻辑 ---
+        const baseW = 300, baseH = 200;
+        const cssBaseW = 150, cssBaseH = 100; // CSS显示基准大小
+
+        // 左侧：等比例逻辑
+        const sliderGood = document.getElementById('sliderGood');
+        const boxGood = document.getElementById('boxGood');
+        
+        sliderGood.addEventListener('input', function() {
+            const scale = parseFloat(this.value);
+            const W = Math.round(baseW * scale);
+            const H = Math.round(baseH * scale);
+            
+            // 更新数据展示
+            document.getElementById('wGood').textContent = W;
+            document.getElementById('hGood').textContent = H;
+            document.getElementById('wGoodText').textContent = W;
+            document.getElementById('hGoodText').textContent = H;
+            
+            // 改变视觉大小
+            boxGood.style.width = (cssBaseW * scale) + 'px';
+            boxGood.style.height = (cssBaseH * scale) + 'px';
+        });
+
+        // 右侧：瞎拉伸逻辑
+        const sliderBad = document.getElementById('sliderBad');
+        const boxBad = document.getElementById('boxBad');
+        const ratioBadBox = document.getElementById('ratioBadBox');
+        
+        sliderBad.addEventListener('input', function() {
+            const scale = parseFloat(this.value);
+            const W = Math.round(baseW * scale);
+            const H = baseH; // 高度死活不变，破坏比例
+            
+            // 更新数据展示
+            document.getElementById('wBad').textContent = W;
+            document.getElementById('wBadText').textContent = W;
+            
+            // 计算新的错误比值
+            const ratio = (W / H).toFixed(2);
+            document.getElementById('ratioBad').textContent = ratio;
+            
+            // 改变视觉大小 (只拉长)
+            boxBad.style.width = (cssBaseW * scale) + 'px';
+            
+            // 视觉警示：一旦比值不是1.5，背景变红加深
+            if(scale > 1) {
+                ratioBadBox.classList.add('bg-red-200', 'animate-pulse');
+            } else {
+                ratioBadBox.classList.remove('bg-red-200', 'animate-pulse');
+            }
+        });
+
+        // --- 实验二：X光机逻辑 ---
+        const t1 = document.getElementById('term1');
+        const t2 = document.getElementById('term2');
+        const t3 = document.getElementById('term3');
+        const t4 = document.getElementById('term4');
+        const msg = document.getElementById('termMessage');
+
+        function highlightOuter() {
+            resetTermsClasses();
+            t1.className = 'highlight-outer';
+            t4.className = 'highlight-outer';
+            msg.innerHTML = "👉 <span class='text-red-600'>2</span> 和 <span class='text-red-600'>6</span> 在比例的两端，它们叫做【外项】。";
+            msg.className = "text-lg font-bold text-gray-800 h-6";
+        }
+
+        function highlightInner() {
+            resetTermsClasses();
+            t2.className = 'highlight-inner';
+            t3.className = 'highlight-inner';
+            msg.innerHTML = "👉 <span class='text-blue-600'>3</span> 和 <span class='text-blue-600'>4</span> 在比例的中间，它们叫做【内项】。";
+            msg.className = "text-lg font-bold text-gray-800 h-6";
+        }
+
+        function resetTerms() {
+            resetTermsClasses();
+            msg.textContent = "";
+        }
+
+        function resetTermsClasses() {
+            t1.className = 'normal-term';
+            t2.className = 'normal-term';
+            t3.className = 'normal-term';
+            t4.className = 'normal-term';
+        }
+
+        // --- 实验三：比例鉴定局逻辑 ---
+        function checkProportion() {
+            const n1 = parseFloat(document.getElementById('num1').value);
+            const n2 = parseFloat(document.getElementById('num2').value);
+            const n3 = parseFloat(document.getElementById('num3').value);
+            const n4 = parseFloat(document.getElementById('num4').value);
+            const resultBox = document.getElementById('resultBox');
+
+            if (isNaN(n1) || isNaN(n2) || isNaN(n3) || isNaN(n4)) {
+                alert("请输入完整的四个数字！");
+                return;
+            }
+            if (n2 === 0 || n4 === 0) {
+                alert("比的后项（分母）不能为0哦！");
+                return;
+            }
+
+            const ratio1 = n1 / n2;
+            const ratio2 = n3 / n4;
+
+            resultBox.classList.remove('hidden');
+            resultBox.innerHTML = '';
+
+            const isProportion = Math.abs(ratio1 - ratio2) < 0.000001;
+
+            if (isProportion) {
+                resultBox.className = "mt-8 p-6 rounded-xl bg-green-50 border-2 border-green-400 text-center text-lg space-y-3 shadow-inner";
+                resultBox.innerHTML = `
+                    <div class="text-5xl mb-2">🎉</div>
+                    <h3 class="text-2xl font-bold text-green-700">鉴定成功：它们能组成比例！</h3>
+                    <p class="text-gray-700">因为：${n1} : ${n2} 的比值是 <strong class="text-xl text-green-600">${ratio1}</strong></p>
+                    <p class="text-gray-700">而且：${n3} : ${n4} 的比值也是 <strong class="text-xl text-green-600">${ratio2}</strong></p>
+                    <p class="text-gray-800 font-bold mt-2 text-2xl">所以：${n1} : ${n2} = ${n3} : ${n4}</p>
+                `;
+            } else {
+                resultBox.className = "mt-8 p-6 rounded-xl bg-red-50 border-2 border-red-400 text-center text-lg space-y-3 shadow-inner";
+                resultBox.innerHTML = `
+                    <div class="text-5xl mb-2">🤔</div>
+                    <h3 class="text-2xl font-bold text-red-700">鉴定失败：它们不能组成比例。</h3>
+                    <p class="text-gray-700">左边 ${n1} : ${n2} 的比值是 <strong class="text-xl text-red-500">${ratio1.toFixed(2).replace(/\.00$/,'')}</strong></p>
+                    <p class="text-gray-700">右边 ${n3} : ${n4} 的比值是 <strong class="text-xl text-red-500">${ratio2.toFixed(2).replace(/\.00$/,'')}</strong></p>
+                    <p class="text-gray-800 font-bold mt-2 text-xl">比值不相等，绝对不能画等号！</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正比例与反比例 - 探索实验室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-bg: #eef2ff;
+            --accent: #f59e0b;
+            --accent-bg: #fffbeb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-gray: #64748b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans SC', -apple-system, sans-serif;
+            background: var(--bg); color: var(--text); min-height: 100vh;
+        }
+        .app-header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white; padding: 20px 24px; text-align: center;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+        }
+        .app-header h1 { font-size: 1.6rem; font-weight: 700; }
+        .app-header p { font-size: 0.9rem; opacity: 0.85; margin-top: 4px; }
+        .main { max-width: 920px; margin: 0 auto; padding: 20px 16px 40px; }
+        .card {
+            background: var(--card); border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 24px;
+            margin-bottom: 20px; border: 1px solid #f1f5f9;
+        }
+        .card-title {
+            font-size: 1.15rem; font-weight: 700; color: var(--primary);
+            margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+        }
+
+        /* Tab 切换 */
+        .tab-bar {
+            display: flex; gap: 0; background: #f1f5f9; border-radius: 12px;
+            padding: 4px; margin-bottom: 20px;
+        }
+        .tab-btn {
+            flex: 1; padding: 10px; text-align: center; border: none;
+            background: transparent; font-size: 1rem; font-weight: 600;
+            border-radius: 10px; cursor: pointer; transition: all 0.3s;
+            font-family: inherit; color: var(--text-gray);
+        }
+        .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 数据表 */
+        .data-table {
+            width: 100%; border-collapse: collapse; margin: 12px 0;
+            border-radius: 12px; overflow: hidden;
+        }
+        .data-table th {
+            background: var(--primary); color: white; padding: 10px 16px;
+            font-size: 0.9rem; font-weight: 600;
+        }
+        .data-table td {
+            padding: 10px 16px; text-align: center; border-bottom: 1px solid #f1f5f9;
+            font-weight: 600; font-size: 1rem;
+        }
+        .data-table tr:hover td { background: var(--primary-bg); }
+        .data-table .ratio-cell {
+            color: var(--primary); font-weight: 700;
+        }
+        .data-table .product-cell {
+            color: var(--accent); font-weight: 700;
+        }
+
+        /* Canvas 图表 */
+        .chart-container {
+            background: white; border-radius: 12px; border: 2px solid #e2e8f0;
+            padding: 16px; margin: 12px 0;
+        }
+        canvas { width: 100%; display: block; }
+
+        /* 滑块控制 */
+        .control-row {
+            display: flex; align-items: center; gap: 12px; margin: 12px 0;
+        }
+        .control-label { font-weight: 600; min-width: 60px; }
+        input[type=range] {
+            flex: 1; -webkit-appearance: none; height: 8px;
+            background: #e2e8f0; border-radius: 4px; outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 22px; height: 22px;
+            border-radius: 50%; background: var(--primary); cursor: pointer;
+            box-shadow: 0 2px 6px rgba(99,102,241,0.4);
+        }
+        .control-value {
+            min-width: 50px; text-align: center; font-weight: 700;
+            color: var(--primary); font-size: 1.1rem;
+        }
+
+        /* 结论 */
+        .conclusion-box {
+            padding: 16px 20px; border-radius: 12px;
+            font-weight: 600; line-height: 1.8; margin-top: 12px;
+        }
+        .conclusion-box.direct {
+            background: var(--primary-bg); border-left: 4px solid var(--primary);
+        }
+        .conclusion-box.inverse {
+            background: var(--accent-bg); border-left: 4px solid var(--accent);
+        }
+        .conclusion-box strong { font-size: 1.05rem; }
+
+        /* 判断练习 */
+        .judge-card {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px; background: #f8fafc; border-radius: 12px;
+            margin: 10px 0; border: 2px solid #e2e8f0; transition: all 0.3s;
+        }
+        .judge-card.correct { border-color: var(--success); background: #f0fdf4; }
+        .judge-card.wrong { border-color: var(--danger); background: #fef2f2; }
+        .judge-text { font-weight: 600; font-size: 1rem; flex: 1; }
+        .judge-btns { display: flex; gap: 8px; }
+        .judge-btn {
+            padding: 8px 16px; border: 2px solid; border-radius: 8px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+            font-family: inherit; font-size: 0.9rem;
+        }
+        .judge-btn.direct { border-color: var(--primary); color: var(--primary); background: transparent; }
+        .judge-btn.direct:hover { background: var(--primary-bg); }
+        .judge-btn.inverse { border-color: var(--accent); color: var(--accent); background: transparent; }
+        .judge-btn.inverse:hover { background: var(--accent-bg); }
+        .judge-btn.neither { border-color: var(--text-gray); color: var(--text-gray); background: transparent; }
+
+        .btn {
+            padding: 10px 24px; border: none; border-radius: 10px;
+            font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; font-family: inherit;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+
+        @media (max-width: 640px) {
+            .judge-card { flex-direction: column; gap: 12px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1><i class="fas fa-chart-line"></i> 正比例与反比例</h1>
+        <p>探索两种量之间的变化关系</p>
+    </div>
+
+    <div class="main">
+        <!-- Tab -->
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchTab('direct')">📈 正比例</button>
+            <button class="tab-btn" onclick="switchTab('inverse')">📉 反比例</button>
+            <button class="tab-btn" onclick="switchTab('judge')">🎯 判断练习</button>
+        </div>
+
+        <!-- 正比例 -->
+        <div class="tab-content active" id="tab-direct">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-shopping-cart"></i> 买苹果：单价 5 元/千克</div>
+                <div class="control-row">
+                    <span class="control-label">数量</span>
+                    <input type="range" id="direct-slider" min="1" max="10" value="1">
+                    <span class="control-value" id="direct-qty">1 千克</span>
+                </div>
+
+                <table class="data-table">
+                    <thead><tr><th>数量 (千克)</th><th>总价 (元)</th><th>总价 ÷ 数量</th></tr></thead>
+                    <tbody id="direct-table"></tbody>
+                </table>
+
+                <div class="chart-container">
+                    <canvas id="direct-chart" height="260"></canvas>
+                </div>
+
+                <div class="conclusion-box direct">
+                    <strong>📌 正比例关系：</strong><br>
+                    两种相关联的量，一种量变化，另一种量也随着变化。<br>
+                    如果这两种量中相对应的两个数的 <strong>比值（商）一定</strong>，<br>
+                    这两种量就叫做<strong>成正比例的量</strong>，它们的关系叫<strong>正比例关系</strong>。<br>
+                    <span style="color:var(--primary)">用字母表示：y / x = k（一定）</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 反比例 -->
+        <div class="tab-content" id="tab-inverse">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-cake-candles"></i> 分蛋糕：总共 12 块</div>
+                <div class="control-row">
+                    <span class="control-label">人数</span>
+                    <input type="range" id="inverse-slider" min="1" max="12" value="1">
+                    <span class="control-value" id="inverse-qty">1 人</span>
+                </div>
+
+                <table class="data-table">
+                    <thead><tr><th>人数</th><th>每人分得 (块)</th><th>人数 × 每人</th></tr></thead>
+                    <tbody id="inverse-table"></tbody>
+                </table>
+
+                <div class="chart-container">
+                    <canvas id="inverse-chart" height="260"></canvas>
+                </div>
+
+                <div class="conclusion-box inverse">
+                    <strong>📌 反比例关系：</strong><br>
+                    两种相关联的量，一种量变化，另一种量也随着变化。<br>
+                    如果这两种量中相对应的两个数的 <strong>积一定</strong>，<br>
+                    这两种量就叫做<strong>成反比例的量</strong>，它们的关系叫<strong>反比例关系</strong>。<br>
+                    <span style="color:var(--accent)">用字母表示：x × y = k（一定）</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 判断练习 -->
+        <div class="tab-content" id="tab-judge">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-gamepad"></i> 判断正反比例</div>
+                <p style="color:var(--text-gray);margin-bottom:16px;">判断下列各题中两种量成什么比例关系：</p>
+                <div id="judge-container"></div>
+                <div style="text-align:center;margin-top:16px;">
+                    <button class="btn btn-primary" onclick="newJudges()"><i class="fas fa-redo"></i> 换一批</button>
+                </div>
+                <div style="text-align:center;margin-top:12px;font-weight:600;" id="judge-score"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === Tab 切换 ===
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach((b, i) => {
+                b.classList.toggle('active', ['direct', 'inverse', 'judge'][i] === tab);
+            });
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            if (tab === 'direct') drawDirectChart();
+            if (tab === 'inverse') drawInverseChart();
+        }
+
+        // === 正比例 ===
+        const UNIT_PRICE = 5;
+        const directSlider = document.getElementById('direct-slider');
+
+        function updateDirect() {
+            const n = +directSlider.value;
+            document.getElementById('direct-qty').textContent = n + ' 千克';
+            const tbody = document.getElementById('direct-table');
+            tbody.innerHTML = '';
+            for (let i = 1; i <= 10; i++) {
+                const price = i * UNIT_PRICE;
+                const highlight = i <= n ? ' style="color:var(--primary)"' : '';
+                tbody.innerHTML += '<tr><td' + highlight + '>' + i + '</td><td' + highlight + '>' + price + '</td><td class="ratio-cell">' + (price / i) + '</td></tr>';
+            }
+            drawDirectChart();
+        }
+
+        function drawDirectChart() {
+            const canvas = document.getElementById('direct-chart');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width = canvas.offsetWidth * 2;
+            const h = canvas.height = 260 * 2;
+            ctx.scale(2, 2);
+            const cw = canvas.offsetWidth, ch = 260;
+            ctx.clearRect(0, 0, cw, ch);
+
+            const pad = { l: 50, r: 20, t: 20, b: 40 };
+            const gw = cw - pad.l - pad.r;
+            const gh = ch - pad.t - pad.b;
+            const maxX = 10, maxY = 50;
+
+            // 网格
+            ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 0.5;
+            for (let i = 0; i <= 5; i++) {
+                const y = pad.t + gh - (i / 5) * gh;
+                ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + gw, y); ctx.stroke();
+                ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+                ctx.fillText(Math.round(maxY * i / 5), pad.l - 8, y + 4);
+            }
+            for (let i = 1; i <= maxX; i++) {
+                const x = pad.l + (i / maxX) * gw;
+                ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + gh); ctx.stroke();
+                ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText(i, x, pad.t + gh + 16);
+            }
+
+            // 坐标轴
+            ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, pad.t + gh); ctx.lineTo(pad.l + gw, pad.t + gh); ctx.stroke();
+
+            // 折线
+            ctx.strokeStyle = '#6366f1'; ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            for (let i = 1; i <= maxX; i++) {
+                const x = pad.l + (i / maxX) * gw;
+                const y = pad.t + gh - (i * UNIT_PRICE / maxY) * gh;
+                if (i === 1) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // 点
+            for (let i = 1; i <= maxX; i++) {
+                const x = pad.l + (i / maxX) * gw;
+                const y = pad.t + gh - (i * UNIT_PRICE / maxY) * gh;
+                ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = i <= +directSlider.value ? '#6366f1' : '#c7d2fe';
+                ctx.fill();
+                ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+            }
+
+            // 标签
+            ctx.fillStyle = '#64748b'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('数量 (千克)', pad.l + gw / 2, ch - 4);
+            ctx.save(); ctx.translate(14, pad.t + gh / 2); ctx.rotate(-Math.PI / 2);
+            ctx.fillText('总价 (元)', 0, 0); ctx.restore();
+        }
+
+        directSlider.addEventListener('input', updateDirect);
+        updateDirect();
+
+        // === 反比例 ===
+        const TOTAL_CAKE = 12;
+        const inverseSlider = document.getElementById('inverse-slider');
+
+        function updateInverse() {
+            const n = +inverseSlider.value;
+            document.getElementById('inverse-qty').textContent = n + ' 人';
+            const tbody = document.getElementById('inverse-table');
+            tbody.innerHTML = '';
+            for (let i = 1; i <= 12; i++) {
+                if (TOTAL_CAKE % i !== 0) continue;
+                const each = TOTAL_CAKE / i;
+                const highlight = i <= n ? ' style="color:var(--accent)"' : '';
+                tbody.innerHTML += '<tr><td' + highlight + '>' + i + '</td><td' + highlight + '>' + each + '</td><td class="product-cell">' + (i * each) + '</td></tr>';
+            }
+            drawInverseChart();
+        }
+
+        function drawInverseChart() {
+            const canvas = document.getElementById('inverse-chart');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width = canvas.offsetWidth * 2;
+            const h = canvas.height = 260 * 2;
+            ctx.scale(2, 2);
+            const cw = canvas.offsetWidth, ch = 260;
+            ctx.clearRect(0, 0, cw, ch);
+
+            const pad = { l: 50, r: 20, t: 20, b: 40 };
+            const gw = cw - pad.l - pad.r;
+            const gh = ch - pad.t - pad.b;
+            const maxX = 12, maxY = 12;
+
+            ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 0.5;
+            for (let i = 0; i <= 4; i++) {
+                const y = pad.t + gh - (i / 4) * gh;
+                ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + gw, y); ctx.stroke();
+                ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+                ctx.fillText(Math.round(maxY * i / 4), pad.l - 8, y + 4);
+            }
+            const divisors = [1, 2, 3, 4, 6, 12];
+            divisors.forEach(i => {
+                const x = pad.l + (i / maxX) * gw;
+                ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + gh); ctx.stroke();
+                ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText(i, x, pad.t + gh + 16);
+            });
+
+            ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, pad.t + gh); ctx.lineTo(pad.l + gw, pad.t + gh); ctx.stroke();
+
+            // 曲线
+            ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            let first = true;
+            for (let x = 0.5; x <= 12; x += 0.2) {
+                const y = TOTAL_CAKE / x;
+                const px = pad.l + (x / maxX) * gw;
+                const py = pad.t + gh - (y / maxY) * gh;
+                if (first) { ctx.moveTo(px, py); first = false; } else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+
+            divisors.forEach(i => {
+                const each = TOTAL_CAKE / i;
+                const x = pad.l + (i / maxX) * gw;
+                const y = pad.t + gh - (each / maxY) * gh;
+                ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = i <= +inverseSlider.value ? '#f59e0b' : '#fde68a';
+                ctx.fill();
+                ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+            });
+
+            ctx.fillStyle = '#64748b'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('人数', pad.l + gw / 2, ch - 4);
+            ctx.save(); ctx.translate(14, pad.t + gh / 2); ctx.rotate(-Math.PI / 2);
+            ctx.fillText('每人分得 (块)', 0, 0); ctx.restore();
+        }
+
+        inverseSlider.addEventListener('input', updateInverse);
+        updateInverse();
+
+        // === 判断练习 ===
+        const scenarios = [
+            { text: '速度一定，路程和时间', answer: 'direct', explain: '路程÷时间=速度（一定），商一定，成正比例' },
+            { text: '路程一定，速度和时间', answer: 'inverse', explain: '速度×时间=路程（一定），积一定，成反比例' },
+            { text: '单价一定，总价和数量', answer: 'direct', explain: '总价÷数量=单价（一定），商一定，成正比例' },
+            { text: '总价一定，单价和数量', answer: 'inverse', explain: '单价×数量=总价（一定），积一定，成反比例' },
+            { text: '正方形的周长和边长', answer: 'direct', explain: '周长÷边长=4（一定），商一定，成正比例' },
+            { text: '面积一定，长方形的长和宽', answer: 'inverse', explain: '长×宽=面积（一定），积一定，成反比例' },
+            { text: '圆的周长和直径', answer: 'direct', explain: '周长÷直径=π（一定），商一定，成正比例' },
+            { text: '工作总量一定，工作效率和工作时间', answer: 'inverse', explain: '效率×时间=总量（一定），积一定，成反比例' },
+            { text: '正方形的面积和边长', answer: 'neither', explain: '面积÷边长=边长（变化），商和积都不一定，不成比例' },
+            { text: '人的身高和年龄', answer: 'neither', explain: '身高和年龄的比值和乘积都不一定，不成比例' },
+            { text: '比例尺一定，图上距离和实际距离', answer: 'direct', explain: '图上距离÷实际距离=比例尺（一定），成正比例' },
+            { text: '总量一定，已用的和剩下的', answer: 'neither', explain: '已用+剩下=总量（和一定），不是比值或乘积一定，不成比例' },
+        ];
+
+        let currentJudges = [];
+
+        function shuffle(arr) { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+        function newJudges() {
+            currentJudges = shuffle(scenarios).slice(0, 5);
+            renderJudges();
+        }
+
+        function renderJudges() {
+            const container = document.getElementById('judge-container');
+            container.innerHTML = '';
+            document.getElementById('judge-score').textContent = '';
+            currentJudges.forEach((s, i) => {
+                container.innerHTML += '<div class="judge-card" id="jc-' + i + '">' +
+                    '<span class="judge-text">' + (i + 1) + '. ' + s.text + '</span>' +
+                    '<div class="judge-btns">' +
+                    '<button class="judge-btn direct" onclick="judgeAnswer(' + i + ',\'direct\')">正比例</button>' +
+                    '<button class="judge-btn inverse" onclick="judgeAnswer(' + i + ',\'inverse\')">反比例</button>' +
+                    '<button class="judge-btn neither" onclick="judgeAnswer(' + i + ',\'neither\')">不成比例</button>' +
+                    '</div></div>';
+            });
+        }
+
+        function judgeAnswer(idx, answer) {
+            const card = document.getElementById('jc-' + idx);
+            const s = currentJudges[idx];
+            card.classList.remove('correct', 'wrong');
+            if (answer === s.answer) {
+                card.classList.add('correct');
+                card.innerHTML = '<span class="judge-text" style="color:var(--success)">✅ ' + s.text + '</span><span style="font-size:0.85rem;color:var(--text-gray)">' + s.explain + '</span>';
+            } else {
+                card.classList.add('wrong');
+                card.innerHTML = '<span class="judge-text" style="color:var(--danger)">❌ ' + s.text + '</span><span style="font-size:0.85rem;color:var(--text-gray)">' + s.explain + '</span>';
+            }
+            // check all answered
+            const allDone = document.querySelectorAll('.judge-card').length === document.querySelectorAll('.judge-card.correct, .judge-card.wrong').length;
+            if (allDone) {
+                const c = document.querySelectorAll('.judge-card.correct').length;
+                document.getElementById('judge-score').innerHTML = '得分：<span style="color:var(--success);font-size:1.3rem;">' + (c * 20) + '</span> / 100';
+            }
+        }
+
+        newJudges();
+    </script>
+</body>
+</html>

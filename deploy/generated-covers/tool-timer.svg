@@ -1,0 +1,27 @@
+﻿<svg width="1200" height="675" viewBox="0 0 1200 675" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="88" y1="88" x2="1112" y2="587" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ECFEFF"/>
+      <stop offset="1" stop-color="#CFFAFE"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#06B6D4"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" rx="40" fill="url(#bg)"/>
+  <rect x="56" y="56" width="1088" height="563" rx="36" fill="#F8FEFF" stroke="#67E8F9" stroke-width="4"/>
+  <text x="96" y="132" fill="#155E75" font-size="28" font-family="Microsoft YaHei, PingFang SC, sans-serif">实用工具</text>
+  <text x="96" y="220" fill="#0F172A" font-size="64" font-weight="700" font-family="Microsoft YaHei, PingFang SC, sans-serif">沉浸式倒计时</text>
+  <text x="96" y="276" fill="#0F766E" font-size="28" font-family="Microsoft YaHei, PingFang SC, sans-serif">大屏计时 · 紧急提醒 · 课堂节奏控制</text>
+  <circle cx="836" cy="336" r="150" stroke="#BAE6FD" stroke-width="28"/>
+  <path d="M836 186 A150 150 0 1 1 698 397" stroke="url(#ring)" stroke-width="28" stroke-linecap="round"/>
+  <text x="750" y="350" fill="#0F172A" font-size="72" font-weight="700" font-family="Segoe UI, Arial, sans-serif">12:00</text>
+  <rect x="124" y="356" width="240" height="74" rx="22" fill="#0EA5E9"/>
+  <text x="186" y="403" fill="#FFF" font-size="30" font-weight="700" font-family="Microsoft YaHei, PingFang SC, sans-serif">一键开始</text>
+  <rect x="124" y="452" width="164" height="62" rx="18" fill="#E0F2FE"/>
+  <rect x="304" y="452" width="164" height="62" rx="18" fill="#E0F2FE"/>
+  <text x="178" y="491" fill="#0369A1" font-size="28" font-family="Microsoft YaHei, PingFang SC, sans-serif">5 分钟</text>
+  <text x="358" y="491" fill="#0369A1" font-size="28" font-family="Microsoft YaHei, PingFang SC, sans-serif">10 分钟</text>
+</svg>
+

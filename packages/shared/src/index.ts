@@ -49,4 +49,4 @@ export interface AdminSession {
   authenticated: boolean;
 }
 
-export type UploadSection = 'ai' | 'tools' | 'teaching';
+export type UploadSection = 'ai' | 'games' | 'tools' | 'teaching';

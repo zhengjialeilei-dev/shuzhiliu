@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旋转体生成可视化工具</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f6fa;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            width: 300px;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.5);
+            user-select: none;
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: bold;
+            font-size: 14px;
+            color: #555;
+        }
+        .shape-btn {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            background: #f8f9fa;
+            cursor: pointer;
+            font-size: 14px;
+            color: #444;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .shape-btn .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .shape-btn:hover {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+        .shape-btn.active {
+            border-color: #007bff;
+            background: #e6f2ff;
+            color: #007bff;
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.15);
+        }
+        .action-btns {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .action-btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+        }
+        .action-btn:active {
+            transform: translateY(0);
+        }
+        .action-btn.reset {
+            background: #6c757d;
+        }
+        .action-btn.reset:hover {
+            background: #5a6268;
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+        }
+        .slider-container {
+            margin-top: 20px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .slider-header label {
+            margin-bottom: 0;
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #dee2e6;
+            border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        .angle-display {
+            font-size: 13px;
+            color: #007bff;
+            font-weight: bold;
+            background: #e6f2ff;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+    </style>
+    <!-- 引入 Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <h2>旋转体生成演示</h2>
+        
+        <div class="control-group">
+            <label>选择平面图形</label>
+            <button class="shape-btn active" data-shape="rectangle">
+                <div class="color-dot" style="background: #ff8a65;"></div>
+                矩形 → 圆柱
+            </button>
+            <button class="shape-btn" data-shape="triangle">
+                <div class="color-dot" style="background: #81d4fa;"></div>
+                直角三角形 → 圆锥
+            </button>
+            <button class="shape-btn" data-shape="trapezoid">
+                <div class="color-dot" style="background: #ce93d8;"></div>
+                直角梯形 → 圆台
+            </button>
+            <button class="shape-btn" data-shape="semicircle">
+                <div class="color-dot" style="background: #a5d6a7;"></div>
+                半圆 → 球
+            </button>
+        </div>
+
+        <div class="slider-container">
+            <div class="slider-header">
+                <label>旋转角度</label>
+                <div class="angle-display"><span id="angle-val">0</span>°</div>
+            </div>
+            <input type="range" id="angle-slider" min="0" max="360" value="0">
+        </div>
+
+        <div class="action-btns">
+            <button class="action-btn" id="play-btn"><span>▶</span> 播放</button>
+            <button class="action-btn reset" id="reset-btn"><span>↺</span> 重置</button>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        // 图形数据定义
+        const shapes = {
+            rectangle: {
+                color: 0xff8a65,
+                getPoints: () => [
+                    new THREE.Vector2(0, 3),
+                    new THREE.Vector2(2, 3),
+                    new THREE.Vector2(2, 0),
+                    new THREE.Vector2(0, 0)
+                ]
+            },
+            triangle: {
+                color: 0x81d4fa,
+                getPoints: () => [
+                    new THREE.Vector2(0, 3),
+                    new THREE.Vector2(2, 0),
+                    new THREE.Vector2(0, 0)
+                ]
+            },
+            trapezoid: {
+                color: 0xce93d8,
+                getPoints: () => [
+                    new THREE.Vector2(0, 3),
+                    new THREE.Vector2(1, 3),
+                    new THREE.Vector2(2, 0),
+                    new THREE.Vector2(0, 0)
+                ]
+            },
+            semicircle: {
+                color: 0xa5d6a7,
+                getPoints: () => {
+                    const pts = [];
+                    for(let i = 0; i <= 30; i++) {
+                        const angle = Math.PI / 2 - (Math.PI * i / 30);
+                        // 保证 X 不会因为浮点误差小于 0
+                        pts.push(new THREE.Vector2(Math.max(0, 1.5 * Math.cos(angle)), 1.5 + 1.5 * Math.sin(angle)));
+                    }
+                    return pts;
+                }
+            }
+        };
+
+        // 全局状态
+        let currentShape = 'rectangle';
+        let currentAngle = 0;
+        let isPlaying = false;
+        const animationSpeed = 0.03;
+
+        // --- 场景初始化 ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xfcfcfc);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(6, 4, 8);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(0, 1.5, 0);
+        controls.minDistance = 2;
+        controls.maxDistance = 20;
+
+        // --- 灯光设置 ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5);
+        hemiLight.position.set(0, 20, 0);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(10, 20, 15);
+        scene.add(dirLight);
+
+        const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+        dirLight2.position.set(-10, 10, -15);
+        scene.add(dirLight2);
+
+        // --- 辅助线与网格 ---
+        const gridHelper = new THREE.GridHelper(12, 24, 0xdddddd, 0xeeeeee);
+        scene.add(gridHelper);
+
+        const axisMaterial = new THREE.LineBasicMaterial({ color: 0x888888, linewidth: 2 });
+        const axisPoints = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 4.5, 0)];
+        const axisGeometry = new THREE.BufferGeometry().setFromPoints(axisPoints);
+        const axisLine = new THREE.Line(axisGeometry, axisMaterial);
+        scene.add(axisLine);
+
+        // --- 数学对齐函数与单元测试 ---
+        /**
+         * 使得二维平面图形与三维立体图形的生成起始点统一映射到原点对齐
+         * @param {string} shapeType - 'plane' 或 'solid'
+         * @param {THREE.Vector3[]} vertices - 初始顶点坐标集
+         * @param {THREE.Vector3} referencePoint - 旋转/拉伸的基准点
+         * @param {THREE.Vector3} axis - 旋转轴或拉伸方向向量
+         * @param {number} tolerance - 容差阈值
+         */
+        function alignShapeToOrigin(shapeType, vertices, referencePoint, axis, tolerance = 1e-9) {
+            // 1. 平移矩阵：将基准点移至原点
+            const translation = new THREE.Matrix4().makeTranslation(
+                -referencePoint.x, -referencePoint.y, -referencePoint.z
+            );
+
+            // 2. 旋转矩阵：Three.js中平面在XY面(起点在X轴)，Lathe在ZY面(起点在Z轴)
+            // 对立体图形进行 90 度(PI/2) 绕轴旋转，使其起点映射与平面统一
+            const rotation = new THREE.Matrix4();
+            if (shapeType === 'solid') {
+                rotation.makeRotationAxis(axis.clone().normalize(), Math.PI / 2);
+            }
+
+            const transformMatrix = new THREE.Matrix4().multiplyMatrices(rotation, translation);
+            const inverseMatrix = transformMatrix.clone().invert();
+
+            const alignedVertices = vertices.map(v => {
+                const newV = v.clone().applyMatrix4(transformMatrix);
+                if (Math.abs(newV.x) < tolerance) newV.x = 0;
+                if (Math.abs(newV.y) < tolerance) newV.y = 0;
+                if (Math.abs(newV.z) < tolerance) newV.z = 0;
+                return newV;
+            });
+
+            return { alignedVertices, transformMatrix, inverseMatrix };
+        }
+
+        function runUnitTests() {
+            console.log("=== 运行对齐函数单元测试 ===");
+            const yAxis = new THREE.Vector3(0, 1, 0);
+            const refPoint = new THREE.Vector3(1, 1, 1); // 假设某个偏离的基准点
+            
+            // 测试1：平面圆环的一个点 (2, 1, 1)，以 (1,1,1) 为基准点
+            const planePoint = new THREE.Vector3(2, 1, 1);
+            const planeRes = alignShapeToOrigin('plane', [planePoint], refPoint, yAxis);
+            
+            // 测试2：立体图形对应生成的起点 (1, 1, 2)，以 (1,1,1) 为基准点
+            // 在未对齐前，立体的起点在相对Z轴距离1的位置
+            const solidPoint = new THREE.Vector3(1, 1, 2);
+            const solidRes = alignShapeToOrigin('solid', [solidPoint], refPoint, yAxis);
+
+            const pV = planeRes.alignedVertices[0];
+            const sV = solidRes.alignedVertices[0];
+
+            console.log("平面点对齐后:", pV);
+            console.log("立体点对齐后:", sV);
+
+            // 验证：二者相对基准点的起点是否严格重合并对齐在同一坐标 (1, 0, 0)
+            const diffX = Math.abs(pV.x - sV.x);
+            const diffY = Math.abs(pV.y - sV.y);
+            const diffZ = Math.abs(pV.z - sV.z);
+            
+            // 验证基准点自身是否严格在(0,0,0)
+            const refRes = alignShapeToOrigin('plane', [refPoint], refPoint, yAxis);
+            const isRefOrigin = (refRes.alignedVertices[0].lengthSq() < 1e-18);
+
+            if (diffX < 1e-9 && diffY < 1e-9 && diffZ < 1e-9 && isRefOrigin) {
+                console.log("✅ 测试通过: 平面与立体的起点严格重合且误差小于 1e-9，基准点成功映射至(0,0,0)");
+            } else {
+                console.error("❌ 测试失败", diffX, diffY, diffZ);
+            }
+        }
+        runUnitTests();
+
+        // --- 物体组 ---
+        const group = new THREE.Group();
+        scene.add(group);
+
+        let planeMeshStart, planeEdgesStart;
+        let planeMeshEnd, planeEdgesEnd;
+        let latheMesh, latheEdges;
+
+        // 清理当前模型
+        function clearGroup() {
+            while(group.children.length > 0) {
+                const child = group.children[0];
+                group.remove(child);
+                if(child.geometry) child.geometry.dispose();
+                if(child.material) {
+                    if(Array.isArray(child.material)) {
+                        child.material.forEach(m => m.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+                if(child.children.length > 0) {
+                    child.children.forEach(c => {
+                        if(c.geometry) c.geometry.dispose();
+                        if(c.material) c.material.dispose();
+                    });
+                }
+            }
+        }
+
+        // 构建当前选择的图形
+        function buildShape() {
+            clearGroup();
+
+            const shapeData = shapes[currentShape];
+            const points = shapeData.getPoints();
+
+            // 1. 生成 2D 平面形状 (闭合)
+            const shape = new THREE.Shape();
+            shape.moveTo(points[0].x, points[0].y);
+            for(let i = 1; i < points.length; i++) {
+                shape.lineTo(points[i].x, points[i].y);
+            }
+            shape.lineTo(points[0].x, points[0].y);
+
+            const planeGeom = new THREE.ShapeGeometry(shape);
+            const edgesGeom = new THREE.EdgesGeometry(planeGeom);
+
+            // 静态起始平面 (透明度较低，覆盖旋转起点)
+            const planeMatStart = new THREE.MeshStandardMaterial({ 
+                color: shapeData.color, 
+                side: THREE.DoubleSide, 
+                transparent: true, 
+                opacity: 0.3,
+                roughness: 0.6
+            });
+            planeMeshStart = new THREE.Mesh(planeGeom, planeMatStart);
+            const edgesMatStart = new THREE.LineBasicMaterial({ color: 0x333333, opacity: 0.2, transparent: true });
+            planeEdgesStart = new THREE.LineSegments(edgesGeom, edgesMatStart);
+            planeMeshStart.add(planeEdgesStart);
+            group.add(planeMeshStart);
+
+            // 动态旋转平面 (领头切面，不透明度较高)
+            const planeMatEnd = new THREE.MeshStandardMaterial({ 
+                color: shapeData.color, 
+                side: THREE.DoubleSide, 
+                transparent: true, 
+                opacity: 0.8,
+                roughness: 0.6
+            });
+            planeMeshEnd = new THREE.Mesh(planeGeom, planeMatEnd);
+            const edgesMatEnd = new THREE.LineBasicMaterial({ color: 0x333333, opacity: 0.8, transparent: true });
+            planeEdgesEnd = new THREE.LineSegments(edgesGeom, edgesMatEnd);
+            planeMeshEnd.add(planeEdgesEnd);
+            group.add(planeMeshEnd);
+
+            // 2. 旋转体网格预留
+            const latheMat = new THREE.MeshStandardMaterial({
+                color: shapeData.color,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.85,
+                roughness: 0.3,
+                metalness: 0.1
+            });
+            latheMesh = new THREE.Mesh(new THREE.BufferGeometry(), latheMat);
+            
+            // 运用统一映射函数的原理：由于 Three.js 的 LatheGeometry 默认在 Z 轴生成，
+            // 而我们的平面图形在 X 轴生成，我们将立体图形的局部坐标系旋转 PI/2 对齐
+            // 这等价于应用 alignShapeToOrigin 的 solid 变换矩阵
+            latheMesh.rotation.y = Math.PI / 2;
+
+            latheEdges = new THREE.LineSegments(
+                new THREE.BufferGeometry(),
+                new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.4 })
+            );
+            latheMesh.add(latheEdges);
+            group.add(latheMesh);
+
+            updateLathe();
+        }
+
+        // 更新旋转体形状和角度
+        function updateLathe() {
+            const shapeData = shapes[currentShape];
+            const points = shapeData.getPoints();
+
+            // 更新领头平面旋转 (匹配 LatheGeometry 的 sweeping 方向)
+            planeMeshEnd.rotation.y = currentAngle;
+
+            // 处理可见性，避免完全闭合时的 Z-fighting
+            planeMeshStart.visible = currentAngle > 0 && currentAngle < Math.PI * 2;
+            planeMeshEnd.visible = currentAngle < Math.PI * 2;
+
+            // 更新 Lathe 几何体
+            if(latheMesh.geometry) latheMesh.geometry.dispose();
+            if(latheEdges.geometry) latheEdges.geometry.dispose();
+
+            if(currentAngle > 0.001) {
+                // LatheGeometry 参数: points, segments, phiStart, phiLength
+                latheMesh.geometry = new THREE.LatheGeometry(points, 64, 0, currentAngle);
+                latheMesh.visible = true;
+                
+                // 更新边缘线 (阈值30度，过滤掉平滑曲面的线条)
+                latheEdges.geometry = new THREE.EdgesGeometry(latheMesh.geometry, 30);
+                latheEdges.visible = true;
+            } else {
+                latheMesh.visible = false;
+                latheEdges.visible = false;
+            }
+        }
+
+        // --- UI 交互事件 ---
+        const playBtn = document.getElementById('play-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const slider = document.getElementById('angle-slider');
+        const angleVal = document.getElementById('angle-val');
+        const shapeBtns = document.querySelectorAll('.shape-btn');
+
+        // 切换图形
+        shapeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                shapeBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentShape = btn.dataset.shape;
+                
+                // 重置状态
+                currentAngle = 0;
+                slider.value = 0;
+                angleVal.innerText = '0';
+                isPlaying = false;
+                playBtn.innerHTML = '<span>▶</span> 播放';
+                
+                buildShape();
+            });
+        });
+
+        // 播放/暂停
+        playBtn.addEventListener('click', () => {
+            if(currentAngle >= Math.PI * 2) {
+                currentAngle = 0; // 如果已经转满，重新开始
+            }
+            isPlaying = !isPlaying;
+            playBtn.innerHTML = isPlaying ? '<span>⏸</span> 暂停' : '<span>▶</span> 播放';
+        });
+
+        // 重置
+        resetBtn.addEventListener('click', () => {
+            isPlaying = false;
+            playBtn.innerHTML = '<span>▶</span> 播放';
+            currentAngle = 0;
+            slider.value = 0;
+            angleVal.innerText = '0';
+            updateLathe();
+        });
+
+        // 滑动条拖动
+        slider.addEventListener('input', (e) => {
+            currentAngle = (e.target.value / 360) * Math.PI * 2;
+            angleVal.innerText = e.target.value;
+            updateLathe();
+            
+            // 拖动时自动暂停
+            isPlaying = false;
+            playBtn.innerHTML = '<span>▶</span> 播放';
+        });
+
+        // --- 动画循环 ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(isPlaying) {
+                currentAngle += animationSpeed;
+                if(currentAngle >= Math.PI * 2) {
+                    currentAngle = Math.PI * 2;
+                    isPlaying = false;
+                    playBtn.innerHTML = '<span>▶</span> 播放';
+                }
+                // 更新滑动条和数值显示
+                const deg = Math.round((currentAngle / (Math.PI * 2)) * 360);
+                slider.value = deg;
+                angleVal.innerText = deg;
+                updateLathe();
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // 响应窗口大小变化
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- 初始化启动 ---
+        buildShape();
+        animate();
+
+    </script>
+</body>
+</html>

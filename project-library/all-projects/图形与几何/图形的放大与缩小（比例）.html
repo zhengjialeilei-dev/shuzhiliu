@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图形的放大与缩小 - 交互探索</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1; --primary-bg: #eef2ff;
+            --accent: #f59e0b; --accent-bg: #fffbeb;
+            --success: #10b981; --danger: #ef4444;
+            --bg: #f8fafc; --card: #ffffff;
+            --text: #1e293b; --text-gray: #64748b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Noto Sans SC', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        .app-header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white; padding: 20px 24px; text-align: center;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+        }
+        .app-header h1 { font-size: 1.6rem; font-weight: 700; }
+        .app-header p { font-size: 0.9rem; opacity: 0.85; margin-top: 4px; }
+        .main { max-width: 920px; margin: 0 auto; padding: 20px 16px 40px; }
+        .card {
+            background: var(--card); border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 24px;
+            margin-bottom: 20px; border: 1px solid #f1f5f9;
+        }
+        .card-title {
+            font-size: 1.15rem; font-weight: 700; color: var(--primary);
+            margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+        }
+
+        /* 画布区 */
+        .canvas-area {
+            display: flex; justify-content: center; align-items: center;
+            gap: 24px; flex-wrap: wrap; margin: 16px 0;
+        }
+        .shape-box {
+            text-align: center;
+        }
+        .shape-label {
+            font-weight: 700; font-size: 0.9rem; margin-top: 8px;
+            color: var(--text-gray);
+        }
+        .shape-canvas {
+            border: 2px solid #e2e8f0; border-radius: 12px; background: white;
+        }
+
+        /* 滑块 */
+        .slider-area {
+            display: flex; align-items: center; gap: 16px; margin: 16px 0;
+            padding: 16px; background: #f1f5f9; border-radius: 12px;
+        }
+        .slider-label { font-weight: 700; white-space: nowrap; }
+        input[type=range] {
+            flex: 1; -webkit-appearance: none; height: 8px;
+            background: #e2e8f0; border-radius: 4px; outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 24px; height: 24px;
+            border-radius: 50%; background: var(--primary); cursor: pointer;
+            box-shadow: 0 2px 6px rgba(99,102,241,0.4);
+        }
+        .ratio-display {
+            font-size: 1.6rem; font-weight: 800; color: var(--primary);
+            min-width: 80px; text-align: center;
+        }
+
+        /* 形状选择 */
+        .shape-selector {
+            display: flex; gap: 8px; justify-content: center;
+            margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .shape-opt {
+            padding: 8px 18px; border: 2px solid #e2e8f0; border-radius: 10px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+            background: white; font-family: inherit; font-size: 0.95rem;
+        }
+        .shape-opt.active { border-color: var(--primary); background: var(--primary-bg); color: var(--primary); }
+
+        /* 尺寸信息 */
+        .dim-info {
+            display: flex; gap: 20px; justify-content: center;
+            margin: 12px 0; flex-wrap: wrap;
+        }
+        .dim-item {
+            background: #f8fafc; border-radius: 10px; padding: 10px 16px;
+            text-align: center; border: 1px solid #e2e8f0;
+        }
+        .dim-item .label { font-size: 0.8rem; color: var(--text-gray); }
+        .dim-item .value { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+
+        /* 放大缩小动画 */
+        .anim-shape {
+            width: 120px; height: 120px; margin: 20px auto;
+            transition: transform 0.5s ease; position: relative;
+        }
+        .anim-shape .inner {
+            width: 100%; height: 100%; border: 3px solid var(--primary);
+            border-radius: 4px; display: flex; align-items: center;
+            justify-content: center; font-weight: 700; color: var(--primary);
+            background: var(--primary-bg);
+        }
+
+        /* 练习 */
+        .quiz-item {
+            background: #f8fafc; border-radius: 12px; padding: 16px;
+            margin: 10px 0; border: 2px solid #e2e8f0;
+        }
+        .quiz-item.correct { border-color: var(--success); background: #f0fdf4; }
+        .quiz-item.wrong { border-color: var(--danger); background: #fef2f2; }
+
+        .styled-input {
+            padding: 10px 14px; border: 2px solid #e2e8f0;
+            border-radius: 10px; font-size: 1rem; font-weight: 600;
+            outline: none; transition: border-color 0.3s; font-family: inherit;
+            width: 100px; text-align: center;
+        }
+        .styled-input:focus { border-color: var(--primary); }
+
+        .btn {
+            padding: 10px 24px; border: none; border-radius: 10px;
+            font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; font-family: inherit;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-success { background: var(--success); color: white; }
+
+        .conclusion-box {
+            padding: 16px 20px; border-radius: 12px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white; font-weight: 600; line-height: 1.8;
+        }
+        .conclusion-box strong { color: #fde68a; }
+
+        @media (max-width: 640px) {
+            .canvas-area { gap: 12px; }
+            .shape-canvas { width: 150px !important; height: 150px !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1><i class="fas fa-expand-arrows-alt"></i> 图形的放大与缩小</h1>
+        <p>按一定的比放大或缩小图形，保持形状不变</p>
+    </div>
+
+    <div class="main">
+        <!-- 探索区 -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-flask"></i> 动手探索</div>
+
+            <div class="shape-selector">
+                <button class="shape-opt active" onclick="setShape('rect')">长方形</button>
+                <button class="shape-opt" onclick="setShape('tri')">三角形</button>
+                <button class="shape-opt" onclick="setShape('para')">平行四边形</button>
+                <button class="shape-opt" onclick="setShape('l')">L形</button>
+            </div>
+
+            <div class="slider-area">
+                <span class="slider-label">缩放比：</span>
+                <input type="range" id="scale-slider" min="50" max="300" value="200" step="10">
+                <span class="ratio-display" id="ratio-text">2:1</span>
+            </div>
+
+            <div class="canvas-area">
+                <div class="shape-box">
+                    <canvas class="shape-canvas" id="canvas-original" width="200" height="200"></canvas>
+                    <div class="shape-label">原图</div>
+                </div>
+                <div style="font-size:2rem;color:var(--primary);"><i class="fas fa-arrow-right"></i></div>
+                <div class="shape-box">
+                    <canvas class="shape-canvas" id="canvas-scaled" width="200" height="200"></canvas>
+                    <div class="shape-label" id="scaled-label">放大后 (2:1)</div>
+                </div>
+            </div>
+
+            <div class="dim-info" id="dim-info"></div>
+        </div>
+
+        <!-- 规律 -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-search"></i> 发现规律</div>
+            <div id="discovery-table" style="overflow-x:auto;"></div>
+            <div style="margin-top:12px;padding:12px 16px;background:var(--primary-bg);border-radius:10px;font-weight:600;line-height:1.8;">
+                <span style="color:var(--primary)">📌 发现：</span><br>
+                • 按 <strong>n:1</strong> 放大，每条边变为原来的 <strong>n 倍</strong>，面积变为 <strong>n² 倍</strong><br>
+                • 按 <strong>1:n</strong> 缩小，每条边变为原来的 <strong>1/n</strong>，面积变为 <strong>1/n²</strong><br>
+                • <strong>形状不变，大小改变</strong> — 这就是图形的放大与缩小
+            </div>
+        </div>
+
+        <!-- 练习 -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-pencil-alt"></i> 练一练</div>
+            <div id="quiz-container"></div>
+            <div style="display:flex;gap:12px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
+                <button class="btn btn-success" onclick="checkAll()"><i class="fas fa-check"></i> 检查答案</button>
+                <button class="btn btn-outline" onclick="genQuiz()"><i class="fas fa-redo"></i> 换一批</button>
+            </div>
+            <div id="quiz-result" style="text-align:center;margin-top:12px;font-weight:700;"></div>
+        </div>
+
+        <div class="conclusion-box">
+            <strong>核心要点：</strong><br>
+            • 把图形按 <strong>n : 1</strong> 放大，就是把图形的每条边放大到原来的 <strong>n 倍</strong><br>
+            • 把图形按 <strong>1 : n</strong> 缩小，就是把图形的每条边缩小到原来的 <strong>1/n</strong><br>
+            • 放大或缩小后的图形与原图<strong>形状相同，大小不同</strong>，它们是<strong>相似图形</strong>
+        </div>
+    </div>
+
+    <script>
+        let currentShape = 'rect';
+        let currentRatio = 2;
+
+        const shapes = {
+            rect: { name: '长方形', points: [[30, 60], [120, 60], [120, 140], [30, 140]], baseW: 90, baseH: 80, sides: ['宽=90', '高=80'] },
+            tri: { name: '三角形', points: [[75, 40], [130, 150], [20, 150]], baseW: 110, baseH: 110, sides: ['底=110', '高=110'] },
+            para: { name: '平行四边形', points: [[50, 60], [140, 60], [110, 150], [20, 150]], baseW: 120, baseH: 90, sides: ['底=120', '高=90'] },
+            l: { name: 'L形', points: [[30, 40], [80, 40], [80, 90], [120, 90], [120, 150], [30, 150]], baseW: 90, baseH: 110, sides: ['宽=90', '高=110'] },
+        };
+
+        function setShape(s) {
+            currentShape = s;
+            document.querySelectorAll('.shape-opt').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            drawShapes();
+        }
+
+        function drawShapes() {
+            const ratio = currentRatio;
+            const shape = shapes[currentShape];
+            drawShape('canvas-original', shape.points, 1, '#6366f1', '#eef2ff');
+            drawShape('canvas-scaled', shape.points, ratio, '#f59e0b', '#fffbeb');
+
+            const isEnlarge = ratio >= 1;
+            document.getElementById('scaled-label').textContent = (isEnlarge ? '放大' : '缩小') + '后 (' + (isEnlarge ? ratio + ':1' : '1:' + Math.round(1/ratio)) + ')';
+
+            // 维度信息
+            const dimInfo = document.getElementById('dim-info');
+            const s2 = shape.sides.map(s => {
+                const [label, val] = s.split('=');
+                return { label, orig: val, scaled: Math.round(val * ratio) };
+            });
+            dimInfo.innerHTML = s2.map(d => '<div class="dim-item"><div class="label">原图' + d.label + '</div><div class="value">' + d.orig + '</div></div>').join('') +
+                '<div style="font-size:2rem;color:var(--primary);display:flex;align-items:center;"><i class="fas fa-arrow-right"></i></div>' +
+                s2.map(d => '<div class="dim-item"><div class="label">变换后' + d.label + '</div><div class="value">' + d.scaled + '</div></div>').join('');
+
+            // 规律表
+            updateTable();
+        }
+
+        function drawShape(canvasId, points, scale, strokeColor, fillColor) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // 计算中心
+            const cx = 100, cy = 100;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(scale, scale);
+            ctx.translate(-cx, -cy);
+
+            ctx.beginPath();
+            ctx.moveTo(points[0][0], points[0][1]);
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i][0], points[i][1]);
+            }
+            ctx.closePath();
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 2.5 / scale;
+            ctx.stroke();
+
+            // 画虚线网格参考
+            ctx.restore();
+        }
+
+        function updateTable() {
+            const shape = shapes[currentShape];
+            const r = currentRatio;
+            const origArea = shape.baseW * shape.baseH;
+            const scaledArea = Math.round(origArea * r * r);
+            document.getElementById('discovery-table').innerHTML = '<table style="width:100%;border-collapse:collapse;text-align:center;">' +
+                '<tr style="background:var(--primary);color:white;"><th style="padding:8px;"></th><th style="padding:8px;">边长</th><th style="padding:8px;">面积</th><th style="padding:8px;">面积变化</th></tr>' +
+                '<tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:8px;font-weight:700;">原图</td><td style="padding:8px;">' + shape.baseW + ', ' + shape.baseH + '</td><td style="padding:8px;">' + origArea + '</td><td style="padding:8px;">—</td></tr>' +
+                '<tr><td style="padding:8px;font-weight:700;">变换后</td><td style="padding:8px;">' + Math.round(shape.baseW * r) + ', ' + Math.round(shape.baseH * r) + '</td><td style="padding:8px;">' + scaledArea + '</td><td style="padding:8px;color:var(--primary);font-weight:700;">' + (r * r).toFixed(1) + ' 倍</td></tr></table>';
+        }
+
+        // 滑块
+        document.getElementById('scale-slider').addEventListener('input', function () {
+            const v = +this.value;
+            currentRatio = v / 100;
+            const r = currentRatio;
+            const isLarge = r >= 1;
+            document.getElementById('ratio-text').textContent = isLarge ? (r % 1 === 0 ? r + ':1' : r.toFixed(1) + ':1') : '1:' + Math.round(1 / r);
+            drawShapes();
+        });
+
+        // === 练习 ===
+        let quizData = [];
+
+        function genQuiz() {
+            quizData = [];
+            for (let i = 0; i < 4; i++) {
+                const type = ['enlarge', 'shrink', 'area', 'ratio'][i];
+                if (type === 'enlarge') {
+                    const w = randInt(3, 8); const h = randInt(3, 8); const k = randInt(2, 4);
+                    quizData.push({ q: '一个长方形宽' + w + 'cm、高' + h + 'cm，按' + k + ':1放大后，宽是多少cm？', answer: w * k, unit: 'cm' });
+                } else if (type === 'shrink') {
+                    const w = randInt(8, 20); const h = randInt(6, 15); const k = randInt(2, 4);
+                    quizData.push({ q: '一个长方形宽' + w + 'cm、高' + h + 'cm，按1:' + k + '缩小后，宽是多少cm？', answer: Math.round(w / k * 10) / 10, unit: 'cm' });
+                } else if (type === 'area') {
+                    const w = randInt(4, 10); const h = randInt(3, 8); const k = randInt(2, 3);
+                    quizData.push({ q: '长方形面积' + (w * h) + 'cm²，按' + k + ':1放大后，面积是多少cm²？', answer: w * h * k * k, unit: 'cm²' });
+                } else {
+                    const ow = randInt(3, 8); const oh = randInt(3, 8);
+                    const sw = ow * randInt(2, 4);
+                    quizData.push({ q: '原图宽' + ow + 'cm，放大后宽' + sw + 'cm，放大比是几比1？', answer: sw / ow, unit: '' });
+                }
+            }
+            renderQuiz();
+        }
+
+        function renderQuiz() {
+            const container = document.getElementById('quiz-container');
+            container.innerHTML = '';
+            document.getElementById('quiz-result').textContent = '';
+            quizData.forEach((q, i) => {
+                container.innerHTML += '<div class="quiz-item" id="qi-' + i + '"><div style="font-weight:600;margin-bottom:8px;">' + (i + 1) + '. ' + q.q + '</div><div style="display:flex;align-items:center;gap:8px;"><input class="styled-input" id="qa-' + i + '" type="number" placeholder="?" autocomplete="off"><span style="font-weight:600;color:var(--text-gray);">' + q.unit + '</span></div></div>';
+            });
+        }
+
+        function checkAll() {
+            let c = 0, w = 0;
+            quizData.forEach((q, i) => {
+                const val = parseFloat(document.getElementById('qa-' + i).value);
+                const card = document.getElementById('qi-' + i);
+                card.classList.remove('correct', 'wrong');
+                if (Math.abs(val - q.answer) < 0.1) { card.classList.add('correct'); c++; }
+                else { card.classList.add('wrong'); w++; }
+            });
+            document.getElementById('quiz-result').innerHTML = '✅ ' + c + ' 对 &nbsp; ❌ ' + w + ' 错';
+        }
+
+        function randInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+
+        // Init
+        drawShapes();
+        genQuiz();
+    </script>
+</body>
+</html>

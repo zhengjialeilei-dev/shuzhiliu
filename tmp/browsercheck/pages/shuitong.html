@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>量水调度台</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, sans-serif;
+            background: #e0e5ec;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .header {
+            text-align: center;
+            color: #1e293b;
+            margin-bottom: 15px;
+        }
+
+        .header h2 {
+            font-size: 2.2em;
+            margin-bottom: 5px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .problem-description {
+            background: #e0e5ec;
+            
+            padding: 15px 25px;
+            border-radius: 30px;
+            margin-bottom: 20px;
+            box-shadow: 9px 9px 16px rgba(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5), inset 3px 3px 7px rgba(255, 255, 255, 0.7), inset -3px -3px 7px rgba(163,177,198, 0.4);
+            max-width: 100%;
+            border: 2px solid #ffffff;
+        }
+
+        .problem-text {
+            font-size: 1.4rem;
+            color: #334155;
+            text-align: center;
+            line-height: 1.5;
+            font-weight: 500;
+        }
+        
+        .problem-text strong {
+            color: #3b82f6;
+            font-weight: 700;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 1200px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+            align-items: stretch;
+        }
+
+        .left-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .right-panel {
+            width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .buckets-container {
+            min-height: 550px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 80px;
+            padding: 30px;
+            background: #e0e5ec;
+            
+            border-radius: 30px;
+            border: 2px solid #ffffff;
+            box-shadow: 9px 9px 16px rgba(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5), inset 3px 3px 7px rgba(255, 255, 255, 0.7), inset -3px -3px 7px rgba(163,177,198, 0.4);
+        }
+
+        .bucket {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .bucket-visual {
+            width: 180px;
+            border: 6px solid rgba(200, 200, 200, 0.4);
+            border-top: none;
+            border-radius: 0 0 80px 80px; /* 烧瓶圆底 */
+            position: relative;
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 10px 20px rgba(255,255,255,0.5), inset 0 -15px 25px -5px rgba(0,0,0,0.1), 0 15px 25px -5px rgba(0,0,0,0.1);
+            backdrop-filter: blur(4px);
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+        
+        .bucket-visual::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 50%; transform: translateX(-50%);
+            width: 80px; height: 30px;
+            border: 6px solid rgba(200, 200, 200, 0.4);
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            background: rgba(255, 255, 255, 0.2);
+            z-index: 2;
+        }
+
+        .small-bucket .bucket-visual {
+            height: 120px;
+        }
+        .small-bucket .left-column{flex:2}
+        .large-bucket .bucket-visual {
+            height: 250px;
+        }
+        .large-bucket .right-column{flex:2}
+        
+        /* 魔法液体动画 */
+        .water {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            /* 默认颜色（空），在JS中动态改变 */
+            background: linear-gradient(180deg, rgba(236, 72, 153, 0.8) 0%, rgba(190, 24, 93, 0.9) 100%);
+            transition: height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.5s ease;
+            box-shadow: inset 0 5px 15px rgba(255,255,255,0.4);
+        }
+        
+        /* 液体波浪特效 */
+        .water::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 0;
+            right: 0;
+            height: 10px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            animation: wave 2s infinite ease-in-out;
+        }
+        
+        @keyframes wave {
+            0%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(1.5); }
+        }
+
+        .bucket-label-bottom {
+            margin-top: 20px;
+            text-align: center;
+            background: #e0e5ec;
+            padding: 15px;
+            border-radius: 30px;
+            box-shadow: 0 10px 20px -5px rgba(0,0,0,0.05);
+            border: 2px solid #ffffff;
+        }
+
+        .large-bucket .bucket-label-bottom {
+            min-width: 240px;
+        }
+
+        .bucket-controls {
+            margin-top: 12px;
+        }
+
+        .control-columns {
+            display: flex;
+            gap: 12px;
+        }
+
+        .control-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .control-column .control-btn {
+            padding: 10px 15px;
+            font-size: 1.1rem;
+            min-height: 60px;
+            border-radius: 30px;
+        }
+
+        .tall-btn {
+            height: 132px !important;
+            min-height: 132px !important;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+        }
+
+        .bucket-current {
+            font-size: 1.4rem;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .current-amount {
+            font-weight: 800;
+            color: #3b82f6;
+            font-size: 1.2em;
+        }
+
+        .control-btn {
+            padding: 10px 15px;
+            font-size: 1em;
+            background: #ffffff;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 45px;
+            color: #475569;
+            box-shadow: 5px 5px 10px rgba(163,177,198,0.6), -5px -5px 10px rgba(255,255,255, 0.5), inset 2px 2px 4px rgba(255,255,255,0.8), inset -2px -2px 4px rgba(163,177,198, 0.4);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .fill-btn {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .empty-btn {
+            color: #f43f5e;
+            background: rgba(244, 63, 94, 0.05);
+            border-color: rgba(244, 63, 94, 0.2);
+        }
+
+        .pour-btn {
+            color: #3b82f6;
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .reset-btn {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            box-shadow: 0 10px 20px -5px rgba(245, 158, 11, 0.4);
+            font-weight: 700;
+            border-radius: 99px;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 7px 7px 14px rgba(163,177,198,0.6), -7px -7px 14px rgba(255,255,255, 0.5), inset 2px 2px 4px rgba(255,255,255,0.8), inset -2px -2px 4px rgba(163,177,198, 0.4);
+        }
+
+        .fill-btn:hover {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4);
+        }
+
+        .empty-btn:hover {
+            background: #f43f5e;
+            color: white;
+            box-shadow: 0 10px 20px -5px rgba(244, 63, 94, 0.4);
+        }
+
+        .pour-btn:hover {
+            background: #3b82f6 !important;
+            color: white;
+            box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.4);
+        }
+
+        .reset-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 25px -5px rgba(245, 158, 11, 0.5);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-icon {
+            font-size: 1.2em;
+        }
+
+        .history-container {
+            background: #e0e5ec;
+            
+            border-radius: 30px;
+            padding: 20px;
+            border: 2px solid #ffffff;
+            box-shadow: 9px 9px 16px rgba(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5), inset 3px 3px 7px rgba(255, 255, 255, 0.7), inset -3px -3px 7px rgba(163,177,198, 0.4);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .history-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 15px;
+            text-align: center;
+            padding-bottom: 12px;
+            border-bottom: 2px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .history-table-container {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        
+        .history-table-container::scrollbar { width: 6px; }
+        .history-table-container::scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 3px; }
+        .history-table-container::scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+
+        .history-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+            font-size: 0.95em;
+        }
+
+        .history-table th {
+            background: transparent;
+            color: #64748b;
+            padding: 10px 8px;
+            text-align: center;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            
+        }
+
+        .history-table td {
+            padding: 12px 8px;
+            text-align: center;
+            background: white;
+            color: #475569;
+            font-weight: 500;
+            border-top: 1px solid rgba(226, 232, 240, 0.5);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        }
+        
+        .history-table td:first-child { border-left: 1px solid rgba(226, 232, 240, 0.5); border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+        .history-table td:last-child { border-right: 1px solid rgba(226, 232, 240, 0.5); border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
+
+        .history-table tbody tr { transition: transform 0.2s, box-shadow 0.2s; }
+        .history-table tbody tr:hover { transform: scale(1.02); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .history-table tbody tr:hover td { background: #f8fafc; color: #1e293b; }
+
+        .history-table .initial-row td {
+            background: rgba(239, 246, 255, 0.8);
+            font-weight: 600;
+            color: #2563eb;
+            border-color: rgba(191, 219, 254, 0.8);
+        }
+
+        .success-message {
+            margin: 0 auto;
+            background: #10b981;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 99px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: 700;
+            margin-top: 15px;
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                overflow-y: auto;
+                height: auto;
+                min-height: 100vh;
+                padding: 10px;
+            }
+            
+            .header h2 { font-size: 1.8em; margin-bottom: 10px; }
+            .problem-description { padding: 15px; }
+            .problem-text { font-size: 1.1rem; line-height: 1.4; }
+            .game-container { flex: none; }
+            .main-content { flex-direction: column; align-items: stretch; }
+            .right-panel { width: 100%; }
+            .buckets-container { flex-direction: column; align-items: center; gap: 30px; padding: 20px; min-height: auto; }
+            .bucket-visual { width: 160px; }
+            .small-bucket .bucket-visual { height: 80px; }
+            .large-bucket .bucket-visual { height: 220px; }
+            .history-container { min-height: 300px; padding: 15px; }
+            .reset-btn { width: 100% !important; }
+        }
+        
+        @media (max-width: 480px) {
+            .header h2 { font-size: 1.5em; }
+            .problem-text { font-size: 1rem; }
+            .bucket-visual { width: 140px; }
+            .small-bucket .bucket-visual { height: 70px; }
+            .large-bucket .bucket-visual { height: 190px; }
+            .bucket-current { font-size: 1.2rem; }
+            .control-btn { font-size: 0.9em; padding: 8px 10px; min-height: 40px; }
+            .tall-btn { height: 95px !important; min-height: 95px !important; }
+            .history-table { font-size: 0.85em; }
+        }
+    </style>
+<!-- EDU_BRAND_STYLE_START -->
+<style id="edu-brand-style">
+  :root {
+    --edu-bg: #eef5f7;
+    --edu-bg-deep: #dfeaf0;
+    --edu-surface: rgba(255, 255, 255, 0.82);
+    --edu-surface-strong: rgba(255, 255, 255, 0.94);
+    --edu-line: rgba(97, 132, 161, 0.24);
+    --edu-shadow: 0 18px 48px rgba(37, 78, 110, 0.12);
+    --edu-shadow-strong: 0 24px 56px rgba(24, 61, 90, 0.16);
+    --edu-text: #17324d;
+    --edu-text-soft: #4a647c;
+    --edu-accent: #0f9d8a;
+    --edu-accent-deep: #0d7b72;
+    --edu-warm: #ff9d6c;
+    --edu-warm-soft: #fff1e8;
+  }
+
+  body.edu-refactor-body {
+    background:
+      radial-gradient(circle at 12% 14%, rgba(15, 157, 138, 0.10), transparent 22%),
+      radial-gradient(circle at 88% 16%, rgba(255, 157, 108, 0.18), transparent 20%),
+      radial-gradient(circle at 50% 100%, rgba(81, 122, 164, 0.10), transparent 28%),
+      linear-gradient(180deg, #f6fbfc 0%, var(--edu-bg) 42%, var(--edu-bg-deep) 100%) !important;
+    color: var(--edu-text) !important;
+  }
+
+  body.edu-refactor-body::before,
+  body.edu-refactor-body::after {
+    content: '';
+    position: fixed;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+    opacity: 0.6;
+  }
+
+  body.edu-refactor-body::before {
+    width: 240px;
+    height: 240px;
+    right: -40px;
+    top: 80px;
+    background: rgba(15, 157, 138, 0.14);
+  }
+
+  body.edu-refactor-body::after {
+    width: 180px;
+    height: 180px;
+    left: -20px;
+    bottom: 80px;
+    background: rgba(255, 157, 108, 0.16);
+  }
+
+  body.edu-refactor-body button,
+  body.edu-refactor-body input[type="button"],
+  body.edu-refactor-body input[type="submit"] {
+    border-radius: 16px !important;
+    border: 1px solid rgba(22, 101, 122, 0.16) !important;
+    box-shadow: 0 10px 24px rgba(33, 76, 111, 0.12) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #edf7f6 100%) !important;
+    color: var(--edu-text) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+  }
+
+  body.edu-refactor-body button:hover,
+  body.edu-refactor-body input[type="button"]:hover,
+  body.edu-refactor-body input[type="submit"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(33, 76, 111, 0.16) !important;
+    filter: saturate(1.04);
+  }
+
+  body.edu-refactor-body input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  body.edu-refactor-body select,
+  body.edu-refactor-body textarea {
+    border-radius: 14px !important;
+    border: 1px solid rgba(82, 119, 148, 0.26) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: var(--edu-text) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px rgba(42, 77, 105, 0.08) !important;
+  }
+
+  body.edu-refactor-body [class*="panel"],
+  body.edu-refactor-body [class*="Panel"],
+  body.edu-refactor-body [class*="card"],
+  body.edu-refactor-body [class*="Card"],
+  body.edu-refactor-body [class*="dialog"],
+  body.edu-refactor-body [class*="Dialog"],
+  body.edu-refactor-body [class*="controls"],
+  body.edu-refactor-body [class*="Controls"],
+  body.edu-refactor-body [class*="toolbar"],
+  body.edu-refactor-body [class*="Toolbar"],
+  body.edu-refactor-body [class*="sidebar"],
+  body.edu-refactor-body [class*="Sidebar"],
+  body.edu-refactor-body [class*="instruction"],
+  body.edu-refactor-body [class*="Instruction"],
+  body.edu-refactor-body [id*="panel"],
+  body.edu-refactor-body [id*="Panel"],
+  body.edu-refactor-body [id*="controls"],
+  body.edu-refactor-body [id*="Controls"] {
+    border-radius: 24px !important;
+    border: 1px solid var(--edu-line) !important;
+    box-shadow: var(--edu-shadow) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  body.edu-refactor-body .page-title,
+  body.edu-refactor-body .header h1,
+  body.edu-refactor-body .header h2,
+  body.edu-refactor-body .title,
+  body.edu-refactor-body .subtitle,
+  body.edu-refactor-body .teacher-text,
+  body.edu-refactor-body #step-indicator,
+  body.edu-refactor-body #narrative-text {
+    color: var(--edu-text) !important;
+    text-shadow: none !important;
+  }
+
+  body.edu-refactor-body .edu-brand-shell {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  body.edu-refactor-body .edu-brand-panel,
+  body.edu-refactor-body .edu-brand-guide {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 251, 0.92) 100%);
+    border: 1px solid rgba(89, 127, 156, 0.22);
+    box-shadow: var(--edu-shadow-strong);
+    backdrop-filter: blur(18px);
+    border-radius: 26px;
+  }
+
+  body.edu-refactor-body .edu-brand-panel {
+    max-width: min(720px, calc(100vw - 280px));
+    padding: 18px 22px 20px;
+  }
+
+  body.edu-refactor-body .edu-brand-guide {
+    width: 220px;
+    padding: 16px 18px;
+  }
+
+  body.edu-refactor-body .edu-brand-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(15, 157, 138, 0.10);
+    color: var(--edu-accent-deep);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  body.edu-refactor-body .edu-brand-title {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.08;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-copy {
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  body.edu-refactor-body .edu-brand-copy strong {
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--edu-text);
+  }
+
+  body.edu-refactor-body .edu-brand-guide ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: var(--edu-text-soft);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-brand-shell {
+      flex-direction: column;
+      right: 12px;
+      left: 12px;
+      top: 12px;
+    }
+
+    body.edu-refactor-body .edu-brand-panel,
+    body.edu-refactor-body .edu-brand-guide {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
+
+
+  body.edu-refactor-body .edu-border-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 10001;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(89, 127, 156, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--edu-text, #1f2937);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  body.edu-refactor-body .edu-border-toggle:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  body.edu-refactor-body.edu-hide-brand-panels .edu-brand-shell {
+    display: none !important;
+  }
+
+  @media (max-width: 960px) {
+    body.edu-refactor-body .edu-border-toggle {
+      top: auto;
+      bottom: 12px;
+      right: 12px;
+    }
+  }
+
+</style>
+<!-- EDU_BRAND_STYLE_END -->
+
+
+</head>
+<body class="edu-refactor-body">
+<!-- EDU_BRAND_SHELL_START -->
+<div class="edu-brand-shell" data-brand-shell>
+  <section class="edu-brand-panel" aria-label="页面导语">
+    <div class="edu-brand-kicker">操作策略 · EDU STUDIO</div>
+    <h1 class="edu-brand-title">量水调度台</h1>
+    <div class="edu-brand-copy">
+      <div><strong>任务目标：</strong>用不同容量的水桶凑出目标水量，练习状态转移思维。</div>
+      <div><strong>操作提示：</strong>执行装满、倒空和互倒等操作，比较达到目标的最短过程。</div>
+      <div><strong>理解重点：</strong>量水题的核心是把状态列清楚，再从允许操作中推进到目标。</div>
+    </div>
+</section>
+  <aside class="edu-brand-guide" aria-label="操作建议">
+    <h2>量水策略实验</h2>
+    <ul><li>先记下每个桶的当前水量。</li><li>优先尝试可逆的短步骤。</li><li>一旦出现重复状态就换策略。</li></ul>
+  </aside>
+</div>
+<!-- EDU_BRAND_SHELL_END -->
+
+<button type="button" class="edu-border-toggle" id="edu-border-toggle" aria-pressed="false" aria-label="隐藏说明框" title="隐藏说明框">-</button>
+
+    <div class="header">
+        <h2>� 炼金术士的魔药配方</h2>
+    </div>
+
+    <div class="problem-description">
+        <p class="problem-text">
+            你现在有两个量杯：一个容量为 <strong>4 盎司</strong>，一个容量为 <strong>11 盎司</strong>。<br>目标是准确配出 <strong>5 盎司</strong> 的水，请通过装满、倒空和互相倾倒找到最短步骤。
+        </p>
+    </div>
+
+    <div class="game-container">
+
+
+        <div class="main-content">
+            <div class="left-panel">
+<div class="buckets-container">
+                    <div class="bucket small-bucket">
+                        <div class="bucket-visual">
+                            <div class="water" id="smallWater"></div>
+                        </div>
+                        <div class="bucket-label-bottom">
+                            <div class="bucket-current">当前: <span class="current-amount" id="smallAmount">0 盎司</span></div>
+                            <div class="bucket-controls">
+                                <div class="control-columns">
+                                    <div class="control-column left-column">
+                                        <button class="control-btn fill-btn" onclick="fillBucket('small')">
+                                            <span class="btn-icon">✓</span>
+                                            装满小杯
+                                        </button>
+                                        <button class="control-btn empty-btn" onclick="emptyBucket('small')">
+                                            <span class="btn-icon">×</span>
+                                            倒空小杯
+                                        </button>
+                                    </div>
+                                    <div class="control-column right-column">
+                                        <button class="control-btn pour-btn tall-btn" onclick="pourWater('small', 'large')">
+                                            小杯倒入大杯
+                                            <span class="btn-icon">➡</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bucket large-bucket">
+                        <div class="bucket-visual">
+                            <div class="water" id="largeWater"></div>
+                        </div>
+                        <div class="bucket-label-bottom">
+                            <div class="bucket-current">当前: <span class="current-amount" id="largeAmount">0 盎司</span></div>
+                            <div class="bucket-controls">
+                                <div class="control-columns">
+                                    <div class="control-column left-column">
+                                        <button class="control-btn pour-btn tall-btn" onclick="pourWater('large', 'small')">
+                                            大杯倒入小杯
+                                            <span class="btn-icon">⬅</span>
+                                        </button>
+                                    </div>
+                                    <div class="control-column right-column">
+                                        <button class="control-btn fill-btn" onclick="fillBucket('large')">
+                                            <span class="btn-icon">✓</span>
+                                            装满大杯
+                                        </button>
+                                        <button class="control-btn empty-btn" onclick="emptyBucket('large')">
+                                            <span class="btn-icon">×</span>
+                                            倒空大杯
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+
+            </div>
+            
+            <div class="right-panel">
+                <div class="history-container">
+                    <div class="history-title">操作记录</div>
+                    <div class="history-table-container" id="historyList">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>步骤</th><th>小杯 (4盎司)</th><th>大杯 (11盎司)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="initial-row">
+                                    <td>准备开始</td>
+                                    <td>0 盎司</td>
+                                    <td>0 盎司</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 15px;">
+                    <button class="control-btn reset-btn" onclick="resetGame()" style="width: 180px;">
+                        <span class="btn-icon">↺</span>
+                        重新开始
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="successMessage" class="success-message" style="display: none;">
+            🎉 已成功配出 5 盎司目标水量！
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态
+        let gameState = {
+            smallBucket: 0,  // 小桶当前水量
+            largeBucket: 0,  // 大桶当前水量
+            smallCapacity: 4,
+            largeCapacity: 11,
+            target: 5,
+            stepCount: 0,
+            history: []
+        };
+
+        // 初始化游戏
+        function initGame() {
+            updateDisplay();
+            addToHistory('准备开始', gameState.smallBucket, gameState.largeBucket);
+        }
+
+        // 更新显示
+        function updateDisplay() {
+            // 更新水量显示
+            document.getElementById('smallAmount').textContent = gameState.smallBucket + ' 盎司';
+            document.getElementById('largeAmount').textContent = gameState.largeBucket + ' 盎司';
+
+            // 更新水位高度与魔法颜色
+            const smallWaterHeight = (gameState.smallBucket / gameState.smallCapacity) * 100;
+            const largeWaterHeight = (gameState.largeBucket / gameState.largeCapacity) * 100;
+            
+            const smallWater = document.getElementById('smallWater');
+            const largeWater = document.getElementById('largeWater');
+
+            smallWater.style.height = smallWaterHeight + '%';
+            largeWater.style.height = largeWaterHeight + '%';
+
+            // 红色魔法药水
+            smallWater.style.background = 'linear-gradient(180deg, rgba(244, 63, 94, 0.85) 0%, rgba(190, 18, 60, 0.95) 100%)';
+            // 蓝色魔法药水
+            largeWater.style.background = 'linear-gradient(180deg, rgba(56, 189, 248, 0.85) 0%, rgba(3, 105, 161, 0.95) 100%)';
+
+            // 检查是否达到目标 (调配成功则变成金色)
+            if (gameState.smallBucket === gameState.target || gameState.largeBucket === gameState.target) {
+                if(gameState.smallBucket === gameState.target) {
+                    smallWater.style.background = 'linear-gradient(180deg, rgba(250, 204, 21, 0.9) 0%, rgba(180, 83, 9, 1) 100%)';
+                }
+                if(gameState.largeBucket === gameState.target) {
+                    largeWater.style.background = 'linear-gradient(180deg, rgba(250, 204, 21, 0.9) 0%, rgba(180, 83, 9, 1) 100%)';
+                }
+                document.getElementById('successMessage').style.display = 'block';
+            }
+        }
+
+        // 装满水桶
+        function fillBucket(bucket) {
+            if (bucket === 'small') {
+                if (gameState.smallBucket < gameState.smallCapacity) {
+                    gameState.smallBucket = gameState.smallCapacity;
+                    addToHistory('装满小杯', gameState.smallBucket, gameState.largeBucket);
+                }
+            } else {
+                if (gameState.largeBucket < gameState.largeCapacity) {
+                    gameState.largeBucket = gameState.largeCapacity;
+                    addToHistory('装满大杯', gameState.smallBucket, gameState.largeBucket);
+                }
+            }
+            updateDisplay();
+        }
+
+        // 倒空水桶
+        function emptyBucket(bucket) {
+            if (bucket === 'small') {
+                if (gameState.smallBucket > 0) {
+                    gameState.smallBucket = 0;
+                    addToHistory('倒空小杯', gameState.smallBucket, gameState.largeBucket);
+                }
+            } else {
+                if (gameState.largeBucket > 0) {
+                    gameState.largeBucket = 0;
+                    addToHistory('倒空大杯', gameState.smallBucket, gameState.largeBucket);
+                }
+            }
+            updateDisplay();
+        }
+
+        // 倒水
+        function pourWater(from, to) {
+            let poured = 0;
+            
+            if (from === 'small' && to === 'large') {
+                // 小桶倒入大桶
+                const canPour = Math.min(gameState.smallBucket, gameState.largeCapacity - gameState.largeBucket);
+                if (canPour > 0) {
+                    gameState.smallBucket -= canPour;
+                    gameState.largeBucket += canPour;
+                    poured = canPour;
+                    addToHistory(`红瓶注入蓝瓶 ${canPour}盎司`, gameState.smallBucket, gameState.largeBucket);
+                }
+            } else if (from === 'large' && to === 'small') {
+                // 大桶倒入小桶
+                const canPour = Math.min(gameState.largeBucket, gameState.smallCapacity - gameState.smallBucket);
+                if (canPour > 0) {
+                    gameState.largeBucket -= canPour;
+                    gameState.smallBucket += canPour;
+                    poured = canPour;
+                    addToHistory(`蓝瓶注入红瓶 ${canPour}盎司`, gameState.smallBucket, gameState.largeBucket);
+                }
+            }
+            
+            updateDisplay();
+        }
+
+        // 添加到历史记录
+        function addToHistory(action, small, large) {
+            const historyList = document.getElementById('historyList');
+            const tbody = historyList.querySelector('tbody');
+            
+            if (action === '准备开始' || action === '重新开始') {
+                // 重置或开始游戏时，清空表格并添加初始行
+                tbody.innerHTML = '';
+                const initialRow = document.createElement('tr');
+                initialRow.className = 'initial-row';
+                initialRow.innerHTML = `
+                    <td>🎮 ${action}</td>
+                    <td>${small} 盎司</td>
+                    <td>${large} 盎司</td>
+                `;
+                tbody.appendChild(initialRow);
+                gameState.stepCount = 0;
+            } else {
+                // 正常操作步骤
+                gameState.stepCount++;
+                const historyItem = {
+                    step: gameState.stepCount,
+                    action: action,
+                    smallBucket: small,
+                    largeBucket: large
+                };
+                
+                gameState.history.push(historyItem);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${gameState.stepCount}. ${action}</td>
+                    <td>${small} 盎司</td>
+                    <td>${large} 盎司</td>
+                `;
+                tbody.appendChild(row);
+            }
+            
+            historyList.scrollTop = historyList.scrollHeight;
+        }
+
+        // 检查胜利条件
+        function checkWinCondition() {
+            if (gameState.smallBucket === gameState.target || gameState.largeBucket === gameState.target) {
+                document.getElementById('successMessage').style.display = 'block';
+            }
+        }
+
+        // 重置游戏
+        function resetGame() {
+            gameState = {
+                smallBucket: 0,
+                largeBucket: 0,
+                smallCapacity: 4,
+                largeCapacity: 11,
+                target: 5,
+                stepCount: 0,
+                history: []
+            };
+            
+            document.getElementById('successMessage').style.display = 'none';
+            
+            updateDisplay();
+            addToHistory('重新开始', gameState.smallBucket, gameState.largeBucket);
+        }
+
+        // 页面加载完成后初始化游戏
+        window.addEventListener('load', initGame);
+    </script>
+
+
+
+
+<script>
+(function () {
+  var storageKey = 'edu_hide_brand_panels';
+  var toggleButton = document.getElementById('edu-border-toggle');
+  if (!toggleButton || !document.body) {
+    return;
+  }
+
+  function applyState(hidden) {
+    document.body.classList.toggle('edu-hide-brand-panels', hidden);
+    toggleButton.textContent = hidden ? '+' : '-';
+    toggleButton.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    toggleButton.setAttribute('aria-label', hidden ? '显示说明框' : '隐藏说明框');
+    toggleButton.setAttribute('title', hidden ? '显示说明框' : '隐藏说明框');
+  }
+
+  var hiddenByDefault = false;
+  try {
+    hiddenByDefault = localStorage.getItem(storageKey) === '1';
+  } catch (e) {
+    hiddenByDefault = false;
+  }
+
+  applyState(hiddenByDefault);
+
+  toggleButton.addEventListener('click', function () {
+    var nextHidden = !document.body.classList.contains('edu-hide-brand-panels');
+    applyState(nextHidden);
+    try {
+      localStorage.setItem(storageKey, nextHidden ? '1' : '0');
+    } catch (e) {
+      // no-op
+    }
+  });
+})();
+</script>
+
+
+</body>
+</html>

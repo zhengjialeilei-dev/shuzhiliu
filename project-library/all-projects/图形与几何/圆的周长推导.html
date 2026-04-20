@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圆的周长 - 教学演示</title>
+    <link rel="icon" href="data:,">
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 MathJax -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif;
+            background-color: #f5f7fa; /* 纯净明亮的灰白背景 */
+            color: #334155; /* Slate-700 深灰文字 */
+            overflow: hidden;
+        }
+
+        /* ------------------- 自定义控件样式 ------------------- */
+        
+        /* 蓝色滑块 - 代表直径 */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 28px;
+            width: 28px;
+            border-radius: 50%;
+            background: #2563EB; /* Blue-600 */
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+            cursor: pointer;
+            margin-top: -10px;
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #DBEAFE; /* Blue-100 */
+            border-radius: 4px;
+        }
+
+        /* ------------------- 卡片风格 (Neumorphism Lite) ------------------- */
+        .edu-card {
+            background: #ffffff;
+            border-radius: 1.5rem; /* 24px */
+            box-shadow: 0 10px 25px -5px rgba(148, 163, 184, 0.15), 0 4px 10px -2px rgba(148, 163, 184, 0.1);
+            border: 1px solid #f1f5f9;
+        }
+
+        /* ------------------- 动态算式布局优化 (FIXED) ------------------- */
+        
+        /* 算式主容器：使用 Flexbox 严格控制对齐和间距 */
+        .equation-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px; /* 间距控制 */
+            width: 100%;
+            white-space: nowrap; /* 防止换行 */
+        }
+
+        .fraction-container {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            font-family: 'Consolas', 'SFMono-Regular', monospace;
+        }
+
+        .fraction-top {
+            border-bottom: 2px solid #94a3b8; /* 分数线宽度适配字号 */
+            padding-bottom: 2px;
+            margin-bottom: 2px;
+            width: 100%;
+            text-align: center;
+            font-size: 24px; /* [FIX] 缩小字号 */
+            line-height: 1.2;
+        }
+
+        .fraction-bottom {
+            width: 100%;
+            text-align: center;
+            padding-top: 2px;
+            font-size: 24px; /* [FIX] 缩小字号 */
+            line-height: 1.2;
+        }
+
+        .operator-equals {
+            font-size: 24px;
+            font-weight: 900;
+            color: #cbd5e1; /* Slate-300 */
+        }
+
+        .result-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #result-display {
+            font-size: 36px; /* [FIX] 结果字号控制在合理范围 */
+            font-family: 'Consolas', 'SFMono-Regular', monospace;
+            font-weight: 900;
+            color: #334155;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* ------------------- 动画类 ------------------- */
+        .highlight-result {
+            color: #16a34a; /* Green-600 */
+            transform: scale(1.1); /* 稍微缩小放大比例，防止溢出 */
+            text-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+            font-weight: 900;
+        }
+
+        /* 标签位置优化：移到底部，防止遮挡 */
+        #pi-badge {
+            position: absolute;
+            bottom: -24px; /* 放在数字下方 */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+        }
+
+        /* Toast 弹窗 */
+        .toast-active {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+        .toast-hidden {
+            opacity: 0;
+            transform: translate(-50%, -20px);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex select-none">
+
+    <!-- 庆祝弹窗 -->
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-white px-8 py-4 rounded-2xl flex items-center gap-4 shadow-xl border border-green-100 transition-all duration-500 toast-hidden">
+        <div class="bg-green-100 text-green-600 rounded-full p-2">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        </div>
+        <div>
+            <h3 class="font-extrabold text-xl text-gray-800">实验完美！</h3>
+            <p class="text-sm text-gray-500 font-semibold">周长正是直径的 3 倍多出 0.14 倍</p>
+        </div>
+    </div>
+
+    <!-- 左侧控制面板 -->
+    <aside class="w-[400px] h-full p-6 flex flex-col gap-6 shrink-0 bg-[#f5f7fa] border-r border-slate-200 z-10 shadow-sm">
+        
+        <!-- 头部 -->
+        <div class="flex items-center gap-3 pb-2">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">圆的周长</h1>
+                <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">交互式数学实验室</p>
+            </div>
+        </div>
+
+        <!-- 卡片1: 设置直径 (蓝色主题) -->
+        <div class="edu-card p-6 flex flex-col gap-5">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                    <span class="w-2 h-6 bg-blue-600 rounded-full"></span>
+                    设置直径 (d)
+                </h2>
+                <span id="diameter-display" class="font-mono font-bold text-2xl text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">150</span>
+            </div>
+            
+            <div class="py-2">
+                <input type="range" id="diameter-slider" min="100" max="250" value="150" step="1" class="w-full">
+                <div class="flex justify-between text-xs font-bold text-slate-400 mt-2 px-1">
+                    <span>100px</span>
+                    <span>250px</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 卡片2: 动态算式 (核心教学区) - 修复版 -->
+        <div class="edu-card p-6 flex flex-col items-center justify-center flex-1 relative overflow-hidden bg-gradient-to-b from-white to-slate-50">
+            <div class="absolute top-0 left-0 w-full h-1 bg-slate-100"></div>
+            
+            <p class="absolute top-6 text-xs font-bold text-slate-400 uppercase tracking-widest">实时比值计算</p>
+
+            <!-- 使用新的 Flexbox 容器，确保水平居中且不拥挤 -->
+            <div class="equation-wrapper mt-4">
+                
+                <!-- 分数部分 -->
+                <div class="fraction-container">
+                    <div class="fraction-top text-orange-500 font-bold transition-all duration-100" id="data-c">
+                        0.00
+                    </div>
+                    <div class="fraction-bottom text-blue-600 font-bold" id="data-d-bottom">
+                        150
+                    </div>
+                </div>
+
+                <!-- 等号 -->
+                <div class="operator-equals">=</div>
+
+                <!-- 结果部分 -->
+                <div class="result-container">
+                    <div id="result-display">0.00</div>
+                    
+                    <!-- 标签：移至下方，绝对定位，不占位 -->
+                    <div id="pi-badge" class="bg-yellow-400 text-yellow-900 text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm opacity-0 transition-opacity duration-300 whitespace-nowrap">
+                        是 \(\pi\) !
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex gap-6 text-xs font-bold text-slate-500">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+                    <span>周长 C</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-blue-600"></div>
+                    <span>直径 d</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部按钮 -->
+        <div class="grid grid-cols-5 gap-3">
+            <button id="btn-start" class="col-span-3 bg-slate-800 text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-slate-300 hover:bg-slate-700 active:scale-95 transition-all flex justify-center items-center gap-2 group">
+                <span>开始测量</span>
+                <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+            <button id="btn-reset" class="col-span-2 bg-white text-slate-600 font-bold text-lg py-4 rounded-2xl border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 active:scale-95 transition-all">
+                重置
+            </button>
+        </div>
+
+    </aside>
+
+    <!-- 右侧 Canvas 区域 -->
+    <main class="flex-1 relative h-full bg-[#f5f7fa]">
+        <!-- 背景网格装饰 -->
+        <div class="absolute inset-0 opacity-30" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px;"></div>
+        
+        <canvas id="canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+    </main>
+
+    <script>
+        // --- 教学版配色系统 ---
+        const colors = {
+            diameter: '#2563EB',   // Blue-600: 直径
+            circumference: '#F97316', // Orange-500: 周长
+            extra: '#16A34A',      // Green-600: 0.14部分
+            textPrimary: '#334155', // Slate-700
+            textSecondary: '#94A3B8', // Slate-400
+            rulerLine: '#CBD5E1',   // Slate-300
+            bg: '#f5f7fa',
+            wheelFill: 'rgba(37, 99, 235, 0.1)', // 极淡的蓝
+            wheelStroke: '#2563EB'
+        };
+
+        const config = {
+            groundYRatio: 0.65,
+            startX: 100
+        };
+
+        // --- DOM ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const slider = document.getElementById('diameter-slider');
+        const displayDiameter = document.getElementById('diameter-display');
+        const dataDBottom = document.getElementById('data-d-bottom');
+        const dataC = document.getElementById('data-c');
+        const resultDisplay = document.getElementById('result-display');
+        const piBadge = document.getElementById('pi-badge');
+        const btnStart = document.getElementById('btn-start');
+        const btnReset = document.getElementById('btn-reset');
+        const toast = document.getElementById('toast');
+
+        // --- 状态 ---
+        let state = {
+            d: 150,
+            distance: 0,
+            maxDistance: 0,
+            isAnimating: false,
+            isFinished: false,
+            scale: 1
+        };
+
+        let animationFrameId;
+
+        function init() {
+            window.addEventListener('resize', handleResize);
+            slider.addEventListener('input', handleSlider);
+            btnStart.addEventListener('click', toggleAnimation);
+            btnReset.addEventListener('click', reset);
+            
+            handleResize();
+            updateUI(true);
+        }
+
+        function draw() {
+            const { width, height } = canvas;
+            ctx.clearRect(0, 0, width, height);
+
+            const groundY = height * config.groundYRatio;
+            const radius = state.d / 2;
+            const startX = config.startX * state.scale;
+            const currentX = startX + state.distance;
+
+            // 1. 绘制地面直尺 & 蓝色直径单位
+            drawRuler(startX, groundY, state.d);
+
+            // 2. 绘制轨迹线 (橙色周长)
+            if (state.distance > 0) {
+                ctx.beginPath();
+                ctx.moveTo(startX, groundY);
+                ctx.lineTo(currentX, groundY);
+                ctx.strokeStyle = colors.circumference;
+                ctx.lineWidth = 5 * state.scale;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
+
+            // 3. 绘制轮子
+            ctx.save();
+            ctx.translate(currentX, groundY - radius);
+            const rotation = state.distance / radius;
+            ctx.rotate(rotation);
+            drawWheel(radius);
+            ctx.restore();
+
+            // 4. 结束后的高亮标注
+            if (state.isFinished) {
+                drawResultHighlight(startX, groundY, state.d);
+            }
+        }
+
+        function drawRuler(startX, y, diameter) {
+            // 主横线
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.strokeStyle = colors.rulerLine;
+            ctx.lineWidth = 2 * state.scale;
+            ctx.stroke();
+
+            // 字体设置
+                ctx.font = `bold ${14 * state.scale}px Consolas`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            // 起点
+            drawTick(startX, y, '0', colors.textSecondary);
+
+            // 绘制直径度量段 (蓝色段)
+            for (let i = 0; i < 3; i++) {
+                const segStart = startX + (i * diameter);
+                const segEnd = startX + ((i + 1) * diameter);
+                
+                // 蓝色刻度线段
+                ctx.beginPath();
+                ctx.moveTo(segStart + 4 * state.scale, y + 25 * state.scale); 
+                ctx.lineTo(segEnd - 4 * state.scale, y + 25 * state.scale);
+                ctx.strokeStyle = colors.diameter; 
+                ctx.lineWidth = 3 * state.scale;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+
+                // 标记文字 1d, 2d, 3d
+                drawTick(segEnd, y, `${i + 1}d`, colors.textSecondary);
+                
+                // 段落中间的小标签 "d"
+                ctx.fillStyle = colors.diameter;
+                ctx.font = `bold ${12 * state.scale}px Nunito`;
+                ctx.fillText('d', (segStart + segEnd) / 2, y + 28 * state.scale);
+            }
+
+            // 绘制 PI 位置标记 (虚线)
+            const piX = startX + (diameter * Math.PI);
+            ctx.beginPath();
+            ctx.moveTo(piX, y);
+            ctx.lineTo(piX, y - 50 * state.scale);
+            ctx.strokeStyle = colors.textPrimary;
+            ctx.setLineDash([4 * state.scale, 4 * state.scale]);
+            ctx.lineWidth = 1 * state.scale;
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawResultHighlight(startX, y, diameter) {
+            // 高亮最后那 0.14d 的部分
+            const x3d = startX + (3 * diameter);
+            const xPi = startX + (diameter * Math.PI);
+
+            // 绿色高亮线段
+            ctx.beginPath();
+            ctx.moveTo(x3d, y);
+            ctx.lineTo(xPi, y);
+            ctx.strokeStyle = colors.extra; // 绿色
+            ctx.lineWidth = 6 * state.scale; 
+            ctx.stroke();
+
+            // 绿色区域背景
+            ctx.fillStyle = 'rgba(22, 163, 74, 0.2)';
+            ctx.fillRect(x3d, y, xPi - x3d, 35 * state.scale);
+
+            // 标注 "0.14"
+            ctx.fillStyle = colors.extra;
+            ctx.font = `bold ${12 * state.scale}px Consolas`;
+            ctx.textAlign = 'center';
+            ctx.fillText('0.14...', (x3d + xPi) / 2, y + 38 * state.scale);
+
+            // 顶部大 PI
+            ctx.fillStyle = colors.textPrimary;
+            ctx.font = `bold ${24 * state.scale}px Nunito`;
+            ctx.fillText('π', xPi, y - 80 * state.scale);
+        }
+
+        function drawTick(x, y, label, color) {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y + 10 * state.scale);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2 * state.scale;
+            ctx.stroke();
+
+            ctx.fillStyle = color;
+            ctx.font = `bold ${14 * state.scale}px Consolas`;
+            ctx.fillText(label, x, y + 14 * state.scale);
+        }
+
+        function drawWheel(radius) {
+            // 1. 半透明蓝色填充
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.fillStyle = colors.wheelFill;
+            ctx.fill();
+
+            // 2. 蓝色边框 (轮毂)
+            ctx.strokeStyle = colors.diameter;
+            ctx.lineWidth = 3 * state.scale;
+            ctx.stroke();
+
+            // 3. 核心：蓝色直径线 (贯穿中心)
+            ctx.beginPath();
+            ctx.moveTo(-radius, 0); 
+            ctx.lineTo(radius, 0);  
+            ctx.strokeStyle = colors.diameter;
+            ctx.lineWidth = 4 * state.scale;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            
+            // 4. 垂直的辅助线
+            ctx.beginPath();
+            ctx.moveTo(0, -radius);
+            ctx.lineTo(0, radius);
+            ctx.strokeStyle = 'rgba(37, 99, 235, 0.3)';
+            ctx.lineWidth = 2 * state.scale;
+            ctx.stroke();
+
+            // 5. 起点标记点 (橙色)
+            ctx.beginPath();
+            ctx.arc(0, radius, 6 * state.scale, 0, Math.PI * 2);
+            ctx.fillStyle = colors.circumference;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2 * state.scale;
+            ctx.stroke();
+        }
+
+        // --- 逻辑 ---
+        function updateUI(resetStyle = false) {
+            // 更新数字
+            dataDBottom.textContent = state.d;
+            dataC.textContent = state.distance.toFixed(2);
+            
+            let ratio = state.d > 0 ? state.distance / state.d : 0;
+            
+            if (resetStyle) {
+                resultDisplay.textContent = "0.00";
+                resultDisplay.classList.remove('highlight-result');
+                piBadge.classList.remove('opacity-100');
+                piBadge.classList.add('opacity-0');
+            } else if (state.isFinished) {
+                resultDisplay.textContent = "3.14159...";
+                resultDisplay.classList.add('highlight-result');
+                piBadge.classList.remove('opacity-0');
+                piBadge.classList.add('opacity-100');
+            } else {
+                resultDisplay.textContent = ratio.toFixed(2);
+            }
+        }
+
+        function animate() {
+            if (!state.isAnimating) return;
+
+            const speed = 4;
+            state.distance += speed;
+
+            if (state.distance >= state.maxDistance) {
+                state.distance = state.maxDistance;
+                state.isAnimating = false;
+                state.isFinished = true;
+                
+                updateButtonState('replay');
+                updateUI();
+                showToast();
+            } else {
+                updateUI();
+                animationFrameId = requestAnimationFrame(animate);
+            }
+            draw();
+        }
+
+        function toggleAnimation() {
+            if (state.isFinished) {
+                reset();
+                setTimeout(start, 300);
+            } else if (!state.isAnimating) {
+                start();
+            }
+        }
+
+        function start() {
+            state.isAnimating = true;
+            updateButtonState('running');
+            animate();
+        }
+
+        function reset() {
+            state.isAnimating = false;
+            state.isFinished = false;
+            state.distance = 0;
+            state.d = parseInt(slider.value);
+            state.maxDistance = state.d * Math.PI;
+            
+            cancelAnimationFrame(animationFrameId);
+            hideToast();
+            updateButtonState('start');
+            updateUI(true);
+            draw();
+        }
+
+        function showToast() {
+            toast.classList.remove('toast-hidden');
+            toast.classList.add('toast-active');
+            setTimeout(hideToast, 4000);
+        }
+
+        function hideToast() {
+            toast.classList.remove('toast-active');
+            toast.classList.add('toast-hidden');
+        }
+
+        function updateButtonState(status) {
+            if (status === 'running') {
+                btnStart.disabled = true;
+                btnStart.classList.add('opacity-70', 'cursor-not-allowed');
+                btnStart.querySelector('span').textContent = '测量中...';
+            } else if (status === 'replay') {
+                btnStart.disabled = false;
+                btnStart.classList.remove('opacity-70', 'cursor-not-allowed');
+                btnStart.querySelector('span').textContent = '再次测量';
+            } else {
+                btnStart.disabled = false;
+                btnStart.classList.remove('opacity-70', 'cursor-not-allowed');
+                btnStart.querySelector('span').textContent = '开始测量';
+            }
+        }
+
+        function handleSlider(e) {
+            if (state.isAnimating) return;
+            
+            state.d = parseInt(e.target.value);
+            state.maxDistance = state.d * Math.PI;
+            
+            displayDiameter.textContent = state.d;
+            dataDBottom.textContent = state.d;
+            
+            state.distance = 0;
+            state.isFinished = false;
+            hideToast();
+            updateUI(true);
+            
+            draw();
+        }
+
+        function handleResize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            state.scale = dpr;
+            
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height}px`;
+            
+            state.maxDistance = state.d * Math.PI;
+            draw();
+        }
+
+        init();
+    </script>
+</body>
+</html>

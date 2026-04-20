@@ -1,5 +1,6 @@
 import { ArrowRight, Copy, ExternalLink, Sparkles } from 'lucide-react';
 import type { ResolvedFeaturedTheme } from '../lib/recommendations';
+import { formatCategoryLabel } from '../lib/displayLabels';
 
 interface FeaturedRecommendationCardProps {
   theme: ResolvedFeaturedTheme;
@@ -74,7 +75,7 @@ const FeaturedRecommendationCard = ({
                 <ArrowRight className="h-4 w-4" />
               </a>
               <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-3 text-sm text-slate-500">
-                <span className="font-semibold text-slate-700">{theme.resource.resource.category}</span>
+                <span className="font-semibold text-slate-700">{formatCategoryLabel(theme.resource.resource.category)}</span>
                 <span className="text-slate-300">·</span>
                 <span>{theme.resource.resource.grade}</span>
               </div>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>六年级数学：倒数的认识</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Nunito', 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 50%, #fff7ed 100%);
+            overflow: hidden;
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+
+        /* Scrollbar Styling */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.02); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+
+        /* Animation */
+        .balance-beam {
+            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .glow-success {
+            box-shadow: 0 0 50px 15px rgba(251, 191, 36, 0.5);
+            animation: pulse-gold 2s infinite;
+        }
+        @keyframes pulse-gold {
+            0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.6); }
+            70% { box-shadow: 0 0 30px 30px rgba(251, 191, 36, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+        }
+
+        /* 3D Block Effect for Weights */
+        .weight-block {
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease;
+        }
+        /* The side/bottom thickness */
+        .weight-block::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background-color: inherit;
+            filter: brightness(0.7); /* Darker shade */
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            z-index: -1;
+        }
+
+        /* Standard Fraction Layout */
+        .fraction-container {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            line-height: 1;
+        }
+        .fraction-line {
+            width: 100%;
+            height: 3px;
+            background-color: currentColor;
+            border-radius: 2px;
+            margin: 4px 0;
+        }
+        .num, .den {
+            padding: 0 4px;
+        }
+
+        /* Button Press Effect */
+        .btn-press:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex items-center justify-center p-2 md:p-4 selection:bg-teal-200 text-slate-800">
+
+    <div id="root" class="w-full h-full max-w-7xl"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        
+        // --- Icons ---
+        const ShuffleIcon = ({ size = 18 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l14.2-12.6c.8-1.1 2-1.7 3.3-1.7H22"/><path d="M2 5h1.4c1.3 0 2.5.6 3.3 1.7l14.2 12.6c.8 1.1 2 1.7 3.3 1.7H22"/></svg>
+        );
+        const CheckIcon = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        );
+        const PlusIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
+        const MinusIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>;
+
+        // --- Components ---
+
+        // Standard Mathematical Fraction Display
+        const FractionDisplay = ({ num, den, color = "text-slate-700", scale = 1, isWhite = false }) => {
+            const isInteger = den === 1;
+            const textColor = isWhite ? "text-white" : color;
+            const lineColor = isWhite ? "bg-white" : "bg-current";
+
+            return (
+                <div className={`fraction-container ${textColor}`} style={{ transform: `scale(${scale})` }}>
+                    {isInteger ? (
+                        <span className="text-3xl">{num}</span>
+                    ) : (
+                        <>
+                            <span className="num text-2xl">{num}</span>
+                            <div className={`fraction-line ${lineColor} opacity-90`}></div>
+                            <span className="den text-2xl">{den}</span>
+                        </>
+                    )}
+                </div>
+            );
+        };
+
+        const ControlRow = ({ label, value, onChange, colorTheme }) => {
+            const isOrange = colorTheme === 'orange';
+            const labelColor = isOrange ? 'text-orange-500' : 'text-slate-500';
+            const numColor = isOrange ? 'text-orange-600' : 'text-slate-600';
+            const btnBg = isOrange ? 'bg-orange-400 hover:bg-orange-500' : 'bg-slate-400 hover:bg-slate-500';
+            const shadow = isOrange ? 'shadow-orange-200' : 'shadow-slate-200';
+
+            return (
+                <div className="flex items-center justify-between bg-white/60 p-3 rounded-2xl shadow-sm border border-white/50 w-full">
+                    <span className={`font-bold text-sm uppercase tracking-wider ${labelColor}`}>{label}</span>
+                    
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => onChange(-1)}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg ${shadow} ${btnBg} btn-press transition-all`}
+                        >
+                            <MinusIcon />
+                        </button>
+                        
+                        <div className={`w-12 text-center text-3xl font-black ${numColor}`}>
+                            {value}
+                        </div>
+
+                        <button 
+                            onClick={() => onChange(1)}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg ${shadow} ${btnBg} btn-press transition-all`}
+                        >
+                            <PlusIcon />
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App ---
+
+        const App = () => {
+            const [targetFraction, setTargetFraction] = useState({ n: 4, d: 5 });
+            const [userFraction, setUserFraction] = useState({ n: 1, d: 1 });
+            const [isBalanced, setIsBalanced] = useState(false);
+            const [rotationAngle, setRotationAngle] = useState(0);
+
+            const generateQuestion = () => {
+                const denominators = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+                const d = denominators[Math.floor(Math.random() * denominators.length)];
+                let n = Math.floor(Math.random() * 12) + 1;
+                while(n === d) { n = Math.floor(Math.random() * 12) + 1; } // Avoid 1
+                setTargetFraction({ n, d });
+                setUserFraction({ n: 1, d: 1 });
+            };
+
+            const productValue = useMemo(() => {
+                return (targetFraction.n * userFraction.n) / (targetFraction.d * userFraction.d);
+            }, [targetFraction, userFraction]);
+
+            const productFraction = useMemo(() => {
+                return {
+                    n: targetFraction.n * userFraction.n,
+                    d: targetFraction.d * userFraction.d
+                };
+            }, [targetFraction, userFraction]);
+
+            useEffect(() => {
+                let angle = 0;
+                if (Math.abs(productValue - 1) < 0.0001) {
+                    angle = 0;
+                    setIsBalanced(true);
+                } else {
+                    setIsBalanced(false);
+                    if (productValue > 1) {
+                        angle = Math.min(25, (productValue - 1) * 15); 
+                    } else {
+                        angle = Math.max(-25, (productValue - 1) * 25);
+                    }
+                }
+                setRotationAngle(angle);
+            }, [productValue]);
+
+            return (
+                <div className="w-full h-full flex flex-col md:flex-row gap-4 overflow-hidden relative">
+                    
+                    {/* LEFT PANEL: Controls (Fix: Flex Column, Horizontal Controls) */}
+                    <aside className="glass-panel w-full md:w-[340px] flex-shrink-0 h-full rounded-3xl flex flex-col shadow-2xl z-20 overflow-hidden">
+                        
+                        <div className="flex flex-col h-full overflow-y-auto custom-scrollbar p-5">
+                            
+                            {/* Header */}
+                            <div className="mb-6">
+                                <h1 className="text-2xl font-black text-slate-800 tracking-tight">倒数的认识</h1>
+                                <p className="text-slate-500 font-bold text-xs mt-1">Challenge: Make the Product 1</p>
+                            </div>
+
+                            {/* Question Card */}
+                            <div className="bg-teal-50/80 rounded-2xl p-5 border-2 border-teal-100 mb-6 flex flex-col items-center shadow-inner relative">
+                                <div className="absolute top-3 left-4 text-teal-600 font-extrabold text-[10px] uppercase tracking-widest">当前题目</div>
+                                <div className="mt-4 mb-2">
+                                    <FractionDisplay num={targetFraction.n} den={targetFraction.d} color="text-teal-600" scale={1.8} />
+                                </div>
+                                <button 
+                                    onClick={generateQuestion}
+                                    className="mt-2 flex items-center gap-2 px-4 py-2 bg-white text-teal-600 rounded-full font-bold text-xs shadow-sm border border-teal-100 hover:bg-teal-50 transition-colors"
+                                >
+                                    <ShuffleIcon />
+                                    <span>随机出题</span>
+                                </button>
+                            </div>
+
+                            {/* Control Area - REFACTORED: Horizontal Rows */}
+                            <div className="flex-1 bg-orange-50/60 rounded-2xl border-2 border-orange-100 p-4 flex flex-col justify-center gap-2 shadow-inner">
+                                <div className="text-center mb-2">
+                                    <span className="text-orange-400 font-extrabold text-[10px] uppercase tracking-widest bg-white/50 px-3 py-1 rounded-full">构造倒数</span>
+                                </div>
+                                
+                                <div className="flex flex-col gap-3 w-full">
+                                    {/* Numerator Row */}
+                                    <ControlRow 
+                                        label="分子" 
+                                        value={userFraction.n} 
+                                        onChange={(d) => setUserFraction(p => ({...p, n: Math.max(1, Math.min(20, p.n + d))}))}
+                                        colorTheme="orange"
+                                    />
+                                    
+                                    {/* Denominator Row */}
+                                    <ControlRow 
+                                        label="分母" 
+                                        value={userFraction.d} 
+                                        onChange={(d) => setUserFraction(p => ({...p, d: Math.max(1, Math.min(20, p.d + d))}))}
+                                        colorTheme="slate"
+                                    />
+                                </div>
+                            </div>
+
+                        </div>
+                    </aside>
+
+                    {/* RIGHT PANEL: Balance Scale */}
+                    <main className="glass-panel flex-1 h-full rounded-3xl relative flex flex-col overflow-hidden">
+                        
+                        {/* 1. Equation Feedback */}
+                        <div className="absolute top-6 left-0 w-full flex justify-center z-20 px-4">
+                            <div className={`
+                                glass-card px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg transition-all duration-300 transform
+                                ${isBalanced ? 'scale-105 border-green-400 bg-green-50/90 ring-4 ring-green-100' : 'border-white/50'}
+                            `}>
+                                <FractionDisplay num={targetFraction.n} den={targetFraction.d} color="text-teal-600" scale={1.2} />
+                                <span className="text-slate-400 text-xl font-black mx-1">×</span>
+                                <FractionDisplay num={userFraction.n} den={userFraction.d} color="text-orange-500" scale={1.2} />
+                                <span className="text-slate-400 text-xl font-black mx-1">=</span>
+                                
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-3xl font-black ${isBalanced ? 'text-green-600' : 'text-rose-500'}`}>
+                                        {productValue === 1 ? "1" : (
+                                            productFraction.d === 1 ? productFraction.n : 
+                                            (productFraction.n % productFraction.d === 0 ? productFraction.n/productFraction.d : 
+                                             parseFloat(productValue.toFixed(2)))
+                                        )}
+                                    </span>
+                                    {isBalanced && <div className="text-green-500 animate-bounce"><CheckIcon /></div>}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. Success Overlay */}
+                        {isBalanced && (
+                            <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center bg-white/10 backdrop-blur-[2px] transition-all duration-500">
+                                <div className="animate-bounce">
+                                    <span className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500 drop-shadow-lg filter">
+                                        Perfect!
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 3. The Balance Scale */}
+                        <div className="flex-1 flex flex-col items-center justify-end pb-16 relative">
+                            
+                            {/* Fulcrum (Refined) */}
+                            <div className="absolute bottom-16 z-10 flex flex-col items-center">
+                                {/* Pivot Circle */}
+                                <div className={`
+                                    w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black text-white shadow-xl border-4 border-white z-20 transition-all duration-500
+                                    ${isBalanced ? 'bg-amber-400 scale-125 glow-success' : 'bg-slate-800'}
+                                `}>
+                                    1
+                                </div>
+                                {/* Triangle Base */}
+                                <div className="w-0 h-0 border-l-[35px] border-l-transparent border-r-[35px] border-r-transparent border-b-[70px] border-b-slate-300 mt-[-20px]"></div>
+                            </div>
+
+                            {/* Beam (Refined) */}
+                            <div 
+                                className="relative w-[85%] h-5 bg-indigo-900 rounded-full shadow-2xl balance-beam z-10"
+                                style={{ transform: `rotate(${rotationAngle}deg)`, transformOrigin: 'center center' }}
+                            >
+                                {/* Left Pan & Weight */}
+                                <div className="absolute left-0 -top-28 w-40 flex flex-col items-center">
+                                    {/* 3D Weight Block */}
+                                    <div className="weight-block w-24 h-24 bg-teal-400 rounded-xl shadow-2xl flex items-center justify-center border border-teal-300"
+                                         style={{ transform: `rotate(${-rotationAngle}deg)` }}>
+                                        <FractionDisplay num={targetFraction.n} den={targetFraction.d} isWhite={true} scale={1.6} />
+                                    </div>
+                                    
+                                    {/* Connector String */}
+                                    <div className="w-1.5 h-28 bg-slate-300 absolute top-12 -z-10 rounded-full"></div>
+                                </div>
+
+                                {/* Right Pan & Weight */}
+                                <div className="absolute right-0 -top-28 w-40 flex flex-col items-center">
+                                    {/* 3D Weight Block */}
+                                    <div className={`
+                                        weight-block w-24 h-24 rounded-xl shadow-2xl flex items-center justify-center border border-white/20 transition-colors duration-300
+                                        ${isBalanced ? 'bg-amber-400' : 'bg-orange-400'}
+                                    `}
+                                         style={{ transform: `rotate(${-rotationAngle}deg)` }}>
+                                        <FractionDisplay num={userFraction.n} den={userFraction.d} isWhite={true} scale={1.6} />
+                                    </div>
+
+                                    {/* Connector String */}
+                                    <div className="w-1.5 h-28 bg-slate-300 absolute top-12 -z-10 rounded-full"></div>
+                                </div>
+                            </div>
+
+                            {/* Ground Line */}
+                            <div className="absolute bottom-16 w-full h-1.5 bg-slate-200 z-0"></div>
+                        </div>
+
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
