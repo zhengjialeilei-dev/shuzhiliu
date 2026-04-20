@@ -88,3 +88,22 @@ npm run deploy:web:skip-build
 - 当前 PostgreSQL 容器名是 `mathflow-postgres`
 
 以后只要前端代码有变动，就统一运行 `npm run deploy:web`，不要再直接手工传到 `/var/www/...`
+
+## GitHub Auto Deploy (Tencent Cloud)
+
+Push to `main` now triggers GitHub Actions auto deployment to `https://sparkaiedu.com`.
+
+### Required GitHub Secrets
+
+In GitHub repository settings: `Settings -> Secrets and variables -> Actions`, add:
+
+- `MATHFLOW_DEPLOY_HOST` (example: `119.29.152.213`)
+- `MATHFLOW_DEPLOY_USER` (example: `root`)
+- `MATHFLOW_DEPLOY_PASSWORD` (your server SSH password)
+- `MATHFLOW_SITE_URL` (use `https://sparkaiedu.com`)
+- `MATHFLOW_REMOTE_REPO_ROOT` (example: `/opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu`)
+- `MATHFLOW_REMOTE_SITE_ROOT` (example: `/opt/1panel/www/sites/sparkaiedu.com/index`)
+- `MATHFLOW_OPENRESTY_CONTAINER` (example: `1Panel-openresty-z1xG`)
+- `MATHFLOW_POSTGRES_CONTAINER` (example: `mathflow-postgres`)
+
+After secrets are set, any new push to `main` will deploy automatically.
