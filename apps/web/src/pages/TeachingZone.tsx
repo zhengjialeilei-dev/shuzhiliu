@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import { FolderOpen, Loader2, ScrollText, BookOpen, FileCheck, Presentation } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getTeachingResources } from '../lib/api';
+import { LOCAL_TEXTBOOK_RESOURCES, mergeLocalTextbooks } from '../lib/localTeachingResources';
 import { parseTextbookOrder } from '../lib/utils';
 import PageHeader from '../components/PageHeader';
 import ZoneCard from '../components/ZoneCard';
@@ -74,6 +75,7 @@ const LOCAL_RESOURCES: TeachingResource[] = [
     file_url: '/files/课标方案.pdf',
     file_type: 'pdf',
   },
+  ...LOCAL_TEXTBOOK_RESOURCES,
 ];
 
 const CN_GRADE_LABELS: Record<string, string> = {
@@ -119,7 +121,7 @@ const getDisplayDescription = (resource: TeachingResource) => {
 
 const fetchTeachingResources = async () => {
   const remoteResources = await getTeachingResources().catch(() => []);
-  return remoteResources.length > 0 ? remoteResources : LOCAL_RESOURCES;
+  return remoteResources.length > 0 ? mergeLocalTextbooks(remoteResources) : LOCAL_RESOURCES;
 };
 
 const TeachingZone = () => {

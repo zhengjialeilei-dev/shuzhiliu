@@ -44,6 +44,23 @@ function localUrlForKey(key) {
   return `/uploads/${key.replace(/\\/g, '/')}`;
 }
 
+export function isSafeUploadPath(value) {
+  if (typeof value !== 'string' || !value.startsWith('/uploads/')) return false;
+
+  try {
+    const decodedPath = decodeURIComponent(value);
+    if (!decodedPath.startsWith('/uploads/')) return false;
+    const key = decodedPath.replace(/^\/uploads\/+/, '');
+    if (!key || path.isAbsolute(key)) return false;
+    if (key.replace(/\\/g, '/').split('/').includes('..')) return false;
+
+    const normalized = path.posix.normalize(key.replace(/\\/g, '/'));
+    return normalized !== '.' && normalized !== '..' && !normalized.startsWith('../');
+  } catch {
+    return false;
+  }
+}
+
 function s3UrlForKey(key) {
   const base = config.s3PublicBaseUrl || config.publicAssetBaseUrl || '';
   if (base) {
@@ -79,8 +96,8 @@ export async function uploadObject({ key, body, contentType }) {
 }
 
 function keyFromLocalUrl(url) {
+  if (!isSafeUploadPath(url)) return null;
   const normalized = url.replace(/^\/+/, '');
-  if (!normalized.startsWith('uploads/')) return null;
   return normalized.replace(/^uploads\//, '');
 }
 
@@ -131,5 +148,9 @@ export async function deleteObjectByUrl(url) {
   }
 
   const fullPath = path.join(config.uploadDir, key);
+  const resolvedUploadDir = path.resolve(config.uploadDir);
+  const resolvedFullPath = path.resolve(fullPath);
+  if (!resolvedFullPath.startsWith(`${resolvedUploadDir}${path.sep}`)) return;
+
   await fs.rm(fullPath, { force: true });
 }

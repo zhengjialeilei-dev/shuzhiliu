@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '../config.js';
 import { query } from '../db.js';
+import { isSafeUploadPath } from '../storage.js';
 
 export function normalizeResource(row) {
   return {
@@ -64,15 +65,16 @@ export function buildHtmlProxyAllowlist() {
 }
 
 export function isAllowedProxyUrl(rawUrl, allowHosts) {
+  if (isSafeUploadPath(rawUrl)) return true;
+
   try {
     const target = new URL(rawUrl);
 
-    if (rawUrl.startsWith('/uploads/')) return true;
     if (allowHosts.size === 0) return config.nodeEnv !== 'production';
 
     return allowHosts.has(target.host);
   } catch {
-    return rawUrl.startsWith('/uploads/');
+    return false;
   }
 }
 

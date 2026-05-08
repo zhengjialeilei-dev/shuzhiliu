@@ -327,6 +327,54 @@ test('resource resolve matches generated html slugs without returning the full l
   }
 });
 
+test('resource resolve treats SQL-like path input as plain data', async () => {
+  config.nodeEnv = 'test';
+  const realQuery = pool.query.bind(pool);
+  const seenQueries = [];
+
+  pool.query = async (text, params) => {
+    seenQueries.push({ text, params });
+    if (text === 'SELECT * FROM resources ORDER BY created_at DESC') {
+      return {
+        rows: [
+          {
+            id: 'html-safe-1',
+            title: 'Safe Resource',
+            category: 'AI搴旂敤',
+            grade: '閫氱敤',
+            image_url: 'https://example.com/safe.png',
+            description: 'Safe demo',
+            file_path: 'https://cdn.example.com/collections/demo/safe.html',
+            route_path: '/safe-resource',
+            resource_type: 'html',
+            created_at: new Date().toISOString(),
+          },
+        ],
+      };
+    }
+
+    return realQuery(text, params);
+  };
+
+  const app = await buildApp();
+
+  try {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/resources/resolve',
+      query: {
+        path: "' OR 1=1--",
+      },
+    });
+
+    assert.equal(response.statusCode, 404);
+    assert.deepEqual(seenQueries, [{ text: 'SELECT * FROM resources ORDER BY created_at DESC', params: [] }]);
+  } finally {
+    pool.query = realQuery;
+    await app.close();
+  }
+});
+
 test('resource resolve supports legacy file urls for html resources', async () => {
   config.nodeEnv = 'test';
   const realQuery = pool.query.bind(pool);
@@ -371,6 +419,28 @@ test('resource resolve supports legacy file urls for html resources', async () =
     pool.query = realQuery;
     await app.close();
   }
+});
+
+test('html proxy rejects unsafe local upload paths', async () => {
+  config.nodeEnv = 'production';
+  config.htmlProxyAllowlist = [];
+  config.publicAssetBaseUrl = '';
+  config.s3PublicBaseUrl = '';
+
+  const app = await buildApp();
+
+  const response = await app.inject({
+    method: 'GET',
+    url: '/api/html-proxy',
+    query: {
+      url: '/uploads/%2e%2e/private.html',
+    },
+  });
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.json().error, 'URL not allowed');
+
+  await app.close();
 });
 
 test('upload route validates multipart fields before touching database', async () => {
