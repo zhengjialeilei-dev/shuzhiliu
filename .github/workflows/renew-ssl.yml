@@ -144,7 +144,8 @@ jobs:
           EXPECTED=$(openssl x509 -in "$CERT_DIR/fullchain.cer" -noout -fingerprint -sha256)
 
           for attempt in {1..18}; do
-            ACTUAL=$(echo | openssl s_client -connect sparkaiedu.com:443 -servername sparkaiedu.com 2>/dev/null \
+            ACTUAL=$(timeout 10 openssl s_client -4 -connect sparkaiedu.com:443 \
+              -servername sparkaiedu.com </dev/null 2>/dev/null \
               | openssl x509 -noout -fingerprint -sha256 2>/dev/null || true)
             if [ "$ACTUAL" = "$EXPECTED" ]; then
               echo "The renewed certificate is live."
@@ -158,5 +159,8 @@ jobs:
           done
 
           curl --fail --silent --show-error --head --max-time 20 https://sparkaiedu.com/
-          echo | openssl s_client -connect sparkaiedu.com:443 -servername sparkaiedu.com 2>/dev/null \
-            | openssl x509 -noout -subject -issuer -dates -ext subjectAltName
+          CERT_INFO=$(timeout 10 openssl s_client -4 -connect sparkaiedu.com:443 \
+            -servername sparkaiedu.com </dev/null 2>/dev/null \
+            | openssl x509 -noout -subject -issuer -dates -ext subjectAltName || true)
+          test -n "$CERT_INFO"
+          printf '%s\n' "$CERT_INFO"
