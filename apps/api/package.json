@@ -8,7 +8,7 @@
     "build": "node --check src/index.js && node --check src/app.js && node --check src/config.js && node --check src/db.js && node --check src/storage.js && node --check src/plugins/auth.js && node --check src/routes/admin.js && node --check src/routes/public.js && node --check src/utils/serializers.js",
     "migrate:local-to-s3": "node src/scripts/migrate-local-assets-to-s3.js",
     "start": "node src/index.js",
-    "test": "node --test test/**/*.test.js"
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1085.0",
