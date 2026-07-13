@@ -1,0 +1,73 @@
+name: Renew sparkaiedu.com SSL
+
+on:
+  schedule:
+    # Run at 02:17 China Standard Time on the 1st and 15th of each month.
+    - cron: "17 18 1,15 * *"
+  workflow_dispatch:
+
+concurrency:
+  group: renew-sparkaiedu-ssl
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  renew-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      Tencent_SecretId: ${{ secrets.TENCENT_SECRET_ID }}
+      Tencent_SecretKey: ${{ secrets.TENCENT_SECRET_KEY }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install acme.sh
+        run: |
+          git clone --branch 3.1.2 --depth 1 https://github.com/acmesh-official/acme.sh.git "$RUNNER_TEMP/acme.sh"
+          "$RUNNER_TEMP/acme.sh/acme.sh" --install --home "$RUNNER_TEMP/acme-home" --nocron
+
+      - name: Issue certificate with Tencent DNS
+        run: |
+          "$RUNNER_TEMP/acme-home/acme.sh" --issue \
+            --server letsencrypt \
+            --dns dns_tencent \
+            --dnssleep 45 \
+            --keylength ec-256 \
+            --force \
+            -d sparkaiedu.com \
+            -d www.sparkaiedu.com
+
+      - name: Configure restricted SSH access
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.CERTDEPLOY_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.CERTDEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Upload and install certificate
+        env:
+          SERVER_HOST: ${{ secrets.CERTDEPLOY_HOST }}
+        run: |
+          CERT_DIR="$RUNNER_TEMP/acme-home/sparkaiedu.com_ecc"
+          SSH=(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes certdeploy@"$SERVER_HOST")
+          SCP=(scp -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes)
+
+          "${SCP[@]}" "$CERT_DIR/fullchain.cer" \
+            certdeploy@"$SERVER_HOST":/home/certdeploy/incoming/fullchain.pem
+          "${SCP[@]}" "$CERT_DIR/sparkaiedu.com.key" \
+            certdeploy@"$SERVER_HOST":/home/certdeploy/incoming/privkey.pem
+
+          "${SSH[@]}" "chmod 600 /home/certdeploy/incoming/fullchain.pem /home/certdeploy/incoming/privkey.pem && sudo -n /usr/local/sbin/install-sparkaiedu-cert"
+
+      - name: Verify deployed HTTPS certificate
+        run: |
+          curl --fail --silent --show-error --head --max-time 20 https://sparkaiedu.com/
+          echo | openssl s_client -connect sparkaiedu.com:443 -servername sparkaiedu.com 2>/dev/null \
+            | openssl x509 -noout -subject -issuer -dates -ext subjectAltName
