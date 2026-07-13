@@ -156,6 +156,17 @@ jobs:
             -f "$SOURCE_ROOT/deploy/docker-compose.yml" \
             up -d --build api
 
+          API_READY=false
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error \
+              --max-time 5 http://127.0.0.1:3001/api/health >/dev/null; then
+              API_READY=true
+              break
+            fi
+            sleep 2
+          done
+          test "$API_READY" = true
+
           docker exec 1Panel-openresty-z1xG openresty -s reload \
             || docker exec 1Panel-openresty-z1xG nginx -s reload
 
