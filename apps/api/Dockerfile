@@ -1,7 +1,10 @@
 FROM node:20-alpine
 WORKDIR /app
 
-RUN apk add --no-cache chromium font-noto-cjk
+RUN sed -i \
+      's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.cloud.tencent.com/alpine#g' \
+      /etc/apk/repositories \
+    && apk add --no-cache chromium font-noto-cjk
 
 COPY apps/api apps/api
 
