@@ -39,33 +39,124 @@ jobs:
             -d sparkaiedu.com \
             -d www.sparkaiedu.com
 
-      - name: Configure restricted SSH access
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.CERTDEPLOY_SSH_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.CERTDEPLOY_KNOWN_HOSTS }}
+      - name: Install certificate through Tencent TAT
         run: |
-          install -d -m 700 "$HOME/.ssh"
-          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
-          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+          export CERT_DIR="$HOME/.acme.sh/sparkaiedu.com_ecc"
+          python3 <<'PY'
+          import base64
+          import datetime
+          import hashlib
+          import hmac
+          import json
+          import os
+          import time
+          import urllib.request
 
-      - name: Upload and install certificate
-        env:
-          SERVER_HOST: ${{ secrets.CERTDEPLOY_HOST }}
-        run: |
-          CERT_DIR="$HOME/.acme.sh/sparkaiedu.com_ecc"
-          SSH=(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes certdeploy@"$SERVER_HOST")
-          SCP=(scp -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes)
+          secret_id = os.environ["Tencent_SecretId"]
+          secret_key = os.environ["Tencent_SecretKey"]
+          cert_dir = os.environ["CERT_DIR"]
 
-          "${SCP[@]}" "$CERT_DIR/fullchain.cer" \
-            certdeploy@"$SERVER_HOST":/home/certdeploy/incoming/fullchain.pem
-          "${SCP[@]}" "$CERT_DIR/sparkaiedu.com.key" \
-            certdeploy@"$SERVER_HOST":/home/certdeploy/incoming/privkey.pem
+          def encoded_file(name):
+              with open(os.path.join(cert_dir, name), "rb") as handle:
+                  return base64.b64encode(handle.read()).decode("ascii")
 
-          "${SSH[@]}" "chmod 600 /home/certdeploy/incoming/fullchain.pem /home/certdeploy/incoming/privkey.pem && sudo -n /usr/local/sbin/install-sparkaiedu-cert"
+          certificate = encoded_file("fullchain.cer")
+          private_key = encoded_file("sparkaiedu.com.key")
+          command = f"""set -euo pipefail
+          install -d -m 700 -o certdeploy -g certdeploy /home/certdeploy/incoming
+          printf '%s' '{certificate}' | base64 -d > /home/certdeploy/incoming/fullchain.pem
+          printf '%s' '{private_key}' | base64 -d > /home/certdeploy/incoming/privkey.pem
+          chown certdeploy:certdeploy /home/certdeploy/incoming/fullchain.pem /home/certdeploy/incoming/privkey.pem
+          chmod 600 /home/certdeploy/incoming/fullchain.pem /home/certdeploy/incoming/privkey.pem
+          /usr/local/sbin/install-sparkaiedu-cert
+          """
+
+          payload = json.dumps({
+              "CommandName": "renew-sparkaiedu-ssl",
+              "SaveCommand": False,
+              "Description": "Install validated sparkaiedu.com certificate",
+              "Content": base64.b64encode(command.encode("utf-8")).decode("ascii"),
+              "CommandType": "SHELL",
+              "WorkingDirectory": "/root",
+              "Timeout": 120,
+              "InstanceIds": ["lhins-e1irqmx9"],
+          }, separators=(",", ":"))
+
+          service = "tat"
+          host = "tat.tencentcloudapi.com"
+          action = "RunCommand"
+          version = "2020-10-28"
+          region = "ap-guangzhou"
+          timestamp = int(time.time())
+          date = datetime.datetime.fromtimestamp(timestamp, datetime.timezone.utc).strftime("%Y-%m-%d")
+          canonical_headers = f"content-type:application/json; charset=utf-8\nhost:{host}\n"
+          signed_headers = "content-type;host"
+          hashed_payload = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+          canonical_request = "\n".join([
+              "POST", "/", "", canonical_headers, signed_headers, hashed_payload
+          ])
+          credential_scope = f"{date}/{service}/tc3_request"
+          string_to_sign = "\n".join([
+              "TC3-HMAC-SHA256",
+              str(timestamp),
+              credential_scope,
+              hashlib.sha256(canonical_request.encode("utf-8")).hexdigest(),
+          ])
+
+          def sign(key, message):
+              return hmac.new(key, message.encode("utf-8"), hashlib.sha256).digest()
+
+          secret_date = sign(("TC3" + secret_key).encode("utf-8"), date)
+          secret_service = sign(secret_date, service)
+          secret_signing = sign(secret_service, "tc3_request")
+          signature = hmac.new(
+              secret_signing, string_to_sign.encode("utf-8"), hashlib.sha256
+          ).hexdigest()
+          authorization = (
+              f"TC3-HMAC-SHA256 Credential={secret_id}/{credential_scope}, "
+              f"SignedHeaders={signed_headers}, Signature={signature}"
+          )
+
+          request = urllib.request.Request(
+              f"https://{host}",
+              data=payload.encode("utf-8"),
+              headers={
+                  "Authorization": authorization,
+                  "Content-Type": "application/json; charset=utf-8",
+                  "Host": host,
+                  "X-TC-Action": action,
+                  "X-TC-Timestamp": str(timestamp),
+                  "X-TC-Version": version,
+                  "X-TC-Region": region,
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              result = json.load(response)["Response"]
+          if "Error" in result:
+              raise SystemExit(f"Tencent TAT failed: {result['Error']['Code']}")
+          print(f"Tencent TAT invocation started: {result['InvocationId']}")
+          PY
 
       - name: Verify deployed HTTPS certificate
         run: |
+          CERT_DIR="$HOME/.acme.sh/sparkaiedu.com_ecc"
+          EXPECTED=$(openssl x509 -in "$CERT_DIR/fullchain.cer" -noout -fingerprint -sha256)
+
+          for attempt in {1..18}; do
+            ACTUAL=$(echo | openssl s_client -connect sparkaiedu.com:443 -servername sparkaiedu.com 2>/dev/null \
+              | openssl x509 -noout -fingerprint -sha256 2>/dev/null || true)
+            if [ "$ACTUAL" = "$EXPECTED" ]; then
+              echo "The renewed certificate is live."
+              break
+            fi
+            if [ "$attempt" -eq 18 ]; then
+              echo "The public certificate did not update in time." >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
           curl --fail --silent --show-error --head --max-time 20 https://sparkaiedu.com/
           echo | openssl s_client -connect sparkaiedu.com:443 -servername sparkaiedu.com 2>/dev/null \
             | openssl x509 -noout -subject -issuer -dates -ext subjectAltName
