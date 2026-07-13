@@ -22,13 +22,11 @@ jobs:
       Tencent_SecretKey: ${{ secrets.TENCENT_SECRET_KEY }}
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
       - name: Install acme.sh
         run: |
           git clone --branch 3.1.2 --depth 1 https://github.com/acmesh-official/acme.sh.git "$RUNNER_TEMP/acme.sh"
-          "$RUNNER_TEMP/acme.sh/acme.sh" --install --home "$RUNNER_TEMP/acme-home" --nocron
+          cd "$RUNNER_TEMP/acme.sh"
+          ./acme.sh --install --home "$RUNNER_TEMP/acme-home" --nocron
 
       - name: Issue certificate with Tencent DNS
         run: |
