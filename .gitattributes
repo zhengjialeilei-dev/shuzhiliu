@@ -1,0 +1,2 @@
+apps/web/public/files/textbooks/*.pdf export-ignore
+project-library/** export-ignore

@@ -107,7 +107,7 @@ jobs:
           test -f "$NEXT_SOURCE_ROOT/package.json"
           test -f "$NEXT_SOURCE_ROOT/apps/web/Dockerfile"
           test -f "$NEXT_SOURCE_ROOT/apps/api/package.json"
-          test -d "$NEXT_SOURCE_ROOT/apps/web/public/files/textbooks"
+          test -f "$SITE_ROOT/files/textbooks/rj-math-grade-1-volume-1-2024-fall.pdf"
 
           rm -rf "$PREVIOUS_SOURCE_ROOT"
           if [ -d "$SOURCE_ROOT" ]; then mv "$SOURCE_ROOT" "$PREVIOUS_SOURCE_ROOT"; fi
@@ -117,7 +117,6 @@ jobs:
           CONTAINER_ID=$(docker create "$WEB_IMAGE")
           docker cp "$CONTAINER_ID:/usr/share/nginx/html/." "$STAGING_DIR/"
           test -f "$STAGING_DIR/index.html"
-          test -d "$STAGING_DIR/files/textbooks"
 
           find "$STAGING_DIR" -mindepth 1 -maxdepth 1 ! -name index.html \
             -exec cp -a {} "$SITE_ROOT/" \;
