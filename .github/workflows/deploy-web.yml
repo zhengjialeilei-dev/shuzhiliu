@@ -40,8 +40,12 @@ jobs:
           Tencent_SecretId: ${{ secrets.TENCENT_SECRET_ID }}
           Tencent_SecretKey: ${{ secrets.TENCENT_SECRET_KEY }}
         run: |
-          ARCHIVE_FILE="$RUNNER_TEMP/mathflow-$GITHUB_SHA.tar.gz"
-          git archive --format=tar.gz --output="$ARCHIVE_FILE" "$GITHUB_SHA"
+          ARCHIVE_TAR="$RUNNER_TEMP/mathflow-$GITHUB_SHA.tar"
+          ARCHIVE_FILE="$ARCHIVE_TAR.gz"
+          git archive --format=tar --output="$ARCHIVE_TAR" "$GITHUB_SHA"
+          tar --append --file="$ARCHIVE_TAR" \
+            --exclude='apps/web/dist/files/textbooks' apps/web/dist
+          gzip "$ARCHIVE_TAR"
 
           {
             printf "ENV_FILE='%s'\n" "/opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu/deploy/.env"
@@ -84,19 +88,19 @@ jobs:
           LEGACY_ROOT=/opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu
           ENV_FILE="$LEGACY_ROOT/deploy/.env"
           SITE_ROOT=/opt/1panel/www/sites/sparkaiedu.com/index
-          WEB_IMAGE="mathflow-web-deploy:$DEPLOY_SHA"
           STAGING_DIR=$(mktemp -d /tmp/mathflow-web.XXXXXX)
           ARCHIVE_FILE=$(mktemp /tmp/mathflow-source.XXXXXX.tar.gz)
-          CONTAINER_ID=""
 
           cleanup() {
-            if [ -n "$CONTAINER_ID" ]; then docker rm -f "$CONTAINER_ID" >/dev/null 2>&1 || true; fi
-            docker image rm "$WEB_IMAGE" >/dev/null 2>&1 || true
             rm -rf "$STAGING_DIR" "$NEXT_SOURCE_ROOT"
             rm -f "$ARCHIVE_FILE"
             curl --fail --silent --show-error --request DELETE "$DELETE_URL" >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
+
+          # Stop an older server-side web image build that outlived a cancelled workflow.
+          pkill -f '^docker build --pull -t mathflow-web-deploy:' >/dev/null 2>&1 || true
+          sleep 2
 
           test -f "$ENV_FILE"
           install -d -m 755 "$NEXT_SOURCE_ROOT" "$SITE_ROOT"
@@ -113,9 +117,7 @@ jobs:
           if [ -d "$SOURCE_ROOT" ]; then mv "$SOURCE_ROOT" "$PREVIOUS_SOURCE_ROOT"; fi
           mv "$NEXT_SOURCE_ROOT" "$SOURCE_ROOT"
 
-          docker build --pull -t "$WEB_IMAGE" -f "$SOURCE_ROOT/apps/web/Dockerfile" "$SOURCE_ROOT"
-          CONTAINER_ID=$(docker create "$WEB_IMAGE")
-          docker cp "$CONTAINER_ID:/usr/share/nginx/html/." "$STAGING_DIR/"
+          cp -a "$SOURCE_ROOT/apps/web/dist/." "$STAGING_DIR/"
           test -f "$STAGING_DIR/index.html"
 
           find "$STAGING_DIR" -mindepth 1 -maxdepth 1 ! -name index.html \
