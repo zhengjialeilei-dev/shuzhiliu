@@ -46,31 +46,39 @@ jobs:
           set -euo pipefail
 
           SOURCE_ROOT=/opt/1panel/apps/mathflow-sparkaiedu/github-deploy
+          NEXT_SOURCE_ROOT=/opt/1panel/apps/mathflow-sparkaiedu/github-deploy.next
+          PREVIOUS_SOURCE_ROOT=/opt/1panel/apps/mathflow-sparkaiedu/github-deploy.previous
           LEGACY_ROOT=/opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu
           ENV_FILE="$LEGACY_ROOT/deploy/.env"
           SITE_ROOT=/opt/1panel/www/sites/sparkaiedu.com/index
-          REPOSITORY=https://github.com/zhengjialeilei-dev/shuzhiliu.git
+          SOURCE_ARCHIVE="https://codeload.github.com/zhengjialeilei-dev/shuzhiliu/tar.gz/$DEPLOY_SHA"
           WEB_IMAGE="mathflow-web-deploy:$DEPLOY_SHA"
           STAGING_DIR=$(mktemp -d /tmp/mathflow-web.XXXXXX)
+          ARCHIVE_FILE=$(mktemp /tmp/mathflow-source.XXXXXX.tar.gz)
           CONTAINER_ID=""
 
           cleanup() {
             if [ -n "$CONTAINER_ID" ]; then docker rm -f "$CONTAINER_ID" >/dev/null 2>&1 || true; fi
             docker image rm "$WEB_IMAGE" >/dev/null 2>&1 || true
-            rm -rf "$STAGING_DIR"
+            rm -rf "$STAGING_DIR" "$NEXT_SOURCE_ROOT"
+            rm -f "$ARCHIVE_FILE"
           }
           trap cleanup EXIT
 
           test -f "$ENV_FILE"
-          install -d -m 755 "$SOURCE_ROOT" "$SITE_ROOT"
-          if [ ! -d "$SOURCE_ROOT/.git" ]; then
-            git clone --no-checkout "$REPOSITORY" "$SOURCE_ROOT"
-          fi
+          install -d -m 755 "$NEXT_SOURCE_ROOT" "$SITE_ROOT"
+          curl --fail --location --silent --show-error \
+            --connect-timeout 20 --max-time 1200 --retry 3 --retry-all-errors \
+            "$SOURCE_ARCHIVE" -o "$ARCHIVE_FILE"
+          tar -xzf "$ARCHIVE_FILE" --strip-components=1 -C "$NEXT_SOURCE_ROOT"
+          test -f "$NEXT_SOURCE_ROOT/package.json"
+          test -f "$NEXT_SOURCE_ROOT/apps/web/Dockerfile"
+          test -f "$NEXT_SOURCE_ROOT/apps/api/package.json"
+          test -d "$NEXT_SOURCE_ROOT/apps/web/public/files/textbooks"
 
-          git -C "$SOURCE_ROOT" remote set-url origin "$REPOSITORY"
-          git -C "$SOURCE_ROOT" fetch --depth 1 origin "$DEPLOY_SHA"
-          git -C "$SOURCE_ROOT" checkout --force --detach "$DEPLOY_SHA"
-          git -C "$SOURCE_ROOT" clean -ffd
+          rm -rf "$PREVIOUS_SOURCE_ROOT"
+          if [ -d "$SOURCE_ROOT" ]; then mv "$SOURCE_ROOT" "$PREVIOUS_SOURCE_ROOT"; fi
+          mv "$NEXT_SOURCE_ROOT" "$SOURCE_ROOT"
 
           docker build --pull -t "$WEB_IMAGE" -f "$SOURCE_ROOT/apps/web/Dockerfile" "$SOURCE_ROOT"
           CONTAINER_ID=$(docker create "$WEB_IMAGE")
@@ -99,6 +107,7 @@ jobs:
 
           curl --fail --silent --show-error --head --max-time 30 https://sparkaiedu.com/
           curl --fail --silent --show-error --max-time 30 https://sparkaiedu.com/api/health
+          rm -rf "$PREVIOUS_SOURCE_ROOT"
           SCRIPT
           } > "$RUNNER_TEMP/deploy.sh"
 
