@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -33,11 +33,6 @@ const PageLoader = () => (
   </div>
 );
 
-function LegacyLabRedirect() {
-  const { slug } = useParams();
-  return <Navigate to={slug ? `/${slug}` : '/'} replace />;
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -55,8 +50,9 @@ function App() {
               <Route path="/tools/random-picker" element={<RandomPicker />} />
               <Route path="/tools/timer" element={<ClassroomTimer />} />
               <Route path="/tools/scoreboard" element={<GroupScoreboard />} />
-              <Route path="/lab/:slug" element={<LegacyLabRedirect />} />
+              <Route path="/lab/:slug" element={<HtmlViewer />} />
               <Route path="/zhijing/:slug" element={<HtmlViewer />} />
+              <Route path="/works/:slug" element={<HtmlViewer />} />
               <Route path="/view" element={<HtmlViewer />} />
               <Route path="/admin/upload" element={<AdminUpload />} />
               <Route path="/test-connection" element={<TestConnection />} />

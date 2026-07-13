@@ -4,7 +4,7 @@ import { useResources } from '../hooks/useResources';
 import { GAME_CATEGORY } from '../lib/resourceCategories';
 
 const InteractiveGames = () => {
-  const { allResources, loading } = useResources();
+  const { allResources, loading, error, refresh } = useResources();
   const gameResources = useMemo(
     () => allResources.filter((resource) => resource.category === GAME_CATEGORY && (resource.route_path || resource.file_path)),
     [allResources]
@@ -19,6 +19,8 @@ const InteractiveGames = () => {
       gradientColors="from-amber-400 via-orange-400 to-rose-400"
       resources={gameResources}
       loading={loading}
+      error={error}
+      onRetry={refresh}
       searchPlaceholder="搜索游戏..."
     />
   );

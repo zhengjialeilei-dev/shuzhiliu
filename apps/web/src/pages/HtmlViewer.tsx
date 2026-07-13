@@ -19,6 +19,16 @@ const HtmlViewer = () => {
   const legacyUrl = searchParams.get('url');
   const [isFrameLoading, setIsFrameLoading] = useState(true);
 
+  const handleBack = () => {
+    const historyIndex = window.history.state?.idx;
+    if (typeof historyIndex === 'number' && historyIndex > 0) {
+      navigate(-1);
+      return;
+    }
+
+    navigate('/');
+  };
+
   const currentPath = useMemo(() => {
     if (!slug || location.pathname === '/view') return null;
     return location.pathname;
@@ -115,7 +125,7 @@ const HtmlViewer = () => {
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-slate-100">
       <button
-        onClick={() => navigate(-1)}
+        onClick={handleBack}
         className="absolute left-3 top-3 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-white/60 bg-white/90 shadow-lg backdrop-blur-md transition-all duration-300 hover:bg-white sm:left-4 sm:top-4 sm:h-12 sm:w-12"
         title="返回"
       >

@@ -9,7 +9,7 @@ import {
   getTeachingResources,
   loginAdmin,
   logoutAdmin,
-  updateResource,
+  replaceResource,
   updateTeachingResource,
   uploadAdminResource,
 } from '../../lib/api';
@@ -27,15 +27,15 @@ const TEACHING_ZONES = [
 
 type Section = 'ai' | 'games' | 'tools' | 'teaching';
 type Mode = 'upload' | 'manage';
-type ResourceForm = { title: string; description: string; category: string; grade: string };
+type ResourceForm = { title: string; description: string; category: string; grade: string; routeSlug: string };
 type TeachingForm = { title: string; description: string; zone: string };
 type EditState =
-  | { type: 'resource'; id: string; title: string; description: string; category: string; grade: string }
+  | { type: 'resource'; id: string; title: string; description: string; category: string; grade: string; routePath: string | null }
   | { type: 'teaching'; id: string; title: string; description: string; zone: string };
 
-const emptyAiForm: ResourceForm = { title: '', description: '', category: AI_CATEGORIES[0], grade: GRADES[0] };
-const emptyGameForm: ResourceForm = { title: '', description: '', category: GAME_CATEGORY, grade: '通用' };
-const emptyToolForm: ResourceForm = { title: '', description: '', category: TOOL_CATEGORY, grade: '通用' };
+const emptyAiForm: ResourceForm = { title: '', description: '', category: AI_CATEGORIES[0], grade: GRADES[0], routeSlug: '' };
+const emptyGameForm: ResourceForm = { title: '', description: '', category: GAME_CATEGORY, grade: '通用', routeSlug: '' };
+const emptyToolForm: ResourceForm = { title: '', description: '', category: TOOL_CATEGORY, grade: '通用', routeSlug: '' };
 const emptyTeachingForm: TeachingForm = { title: '', description: '', zone: TEACHING_ZONES[0].id };
 
 export default function AdminUpload() {
@@ -53,6 +53,9 @@ export default function AdminUpload() {
   const [teachingResources, setTeachingResources] = useState<TeachingResource[]>([]);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [deleting, setDeleting] = useState<{ type: 'resource' | 'teaching'; id: string; title: string } | null>(null);
+  const [editWorkFile, setEditWorkFile] = useState<File | null>(null);
+  const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
+  const [regenerateEditCover, setRegenerateEditCover] = useState(false);
 
   const [aiForm, setAiForm] = useState(emptyAiForm);
   const [gameForm, setGameForm] = useState(emptyGameForm);
@@ -154,32 +157,35 @@ export default function AdminUpload() {
       const formData = new FormData();
 
       if (section === 'ai') {
-        if (!aiHtmlFile || !aiCoverFile) throw new Error('请上传 HTML 文件和封面图');
+        if (!aiHtmlFile) throw new Error('请上传 HTML 或 ZIP 作品文件');
         formData.set('section', 'ai');
         formData.set('title', aiForm.title);
         formData.set('description', aiForm.description);
         formData.set('category', aiForm.category);
         formData.set('grade', aiForm.grade);
+        formData.set('routeSlug', aiForm.routeSlug);
         formData.set('htmlFile', aiHtmlFile);
-        formData.set('coverFile', aiCoverFile);
+        if (aiCoverFile) formData.set('coverFile', aiCoverFile);
       }
 
       if (section === 'games') {
-        if (!gameHtmlFile || !gameCoverFile) throw new Error('请上传 HTML 文件和封面图');
+        if (!gameHtmlFile) throw new Error('请上传 HTML 或 ZIP 作品文件');
         formData.set('section', 'games');
         formData.set('title', gameForm.title);
         formData.set('description', gameForm.description);
+        formData.set('routeSlug', gameForm.routeSlug);
         formData.set('htmlFile', gameHtmlFile);
-        formData.set('coverFile', gameCoverFile);
+        if (gameCoverFile) formData.set('coverFile', gameCoverFile);
       }
 
       if (section === 'tools') {
-        if (!toolHtmlFile || !toolCoverFile) throw new Error('请上传 HTML 文件和封面图');
+        if (!toolHtmlFile) throw new Error('请上传 HTML 或 ZIP 作品文件');
         formData.set('section', 'tools');
         formData.set('title', toolForm.title);
         formData.set('description', toolForm.description);
+        formData.set('routeSlug', toolForm.routeSlug);
         formData.set('htmlFile', toolHtmlFile);
-        formData.set('coverFile', toolCoverFile);
+        if (toolCoverFile) formData.set('coverFile', toolCoverFile);
       }
 
       if (section === 'teaching') {
@@ -222,7 +228,11 @@ export default function AdminUpload() {
         description: resource.description,
         category: resource.category,
         grade: resource.grade,
+        routePath: resource.route_path,
       });
+      setEditWorkFile(null);
+      setEditCoverFile(null);
+      setRegenerateEditCover(false);
       return;
     }
 
@@ -242,12 +252,15 @@ export default function AdminUpload() {
     setError(null);
     try {
       if (editing.type === 'resource') {
-        await updateResource(editing.id, {
-          title: editing.title,
-          description: editing.description,
-          category: editing.category,
-          grade: editing.grade,
-        });
+        const formData = new FormData();
+        formData.set('title', editing.title);
+        formData.set('description', editing.description);
+        formData.set('category', editing.category);
+        formData.set('grade', editing.grade);
+        formData.set('regenerateCover', String(regenerateEditCover));
+        if (editWorkFile) formData.set('htmlFile', editWorkFile);
+        if (editCoverFile) formData.set('coverFile', editCoverFile);
+        await replaceResource(editing.id, formData);
       } else {
         await updateTeachingResource(editing.id, {
           title: editing.title,
@@ -376,7 +389,9 @@ export default function AdminUpload() {
             <h2 className="text-lg font-bold text-slate-800 mb-2">
               上传{section === 'ai' ? ' AI 应用' : section === 'games' ? '互动游戏' : section === 'tools' ? '实用工具' : '教学资源'}
             </h2>
-            <p className="text-sm text-slate-500 mb-6">文件会先上传到后端，再由后端写入 PostgreSQL。</p>
+            <p className="text-sm text-slate-500 mb-6">
+              单文件作品选择 HTML；包含图片、音频或脚本目录的作品请上传 ZIP，压缩包内需要有 index.html。
+            </p>
 
             <form onSubmit={handleUpload} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -402,26 +417,41 @@ export default function AdminUpload() {
                 />
               </div>
 
+              {section !== 'teaching' && (
+                <LabeledInput
+                  label="作品短链接（可选）"
+                  value={section === 'ai' ? aiForm.routeSlug : section === 'games' ? gameForm.routeSlug : toolForm.routeSlug}
+                  onChange={(value) => {
+                    const routeSlug = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                    if (section === 'ai') setAiForm((prev) => ({ ...prev, routeSlug }));
+                    if (section === 'games') setGameForm((prev) => ({ ...prev, routeSlug }));
+                    if (section === 'tools') setToolForm((prev) => ({ ...prev, routeSlug }));
+                  }}
+                  placeholder="例如 fraction-lab，对应 /works/fraction-lab"
+                  required={false}
+                />
+              )}
+
               {section === 'ai' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <LabeledSelect label="分类" value={aiForm.category} onChange={(value) => setAiForm((prev) => ({ ...prev, category: value }))} options={AI_CATEGORIES} />
                   <LabeledSelect label="年级" value={aiForm.grade} onChange={(value) => setAiForm((prev) => ({ ...prev, grade: value }))} options={GRADES} />
-                  <LabeledFile label="HTML 文件" accept=".html,.htm" onChange={setAiHtmlFile} />
-                  <LabeledFile label="封面图片" accept="image/*" onChange={setAiCoverFile} />
+                  <LabeledFile label="作品文件（HTML 或 ZIP）" accept=".html,.htm,.zip" onChange={setAiHtmlFile} />
+                  <LabeledFile label="封面图片（可选，留空自动截图）" accept="image/*" onChange={setAiCoverFile} required={false} />
                 </div>
               )}
 
               {section === 'games' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <LabeledFile label="HTML 文件" accept=".html,.htm" onChange={setGameHtmlFile} />
-                  <LabeledFile label="封面图片" accept="image/*" onChange={setGameCoverFile} />
+                  <LabeledFile label="作品文件（HTML 或 ZIP）" accept=".html,.htm,.zip" onChange={setGameHtmlFile} />
+                  <LabeledFile label="封面图片（可选，留空自动截图）" accept="image/*" onChange={setGameCoverFile} required={false} />
                 </div>
               )}
 
               {section === 'tools' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <LabeledFile label="HTML 文件" accept=".html,.htm" onChange={setToolHtmlFile} />
-                  <LabeledFile label="封面图片" accept="image/*" onChange={setToolCoverFile} />
+                  <LabeledFile label="作品文件（HTML 或 ZIP）" accept=".html,.htm,.zip" onChange={setToolHtmlFile} />
+                  <LabeledFile label="封面图片（可选，留空自动截图）" accept="image/*" onChange={setToolCoverFile} required={false} />
                 </div>
               )}
 
@@ -501,11 +531,11 @@ export default function AdminUpload() {
 
       {editing && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg font-bold text-slate-800">编辑资源</h3>
-                <p className="text-sm text-slate-500">这里只修改元数据，不替换上传文件。</p>
+                <p className="text-sm text-slate-500">可更新文字、作品文件或封面，原短链接保持不变。</p>
               </div>
               <button onClick={() => setEditing(null)} className="p-2 rounded-xl hover:bg-slate-100">
                 <X className="w-5 h-5 text-slate-400" />
@@ -523,24 +553,61 @@ export default function AdminUpload() {
                 onChange={(value) => setEditing((prev) => (prev ? { ...prev, description: value } : prev))}
               />
               {editing.type === 'resource' ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <LabeledSelect
-                    label="分类"
-                    value={editing.category}
-                    onChange={(value) =>
-                      setEditing((prev) => (prev && prev.type === 'resource' ? { ...prev, category: value } : prev))
-                    }
-                    options={ALL_RESOURCE_CATEGORIES}
-                    renderOption={formatCategoryLabel}
-                  />
-                  <LabeledSelect
-                    label="年级"
-                    value={editing.grade}
-                    onChange={(value) =>
-                      setEditing((prev) => (prev && prev.type === 'resource' ? { ...prev, grade: value } : prev))
-                    }
-                    options={GRADES}
-                  />
+                <div className="space-y-4">
+                  {editing.routePath && (
+                    <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                      短链接保持不变：{editing.routePath}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <LabeledSelect
+                      label="分类"
+                      value={editing.category}
+                      onChange={(value) =>
+                        setEditing((prev) => (prev && prev.type === 'resource' ? { ...prev, category: value } : prev))
+                      }
+                      options={ALL_RESOURCE_CATEGORIES}
+                      renderOption={formatCategoryLabel}
+                    />
+                    <LabeledSelect
+                      label="年级"
+                      value={editing.grade}
+                      onChange={(value) =>
+                        setEditing((prev) => (prev && prev.type === 'resource' ? { ...prev, grade: value } : prev))
+                      }
+                      options={GRADES}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <LabeledFile
+                      label="替换作品（可选）"
+                      accept=".html,.htm,.zip"
+                      onChange={(file) => {
+                        setEditWorkFile(file);
+                        if (!file) setRegenerateEditCover(false);
+                      }}
+                      required={false}
+                    />
+                    <LabeledFile
+                      label="替换封面（可选）"
+                      accept="image/*"
+                      onChange={(file) => {
+                        setEditCoverFile(file);
+                        if (file) setRegenerateEditCover(false);
+                      }}
+                      required={false}
+                    />
+                  </div>
+                  <label className={`flex items-start gap-3 rounded-xl border p-4 ${editWorkFile ? 'cursor-pointer border-slate-200' : 'cursor-not-allowed border-slate-100 opacity-50'}`}>
+                    <input
+                      type="checkbox"
+                      checked={regenerateEditCover}
+                      disabled={!editWorkFile || Boolean(editCoverFile)}
+                      onChange={(event) => setRegenerateEditCover(event.target.checked)}
+                      className="mt-1"
+                    />
+                    <span className="text-sm text-slate-600">根据新作品自动重新生成封面（选择了新封面时无需勾选）</span>
+                  </label>
                 </div>
               ) : (
                 <LabeledSelect
@@ -632,10 +699,14 @@ function LabeledInput({
   label,
   value,
   onChange,
+  placeholder,
+  required = true,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -643,8 +714,9 @@ function LabeledInput({
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
         className="w-full px-4 py-3 rounded-xl border border-slate-200"
-        required
+        required={required}
       />
     </div>
   );
@@ -707,10 +779,12 @@ function LabeledFile({
   label,
   accept,
   onChange,
+  required = true,
 }: {
   label: string;
   accept: string;
   onChange: (file: File | null) => void;
+  required?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -720,7 +794,7 @@ function LabeledFile({
         accept={accept}
         onChange={(e) => onChange(e.target.files?.[0] || null)}
         className="block w-full text-sm text-slate-500 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-slate-50 file:text-slate-700 cursor-pointer border border-slate-200 rounded-xl"
-        required
+        required={required}
       />
     </div>
   );

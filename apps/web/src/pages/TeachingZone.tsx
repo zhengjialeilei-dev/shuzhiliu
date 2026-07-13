@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { FolderOpen, Loader2, ScrollText, BookOpen, FileCheck, Presentation } from 'lucide-react';
+import { AlertTriangle, FolderOpen, Loader2, ScrollText, BookOpen, FileCheck, Presentation } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getTeachingResources } from '../lib/api';
 import { LOCAL_TEXTBOOK_RESOURCES, mergeLocalTextbooks } from '../lib/localTeachingResources';
@@ -120,8 +120,11 @@ const getDisplayDescription = (resource: TeachingResource) => {
 };
 
 const fetchTeachingResources = async () => {
-  const remoteResources = await getTeachingResources().catch(() => []);
-  return remoteResources.length > 0 ? mergeLocalTextbooks(remoteResources) : LOCAL_RESOURCES;
+  const remoteResources = await getTeachingResources();
+  return {
+    resources: remoteResources.length > 0 ? mergeLocalTextbooks(remoteResources) : LOCAL_RESOURCES,
+    usingFallback: remoteResources.length === 0,
+  };
 };
 
 const sortTeachingResources = (zone: string, list: TeachingResource[]) => {
@@ -142,10 +145,12 @@ const TeachingZone = () => {
   const [activeZone, setActiveZone] = useState('standard');
   const [notice, setNotice] = useState<string | null>(null);
 
-  const { data: resources = LOCAL_RESOURCES, isLoading: loading } = useQuery({
+  const { data, isLoading: loading, error: teachingError } = useQuery({
     queryKey: ['teachingResources'],
     queryFn: fetchTeachingResources,
   });
+  const resources = data?.resources || LOCAL_RESOURCES;
+  const usingFallback = Boolean(teachingError) || (data?.usingFallback ?? false);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -177,6 +182,13 @@ const TeachingZone = () => {
           gradientColors="from-blue-400 to-indigo-500"
         />
       </div>
+
+      {usingFallback ? (
+        <div className="mb-5 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 sm:text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>线上资源暂未连接，当前展示本地备用课本和课标文件。</span>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-10">
         {ZONES.map((zone) => (

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Filter, Loader2, Search } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCw, Search } from 'lucide-react';
 import PageHeader from './PageHeader';
 import ResourceCard from './ResourceCard';
 import type { Resource } from '../lib/types';
@@ -12,6 +12,8 @@ interface ResourceGalleryPageProps {
   gradientColors: string;
   resources: Resource[];
   loading: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   searchPlaceholder: string;
 }
 
@@ -23,6 +25,8 @@ export default function ResourceGalleryPage({
   gradientColors,
   resources,
   loading,
+  error,
+  onRetry,
   searchPlaceholder,
 }: ResourceGalleryPageProps) {
   const [search, setSearch] = useState('');
@@ -52,7 +56,7 @@ export default function ResourceGalleryPage({
       <div className="flex flex-col gap-4 mb-6 sm:mb-10">
         <PageHeader title={title} subtitle={subtitle} gradientColors={gradientColors} />
 
-        <div className="flex items-center gap-2 sm:gap-4 bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-white/50 shadow-sm w-full">
+        <div className="bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-white/50 shadow-sm w-full">
           <div className="relative group flex-1">
             <input
               type="text"
@@ -64,15 +68,31 @@ export default function ResourceGalleryPage({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
           </div>
 
-          <button className="p-2.5 hover:bg-white hover:shadow-md rounded-xl text-gray-500 hover:text-emerald-600 transition-all duration-300 flex-shrink-0">
-            <Filter className="w-5 h-5" />
-          </button>
         </div>
       </div>
 
+      {error ? (
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span className="flex min-w-0 items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">资源加载失败，请检查网络后重试。</span>
+          </span>
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="flex flex-shrink-0 items-center gap-1 rounded-lg px-2 py-1 font-medium hover:bg-amber-100"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              重试
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-        {filteredResources.map((resource) => (
-          <ResourceCard key={resource.id} resource={resource} accentColor={accentColor} />
+        {filteredResources.map((resource, index) => (
+          <ResourceCard key={resource.id} resource={resource} accentColor={accentColor} priority={index < 4} />
         ))}
         {filteredResources.length === 0 && (
           <div className="col-span-full py-12 text-center text-gray-400 bg-white rounded-3xl border border-dashed border-gray-200">

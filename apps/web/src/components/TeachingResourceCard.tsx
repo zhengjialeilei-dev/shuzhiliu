@@ -69,9 +69,10 @@ const TeachingResourceCard: React.FC<TeachingResourceCardProps> = ({
   const textbookBadge = getTextbookBadge(resource);
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      className={`group cursor-pointer p-4 sm:p-5 rounded-xl sm:rounded-2xl border-2 ${zoneInfo.borderColor} ${zoneInfo.hoverBg} transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5`}
+      className={`group w-full cursor-pointer p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:p-5 rounded-xl sm:rounded-2xl border-2 ${zoneInfo.borderColor} ${zoneInfo.hoverBg} ${zoneInfo.textColor} transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5`}
     >
       <div className="flex items-start gap-3 sm:gap-4">
         <div
@@ -103,7 +104,7 @@ const TeachingResourceCard: React.FC<TeachingResourceCardProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </button>
   );
 };
 

@@ -47,7 +47,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
       {value && (
         <button
+          type="button"
           onClick={onClear}
+          aria-label="清除搜索"
           className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
         >
           <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
@@ -65,7 +67,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
               最近搜索
             </span>
             <button
+              type="button"
               onClick={onHistoryClear}
+              aria-label="清空搜索历史"
               className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
             >
               <Trash2 className="w-3 h-3" />
@@ -81,7 +85,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
               >
                 <span className="text-sm text-gray-600">{query}</span>
                 <button
+                  type="button"
                   onClick={(e) => onHistoryRemove?.(e, query)}
+                  aria-label={`删除搜索记录：${query}`}
                   className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-orange-100 rounded transition-all"
                 >
                   <X className="w-3 h-3 text-gray-400" />

@@ -1,4 +1,8 @@
+import fs from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import { config } from '../config.js';
 import { query, withTransaction } from '../db.js';
 import {
@@ -8,13 +12,14 @@ import {
   successResponseSchema,
   teachingResourceSchema,
 } from '../schemas.js';
-import { deleteObjectByUrl, sanitizeFilename, uploadObject } from '../storage.js';
+import { deleteObjectByUrl, deleteResourceFilesByUrl, sanitizeFilename, uploadFile } from '../storage.js';
 import { createLoginRateLimiter } from '../utils/security.js';
 import {
   inferContentType,
   normalizeResource,
   normalizeTeachingResource,
 } from '../utils/serializers.js';
+import { extractZipBundle } from '../utils/zipBundle.js';
 
 const loginRateLimiter = createLoginRateLimiter();
 const AI_CATEGORIES = ['数与代数', '图形与几何', '统计与概率', '综合实践', '微课', '习题', '其他'];
@@ -24,7 +29,7 @@ const ALL_RESOURCE_CATEGORIES = [...AI_CATEGORIES, GAME_CATEGORY, TOOL_CATEGORY]
 const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '通用', '拓展'];
 const TEACHING_ZONES = ['standard', 'textbook', 'plan', 'courseware'];
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
-const HTML_EXTENSIONS = new Set(['.html', '.htm']);
+const WORK_EXTENSIONS = new Set(['.html', '.htm', '.zip']);
 const TEACHING_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.ppt', '.pptx']);
 
 function getFileExtension(filename) {
@@ -65,20 +70,20 @@ function validateUpload(fields, files) {
     assertNonEmptyString(fields.description, 'description');
     assertAllowedValue(fields.category, AI_CATEGORIES, 'category');
     assertAllowedValue(fields.grade, GRADES, 'grade');
-    assertFile(files.htmlFile, HTML_EXTENSIONS, 'htmlFile');
-    assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
+    assertFile(files.htmlFile, WORK_EXTENSIONS, 'htmlFile');
+    if (files.coverFile) assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
   }
 
   if (section === 'tools') {
     assertNonEmptyString(fields.description, 'description');
-    assertFile(files.htmlFile, HTML_EXTENSIONS, 'htmlFile');
-    assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
+    assertFile(files.htmlFile, WORK_EXTENSIONS, 'htmlFile');
+    if (files.coverFile) assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
   }
 
   if (section === 'games') {
     assertNonEmptyString(fields.description, 'description');
-    assertFile(files.htmlFile, HTML_EXTENSIONS, 'htmlFile');
-    assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
+    assertFile(files.htmlFile, WORK_EXTENSIONS, 'htmlFile');
+    if (files.coverFile) assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
   }
 
   if (section === 'teaching') {
@@ -86,6 +91,144 @@ function validateUpload(fields, files) {
     assertAllowedValue(fields.zone, TEACHING_ZONES, 'zone');
     assertFile(files.teachingFile, TEACHING_EXTENSIONS, 'teachingFile');
   }
+}
+
+function normalizeRoutePath(value) {
+  if (typeof value !== 'string' || value.trim().length === 0) return null;
+  const slug = value.trim().toLowerCase().replace(/^\/+(?:works\/)?/, '').replace(/\/+$/, '');
+  if (!/^[a-z0-9][a-z0-9-]{1,49}$/.test(slug)) {
+    throw new Error('作品短链接只能包含 2-50 个小写字母、数字或连字符');
+  }
+  return `/works/${slug}`;
+}
+
+async function collectMultipartUpload(request) {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mathflow-upload-'));
+  const fields = {};
+  const files = {};
+
+  try {
+    for await (const part of request.parts()) {
+      if (part.type !== 'file') {
+        fields[part.fieldname] = part.value;
+        continue;
+      }
+
+      if (files[part.fieldname]) {
+        throw new Error(`${part.fieldname} was provided more than once`);
+      }
+
+      const filePath = path.join(tempDir, `${Object.keys(files).length}.upload`);
+      await pipeline(part.file, createWriteStream(filePath, { flags: 'wx', mode: 0o600 }));
+      if (part.file.truncated) {
+        const error = new Error(`${part.fieldname} exceeds the upload size limit`);
+        error.statusCode = 413;
+        throw error;
+      }
+
+      files[part.fieldname] = {
+        filename: part.filename,
+        mimetype: part.mimetype,
+        filePath,
+      };
+    }
+
+    return { fields, files, tempDir };
+  } catch (error) {
+    await fs.rm(tempDir, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+async function cleanupObjects(urls, logger) {
+  const results = await Promise.allSettled(urls.filter(Boolean).map((url) => deleteObjectByUrl(url)));
+  const failedCount = results.filter((result) => result.status === 'rejected').length;
+  if (failedCount > 0) {
+    logger.warn({ failedCount }, 'Failed to clean up one or more stored resource objects');
+  }
+}
+
+async function cleanupResourceObjects(fileUrl, imageUrl, logger) {
+  const results = await Promise.allSettled([
+    deleteResourceFilesByUrl(fileUrl),
+    deleteObjectByUrl(imageUrl),
+  ]);
+  const failedCount = results.filter((result) => result.status === 'rejected').length;
+  if (failedCount > 0) {
+    logger.warn({ failedCount }, 'Failed to clean up one or more stored resource objects');
+  }
+}
+
+async function cleanupReplacedResourceObjects(previous, current, logger) {
+  const operations = [];
+  if (previous.file_path && previous.file_path !== current.file_path) {
+    operations.push(deleteResourceFilesByUrl(previous.file_path));
+  }
+  if (previous.image_url && previous.image_url !== current.image_url) {
+    operations.push(deleteObjectByUrl(previous.image_url));
+  }
+
+  const results = await Promise.allSettled(operations);
+  const failedCount = results.filter((result) => result.status === 'rejected').length;
+  if (failedCount > 0) {
+    logger.warn({ failedCount }, 'Failed to clean up one or more replaced resource objects');
+  }
+}
+
+async function uploadWorkFile(file, tempDir, uploadedUrls) {
+  if (getFileExtension(file.filename) !== '.zip') {
+    const key = `apps/${sanitizeFilename(file.filename)}`;
+    const url = await uploadFile({
+      key,
+      filePath: file.filePath,
+      contentType: inferContentType(file.filename, file.mimetype),
+    });
+    uploadedUrls.push(url);
+    return { fileUrl: url, previewFilePath: file.filePath };
+  }
+
+  const extractedDir = path.join(tempDir, 'bundle');
+  let bundle;
+  try {
+    bundle = await extractZipBundle(file.filePath, extractedDir, {
+      maxEntries: 500,
+      maxUncompressedBytes: Math.min(config.maxUploadFileSizeMb * 4, 500) * 1024 * 1024,
+    });
+  } catch (error) {
+    if (error instanceof Error) error.statusCode = 400;
+    throw error;
+  }
+  const bundleId = sanitizeFilename(file.filename).replace(/\.zip$/i, '');
+  let fileUrl = null;
+
+  for (let index = 0; index < bundle.files.length; index += 5) {
+    const batch = bundle.files.slice(index, index + 5);
+    const results = await Promise.allSettled(
+      batch.map(async (item) => {
+        const key = `apps/bundles/${bundleId}/${item.relativePath}`;
+        const url = await uploadFile({
+          key,
+          filePath: item.filePath,
+          contentType: inferContentType(item.relativePath),
+        });
+        return { item, url };
+      })
+    );
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        uploadedUrls.push(result.value.url);
+        if (result.value.item.relativePath === bundle.indexRelativePath) fileUrl = result.value.url;
+      }
+    }
+    const failed = results.find((result) => result.status === 'rejected');
+    if (failed) throw failed.reason;
+  }
+
+  if (!fileUrl) throw new Error('ZIP index.html was not uploaded');
+  const indexFile = bundle.files.find((item) => item.relativePath === bundle.indexRelativePath);
+  if (!indexFile) throw new Error('ZIP index.html could not be resolved');
+  return { fileUrl, previewFilePath: indexFile.filePath };
 }
 
 export function createNotFoundError(entityName) {
@@ -102,7 +245,7 @@ export function requireRow(row, entityName) {
   return row;
 }
 
-export async function registerAdminRoutes(app) {
+export async function registerAdminRoutes(app, { coverGenerator }) {
   app.post(
     '/api/admin/login',
     {
@@ -284,6 +427,103 @@ export async function registerAdminRoutes(app) {
     }
   );
 
+  app.post(
+    '/api/admin/resources/:id/replace',
+    {
+      preHandler: app.verifyAdmin,
+      schema: {
+        params: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id'],
+          properties: {
+            id: { type: 'string', minLength: 1 },
+          },
+        },
+        response: {
+          200: resourceSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          404: errorResponseSchema,
+          422: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { fields, files, tempDir } = await collectMultipartUpload(request);
+      const uploadedUrls = [];
+
+      try {
+        assertNonEmptyString(fields.title, 'title');
+        assertNonEmptyString(fields.description, 'description');
+        assertAllowedValue(fields.category, ALL_RESOURCE_CATEGORIES, 'category');
+        assertAllowedValue(fields.grade, GRADES, 'grade');
+        if (files.htmlFile) assertFile(files.htmlFile, WORK_EXTENSIONS, 'htmlFile');
+        if (files.coverFile) assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
+
+        const regenerateCover = fields.regenerateCover === 'true';
+        if (regenerateCover && !files.htmlFile) {
+          return reply.code(400).send({ error: '重新生成封面时必须同时上传新的作品文件' });
+        }
+
+        const existingResult = await query('SELECT * FROM resources WHERE id = $1', [request.params.id]);
+        const previous = requireRow(existingResult.rows[0], 'Resource');
+        let fileUrl = previous.file_path;
+        let imageUrl = previous.image_url;
+        let previewFilePath = null;
+
+        if (files.htmlFile) {
+          const uploadedWork = await uploadWorkFile(files.htmlFile, tempDir, uploadedUrls);
+          fileUrl = uploadedWork.fileUrl;
+          previewFilePath = uploadedWork.previewFilePath;
+        }
+
+        if (files.coverFile || regenerateCover) {
+          let coverPath = files.coverFile?.filePath;
+          let coverFilename = files.coverFile?.filename;
+          let coverMimetype = files.coverFile?.mimetype;
+          if (regenerateCover && !files.coverFile) {
+            coverPath = path.join(tempDir, 'replacement-cover.png');
+            coverFilename = `${fields.title}-cover.png`;
+            coverMimetype = 'image/png';
+            await coverGenerator({
+              htmlFilePath: previewFilePath,
+              outputPath: coverPath,
+              title: fields.title,
+            });
+          }
+
+          const coverKey = `images/${sanitizeFilename(coverFilename)}`;
+          imageUrl = await uploadFile({
+            key: coverKey,
+            filePath: coverPath,
+            contentType: inferContentType(coverFilename, coverMimetype),
+          });
+          uploadedUrls.push(imageUrl);
+        }
+
+        const result = await query(
+          `UPDATE resources
+           SET title = $1, description = $2, category = $3, grade = $4,
+               file_path = $5, image_url = $6
+           WHERE id = $7
+           RETURNING *`,
+          [fields.title, fields.description, fields.category, fields.grade, fileUrl, imageUrl, request.params.id]
+        );
+        const updated = requireRow(result.rows[0], 'Resource');
+
+        await cleanupReplacedResourceObjects(previous, updated, app.log);
+        return normalizeResource(updated);
+      } catch (error) {
+        await cleanupObjects(uploadedUrls, app.log);
+        throw error;
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    }
+  );
+
   app.delete(
     '/api/admin/resources/:id',
     {
@@ -309,17 +549,17 @@ export async function registerAdminRoutes(app) {
       const deleted = await withTransaction(async (client) => {
         const existing = await client.query('SELECT * FROM resources WHERE id = $1', [request.params.id]);
         const row = existing.rows[0];
-        if (!row) return false;
+        if (!row) return null;
 
-        await deleteObjectByUrl(row.file_path);
-        await deleteObjectByUrl(row.image_url);
         await client.query('DELETE FROM resources WHERE id = $1', [request.params.id]);
-        return true;
+        return row;
       });
 
       if (!deleted) {
         throw createNotFoundError('Resource');
       }
+
+      await cleanupResourceObjects(deleted.file_path, deleted.image_url, app.log);
 
       return { success: true };
     }
@@ -434,16 +674,17 @@ export async function registerAdminRoutes(app) {
           request.params.id,
         ]);
         const row = existing.rows[0];
-        if (!row) return false;
+        if (!row) return null;
 
-        await deleteObjectByUrl(row.file_url);
         await client.query('DELETE FROM teaching_resources WHERE id = $1', [request.params.id]);
-        return true;
+        return row;
       });
 
       if (!deleted) {
         throw createNotFoundError('Teaching resource');
       }
+
+      await cleanupObjects([deleted.file_url], app.log);
 
       return { success: true };
     }
@@ -460,109 +701,117 @@ export async function registerAdminRoutes(app) {
           },
           400: errorResponseSchema,
           401: errorResponseSchema,
+          409: errorResponseSchema,
+          422: errorResponseSchema,
+          503: errorResponseSchema,
         },
       },
     },
     async (request, reply) => {
-      const fields = {};
-      const files = {};
-
-      for await (const part of request.parts()) {
-        if (part.type === 'file') {
-          files[part.fieldname] = {
-            filename: part.filename,
-            mimetype: part.mimetype,
-            buffer: await part.toBuffer(),
-          };
-          continue;
-        }
-
-        fields[part.fieldname] = part.value;
-      }
+      const { fields, files, tempDir } = await collectMultipartUpload(request);
 
       try {
         validateUpload(fields, files);
       } catch (error) {
+        await fs.rm(tempDir, { recursive: true, force: true });
         return reply.code(400).send({
           error: error instanceof Error ? error.message : 'Invalid upload payload',
         });
       }
 
-      const section = fields.section;
-
-      if (section === 'ai' || section === 'games' || section === 'tools') {
-        const htmlFile = files.htmlFile;
-        const coverFile = files.coverFile;
-
-        const htmlKey = `apps/${sanitizeFilename(htmlFile.filename)}`;
-        const coverKey = `images/${sanitizeFilename(coverFile.filename)}`;
-        const uploadedUrls = [];
-        try {
-          const fileUrl = await uploadObject({
-            key: htmlKey,
-            body: htmlFile.buffer,
-            contentType: inferContentType(htmlFile.filename, htmlFile.mimetype),
-          });
-          uploadedUrls.push(fileUrl);
-          const imageUrl = await uploadObject({
-            key: coverKey,
-            body: coverFile.buffer,
-            contentType: inferContentType(coverFile.filename, coverFile.mimetype),
-          });
-          uploadedUrls.push(imageUrl);
-
-          const result = await query(
-            `INSERT INTO resources
-              (title, description, category, grade, image_url, file_path, route_path, resource_type)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-             RETURNING *`,
-            [
-              fields.title,
-              fields.description || '',
-              section === 'tools' ? TOOL_CATEGORY : section === 'games' ? GAME_CATEGORY : fields.category,
-              section === 'tools' || section === 'games' ? '通用' : fields.grade,
-              imageUrl,
-              fileUrl,
-              null,
-              'html',
-            ]
-          );
-
-          reply.code(201);
-          return normalizeResource(result.rows[0]);
-        } catch (error) {
-          await Promise.allSettled(uploadedUrls.map((url) => deleteObjectByUrl(url)));
-          throw error;
+      try {
+        const section = fields.section;
+        const routePath = section === 'teaching' ? null : normalizeRoutePath(fields.routeSlug);
+        if (routePath) {
+          const existingRoute = await query('SELECT id FROM resources WHERE route_path = $1 LIMIT 1', [routePath]);
+          if (existingRoute.rows.length > 0) {
+            return reply.code(409).send({ error: '这个作品短链接已经被使用' });
+          }
         }
-      }
 
-      if (section === 'teaching') {
-        const teachingFile = files.teachingFile;
-        const fileExt = path.extname(teachingFile.filename).replace('.', '').toLowerCase() || 'file';
-        const fileKey = `${fields.zone || 'misc'}/${sanitizeFilename(teachingFile.filename)}`;
-        const fileUrl = await uploadObject({
-          key: fileKey,
-          body: teachingFile.buffer,
-          contentType: inferContentType(teachingFile.filename, teachingFile.mimetype),
-        });
+        if (section === 'ai' || section === 'games' || section === 'tools') {
+          const htmlFile = files.htmlFile;
+          const coverFile = files.coverFile;
 
-        try {
-          const result = await query(
-            `INSERT INTO teaching_resources (title, description, zone, file_url, file_type)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING *`,
-            [fields.title, fields.description || '', fields.zone, fileUrl, fileExt]
-          );
+          const uploadedUrls = [];
+          try {
+            const { fileUrl, previewFilePath } = await uploadWorkFile(htmlFile, tempDir, uploadedUrls);
+            let coverPath = coverFile?.filePath;
+            let coverFilename = coverFile?.filename;
+            let coverMimetype = coverFile?.mimetype;
+            if (!coverPath) {
+              coverPath = path.join(tempDir, 'auto-cover.png');
+              coverFilename = `${fields.title}-cover.png`;
+              coverMimetype = 'image/png';
+              await coverGenerator({
+                htmlFilePath: previewFilePath,
+                outputPath: coverPath,
+                title: fields.title,
+              });
+            }
+            const coverKey = `images/${sanitizeFilename(coverFilename)}`;
+            const imageUrl = await uploadFile({
+              key: coverKey,
+              filePath: coverPath,
+              contentType: inferContentType(coverFilename, coverMimetype),
+            });
+            uploadedUrls.push(imageUrl);
 
-          reply.code(201);
-          return normalizeTeachingResource(result.rows[0]);
-        } catch (error) {
-          await deleteObjectByUrl(fileUrl).catch(() => undefined);
-          throw error;
+            const result = await query(
+              `INSERT INTO resources
+                (title, description, category, grade, image_url, file_path, route_path, resource_type)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+               RETURNING *`,
+              [
+                fields.title,
+                fields.description || '',
+                section === 'tools' ? TOOL_CATEGORY : section === 'games' ? GAME_CATEGORY : fields.category,
+                section === 'tools' || section === 'games' ? '通用' : fields.grade,
+                imageUrl,
+                fileUrl,
+                routePath,
+                'html',
+              ]
+            );
+
+            reply.code(201);
+            return normalizeResource(result.rows[0]);
+          } catch (error) {
+            await cleanupObjects(uploadedUrls, app.log);
+            throw error;
+          }
         }
-      }
 
-      return reply.code(400).send({ error: `Unsupported section: ${section}` });
+        if (section === 'teaching') {
+          const teachingFile = files.teachingFile;
+          const fileExt = path.extname(teachingFile.filename).replace('.', '').toLowerCase() || 'file';
+          const fileKey = `${fields.zone || 'misc'}/${sanitizeFilename(teachingFile.filename)}`;
+          const fileUrl = await uploadFile({
+            key: fileKey,
+            filePath: teachingFile.filePath,
+            contentType: inferContentType(teachingFile.filename, teachingFile.mimetype),
+          });
+
+          try {
+            const result = await query(
+              `INSERT INTO teaching_resources (title, description, zone, file_url, file_type)
+               VALUES ($1, $2, $3, $4, $5)
+               RETURNING *`,
+              [fields.title, fields.description || '', fields.zone, fileUrl, fileExt]
+            );
+
+            reply.code(201);
+            return normalizeTeachingResource(result.rows[0]);
+          } catch (error) {
+            await cleanupObjects([fileUrl], app.log);
+            throw error;
+          }
+        }
+
+        return reply.code(400).send({ error: `Unsupported section: ${section}` });
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
     }
   );
 }

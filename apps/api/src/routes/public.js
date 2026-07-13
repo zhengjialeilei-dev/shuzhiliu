@@ -17,13 +17,21 @@ import { findHtmlResourceByPath, findHtmlResourceByUrl } from '../utils/resource
 import { loadSeedResources, mergeResources } from '../utils/resourceSeed.js';
 
 const htmlProxyCache = new Map();
+let htmlProxyCacheBytes = 0;
+
+function removeCachedHtmlProxyEntry(cacheKey) {
+  const entry = htmlProxyCache.get(cacheKey);
+  if (!entry) return;
+  htmlProxyCacheBytes = Math.max(0, htmlProxyCacheBytes - (entry.byteLength || 0));
+  htmlProxyCache.delete(cacheKey);
+}
 
 function getCachedHtmlProxyEntry(cacheKey) {
   const entry = htmlProxyCache.get(cacheKey);
   if (!entry) return null;
 
   if (entry.expiresAt <= Date.now()) {
-    htmlProxyCache.delete(cacheKey);
+    removeCachedHtmlProxyEntry(cacheKey);
     return null;
   }
 
@@ -31,17 +39,67 @@ function getCachedHtmlProxyEntry(cacheKey) {
 }
 
 function setCachedHtmlProxyEntry(cacheKey, payload) {
-  if (config.htmlProxyCacheMaxEntries > 0 && htmlProxyCache.size >= config.htmlProxyCacheMaxEntries) {
+  const maxBytes = Math.max(config.htmlProxyCacheMaxMb, 0) * 1024 * 1024;
+  if (maxBytes > 0 && payload.byteLength > maxBytes) return;
+
+  removeCachedHtmlProxyEntry(cacheKey);
+  while (
+    (config.htmlProxyCacheMaxEntries > 0 && htmlProxyCache.size >= config.htmlProxyCacheMaxEntries) ||
+    (maxBytes > 0 && htmlProxyCacheBytes + payload.byteLength > maxBytes)
+  ) {
     const oldestKey = htmlProxyCache.keys().next().value;
-    if (oldestKey) {
-      htmlProxyCache.delete(oldestKey);
-    }
+    if (!oldestKey) break;
+    removeCachedHtmlProxyEntry(oldestKey);
   }
 
   htmlProxyCache.set(cacheKey, {
     ...payload,
     expiresAt: Date.now() + Math.max(config.htmlProxyCacheTtlMs, 1000),
   });
+  htmlProxyCacheBytes += payload.byteLength;
+}
+
+async function readResponseText(response, maxBytes) {
+  const contentLength = Number.parseInt(response.headers?.get?.('content-length') || '', 10);
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    const error = new Error('HTML resource exceeds the preview size limit');
+    error.statusCode = 413;
+    throw error;
+  }
+
+  if (!response.body?.getReader) {
+    const text = await response.text();
+    if (Buffer.byteLength(text) > maxBytes) {
+      const error = new Error('HTML resource exceeds the preview size limit');
+      error.statusCode = 413;
+      throw error;
+    }
+    return text;
+  }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let totalBytes = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > maxBytes) {
+      await reader.cancel();
+      const error = new Error('HTML resource exceeds the preview size limit');
+      error.statusCode = 413;
+      throw error;
+    }
+    chunks.push(value);
+  }
+
+  const content = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    content.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(content);
 }
 
 function injectBaseHref(rawHtml, sourceUrl) {
@@ -142,7 +200,7 @@ async function getPublicResources() {
   let databaseResources = [];
 
   try {
-    const result = await query('SELECT * FROM resources ORDER BY created_at DESC');
+    const result = await query('SELECT * FROM resources ORDER BY created_at DESC, id DESC');
     databaseResources = result.rows.map(normalizeResource);
   } catch {
     databaseResources = [];
@@ -271,9 +329,15 @@ export async function registerPublicRoutes(app) {
         },
       },
     },
-    async () => {
-      const result = await query('SELECT * FROM teaching_resources ORDER BY created_at DESC');
-      return result.rows.map(normalizeTeachingResource);
+    async (request, reply) => {
+      try {
+        const result = await query('SELECT * FROM teaching_resources ORDER BY created_at DESC, id DESC');
+        return result.rows.map(normalizeTeachingResource);
+      } catch (error) {
+        request.log.warn({ err: error }, 'Teaching resources database unavailable; returning fallback signal');
+        reply.header('X-MathFlow-Data-Source', 'fallback');
+        return [];
+      }
     }
   );
 
@@ -373,8 +437,20 @@ export async function registerPublicRoutes(app) {
         });
       }
 
-      const text = injectBaseHref(stripSlowExternalAssets(await response.text()), targetUrl);
-      setCachedHtmlProxyEntry(cacheKey, { html: text });
+      const maxHtmlBytes = Math.max(config.htmlProxyMaxFileSizeMb, 1) * 1024 * 1024;
+      let sourceHtml;
+      try {
+        sourceHtml = await readResponseText(response, maxHtmlBytes);
+      } catch (error) {
+        if (error?.statusCode === 413 && isIframeRequest) {
+          reply.code(413).header('Content-Type', 'text/html; charset=utf-8');
+          return reply.send(buildProxyErrorDocument(title, '资源文件过大', '该 HTML 超过在线预览大小限制。'));
+        }
+        throw error;
+      }
+
+      const text = injectBaseHref(stripSlowExternalAssets(sourceHtml), targetUrl);
+      setCachedHtmlProxyEntry(cacheKey, { html: text, byteLength: Buffer.byteLength(text) });
       reply.header('Content-Type', 'text/html; charset=utf-8');
       reply.header('Cache-Control', 'public, max-age=600, stale-while-revalidate=86400');
       reply.header('X-HTML-Proxy-Cache', 'MISS');

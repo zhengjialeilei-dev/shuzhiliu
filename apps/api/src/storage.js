@@ -1,7 +1,15 @@
 import fs from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  DeleteObjectsCommand,
+  HeadBucketCommand,
+  ListObjectsV2Command,
+} from '@aws-sdk/client-s3';
 import { config } from './config.js';
 
 let s3Client = null;
@@ -41,7 +49,8 @@ async function ensureLocalDirectory(key) {
 }
 
 function localUrlForKey(key) {
-  return `/uploads/${key.replace(/\\/g, '/')}`;
+  const encodedKey = key.replace(/\\/g, '/').split('/').map(encodeURIComponent).join('/');
+  return `/uploads/${encodedKey}`;
 }
 
 export function isSafeUploadPath(value) {
@@ -62,16 +71,17 @@ export function isSafeUploadPath(value) {
 }
 
 function s3UrlForKey(key) {
+  const encodedKey = key.split('/').map(encodeURIComponent).join('/');
   const base = config.s3PublicBaseUrl || config.publicAssetBaseUrl || '';
   if (base) {
-    return `${base.replace(/\/$/, '')}/${key}`;
+    return `${base.replace(/\/$/, '')}/${encodedKey}`;
   }
 
   if (!config.s3Endpoint) {
     throw new Error('S3 public URL is not configured');
   }
 
-  return `${config.s3Endpoint.replace(/\/$/, '')}/${config.s3Bucket}/${key}`;
+  return `${config.s3Endpoint.replace(/\/$/, '')}/${config.s3Bucket}/${encodedKey}`;
 }
 
 export async function uploadObject({ key, body, contentType }) {
@@ -95,9 +105,31 @@ export async function uploadObject({ key, body, contentType }) {
   return localUrlForKey(key);
 }
 
+export async function uploadFile({ key, filePath, contentType }) {
+  if (config.storageDriver === 's3') {
+    const stats = await fs.stat(filePath);
+    await getS3Client().send(
+      new PutObjectCommand({
+        Bucket: config.s3Bucket,
+        Key: key,
+        Body: createReadStream(filePath),
+        ContentLength: stats.size,
+        ContentType: contentType,
+        ACL: 'public-read',
+      })
+    );
+
+    return s3UrlForKey(key);
+  }
+
+  const fullPath = await ensureLocalDirectory(key);
+  await fs.copyFile(filePath, fullPath);
+  return localUrlForKey(key);
+}
+
 function keyFromLocalUrl(url) {
   if (!isSafeUploadPath(url)) return null;
-  const normalized = url.replace(/^\/+/, '');
+  const normalized = decodeURIComponent(url).replace(/^\/+/, '');
   return normalized.replace(/^uploads\//, '');
 }
 
@@ -108,7 +140,12 @@ function keyFromS3Url(url) {
 
   for (const base of bases) {
     if (!url.startsWith(base)) continue;
-    const suffix = url.slice(base.length).replace(/^\/+/, '');
+    let suffix;
+    try {
+      suffix = decodeURIComponent(url.slice(base.length).replace(/^\/+/, ''));
+    } catch {
+      return null;
+    }
     if (suffix.startsWith(`${config.s3Bucket}/`)) {
       return suffix.slice(config.s3Bucket.length + 1);
     }
@@ -153,6 +190,43 @@ export async function deleteObjectByUrl(url) {
   if (!resolvedFullPath.startsWith(`${resolvedUploadDir}${path.sep}`)) return;
 
   await fs.rm(fullPath, { force: true });
+}
+
+async function deleteObjectPrefix(prefix) {
+  if (config.storageDriver === 's3') {
+    const client = getS3Client();
+    let continuationToken;
+    do {
+      const result = await client.send(
+        new ListObjectsV2Command({
+          Bucket: config.s3Bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        })
+      );
+      const objects = (result.Contents || []).flatMap((item) => (item.Key ? [{ Key: item.Key }] : []));
+      if (objects.length > 0) {
+        await client.send(new DeleteObjectsCommand({ Bucket: config.s3Bucket, Delete: { Objects: objects } }));
+      }
+      continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
+    } while (continuationToken);
+    return;
+  }
+
+  const fullPath = path.resolve(config.uploadDir, ...prefix.split('/'));
+  const uploadRoot = path.resolve(config.uploadDir);
+  if (!fullPath.startsWith(`${uploadRoot}${path.sep}`)) return;
+  await fs.rm(fullPath, { recursive: true, force: true });
+}
+
+export async function deleteResourceFilesByUrl(url) {
+  const key = getObjectKeyFromUrl(url);
+  const bundleMatch = key?.match(/^(apps\/bundles\/[^/]+)\//);
+  if (!bundleMatch) {
+    await deleteObjectByUrl(url);
+    return;
+  }
+  await deleteObjectPrefix(`${bundleMatch[1]}/`);
 }
 
 export async function checkStorageConnection() {

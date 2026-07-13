@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 process.env.NODE_ENV = 'test';
 process.env.ADMIN_PASSWORD = 'secret-pass';
@@ -14,6 +17,24 @@ const [{ buildApp }, { config }, { pool }, { createLoginRateLimiter, resetRateLi
   import('../src/utils/security.js'),
   import('../src/routes/admin.js'),
 ]);
+
+function buildMultipartPayload(boundary, fields, files) {
+  const chunks = [];
+  for (const [name, value] of fields) {
+    chunks.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`));
+  }
+  for (const file of files) {
+    chunks.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="${file.name}"; filename="${file.filename}"\r\nContent-Type: ${file.contentType}\r\n\r\n`
+      ),
+      file.content,
+      Buffer.from('\r\n')
+    );
+  }
+  chunks.push(Buffer.from(`--${boundary}--\r\n`));
+  return Buffer.concat(chunks);
+}
 
 test.after(async () => {
   await pool.end();
@@ -188,7 +209,7 @@ test('html proxy resolves html resources directly from route paths and serves ca
   let fetchCalls = 0;
 
   pool.query = async (text) => {
-    if (text === 'SELECT * FROM resources ORDER BY created_at DESC') {
+    if (text === 'SELECT * FROM resources ORDER BY created_at DESC, id DESC') {
       return {
         rows: [
           {
@@ -288,11 +309,43 @@ test('html proxy returns html fallback document for iframe timeout', async () =>
   }
 });
 
+test('html proxy rejects resources larger than the configured preview limit', async () => {
+  config.nodeEnv = 'test';
+  config.htmlProxyAllowlist = ['cdn.example.com'];
+  config.htmlProxyMaxFileSizeMb = 1;
+
+  const realFetch = global.fetch;
+  global.fetch = async () => ({
+    ok: true,
+    headers: new Headers({ 'content-length': String(2 * 1024 * 1024) }),
+    text: async () => '<html></html>',
+  });
+
+  const app = await buildApp();
+  try {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/html-proxy',
+      query: {
+        url: 'https://cdn.example.com/collections/demo/large.html',
+        iframe: '1',
+      },
+    });
+
+    assert.equal(response.statusCode, 413);
+    assert.match(response.body, /资源文件过大/);
+  } finally {
+    global.fetch = realFetch;
+    config.htmlProxyMaxFileSizeMb = 10;
+    await app.close();
+  }
+});
+
 test('resource resolve matches generated html slugs without returning the full list', async () => {
   config.nodeEnv = 'test';
   const realQuery = pool.query.bind(pool);
   pool.query = async (text, params) => {
-    if (text === 'SELECT * FROM resources ORDER BY created_at DESC') {
+    if (text === 'SELECT * FROM resources ORDER BY created_at DESC, id DESC') {
       return {
         rows: [
           {
@@ -341,7 +394,7 @@ test('resource resolve treats SQL-like path input as plain data', async () => {
 
   pool.query = async (text, params) => {
     seenQueries.push({ text, params });
-    if (text === 'SELECT * FROM resources ORDER BY created_at DESC') {
+    if (text === 'SELECT * FROM resources ORDER BY created_at DESC, id DESC') {
       return {
         rows: [
           {
@@ -375,7 +428,7 @@ test('resource resolve treats SQL-like path input as plain data', async () => {
     });
 
     assert.equal(response.statusCode, 404);
-    assert.deepEqual(seenQueries, [{ text: 'SELECT * FROM resources ORDER BY created_at DESC', params: [] }]);
+    assert.deepEqual(seenQueries, [{ text: 'SELECT * FROM resources ORDER BY created_at DESC, id DESC', params: [] }]);
   } finally {
     pool.query = realQuery;
     await app.close();
@@ -386,7 +439,7 @@ test('resource resolve supports legacy file urls for html resources', async () =
   config.nodeEnv = 'test';
   const realQuery = pool.query.bind(pool);
   pool.query = async (text, params) => {
-    if (text === 'SELECT * FROM resources ORDER BY created_at DESC') {
+    if (text === 'SELECT * FROM resources ORDER BY created_at DESC, id DESC') {
       return {
         rows: [
           {
@@ -422,6 +475,32 @@ test('resource resolve supports legacy file urls for html resources', async () =
     assert.equal(response.statusCode, 200);
     assert.equal(response.json().route_path, '/ll');
     assert.equal(response.headers['cache-control'], 'public, max-age=60');
+  } finally {
+    pool.query = realQuery;
+    await app.close();
+  }
+});
+
+test('teaching resources return a fallback signal when the database is unavailable', async () => {
+  config.nodeEnv = 'test';
+  const realQuery = pool.query;
+  pool.query = async (text) => {
+    if (text === 'SELECT * FROM teaching_resources ORDER BY created_at DESC, id DESC') {
+      throw new Error('simulated database outage');
+    }
+    return { rows: [] };
+  };
+
+  const app = await buildApp();
+  try {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/teaching-resources',
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json(), []);
+    assert.equal(response.headers['x-mathflow-data-source'], 'fallback');
   } finally {
     pool.query = realQuery;
     await app.close();
@@ -501,6 +580,531 @@ test('upload route validates multipart fields before touching database', async (
   assert.equal(response.json().error, 'htmlFile is required');
 
   await app.close();
+});
+
+test('upload route streams files through temporary storage into the configured upload directory', async () => {
+  config.nodeEnv = 'test';
+  config.storageDriver = 'local';
+  const originalUploadDir = config.uploadDir;
+  const uploadDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mathflow-upload-test-'));
+  config.uploadDir = uploadDir;
+
+  const realQuery = pool.query.bind(pool);
+  pool.query = async (text, params) => {
+    if (text === 'SELECT id FROM resources WHERE route_path = $1 LIMIT 1') {
+      return { rows: [] };
+    }
+    if (text.includes('INSERT INTO resources')) {
+      return {
+        rows: [
+          {
+            id: 'streamed-resource',
+            title: params[0],
+            description: params[1],
+            category: params[2],
+            grade: params[3],
+            image_url: params[4],
+            file_path: params[5],
+            route_path: params[6],
+            resource_type: params[7],
+            created_at: new Date().toISOString(),
+          },
+        ],
+      };
+    }
+    return realQuery(text, params);
+  };
+
+  const app = await buildApp();
+  try {
+    const loginResponse = await app.inject({
+      method: 'POST',
+      url: '/api/admin/login',
+      payload: { password: 'secret-pass' },
+    });
+    const boundary = '----MathflowStreamingBoundary';
+    const parts = [
+      ['section', 'ai'],
+      ['title', '流式上传作品'],
+      ['description', '上传测试'],
+      ['category', '数与代数'],
+      ['grade', '一年级'],
+      ['routeSlug', 'streaming-demo'],
+    ];
+    const body = [
+      ...parts.flatMap(([name, value]) => [
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="${name}"`,
+        '',
+        value,
+      ]),
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="htmlFile"; filename="demo.html"',
+      'Content-Type: text/html',
+      '',
+      '<html><body>streamed</body></html>',
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="coverFile"; filename="cover.png"',
+      'Content-Type: image/png',
+      '',
+      'PNGDATA',
+      `--${boundary}--`,
+      '',
+    ].join('\r\n');
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/admin/upload',
+      headers: {
+        cookie: loginResponse.headers['set-cookie'],
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+      },
+      payload: body,
+    });
+
+    assert.equal(response.statusCode, 201);
+    const resource = response.json();
+    assert.equal(resource.route_path, '/works/streaming-demo');
+    const htmlPath = path.join(uploadDir, resource.file_path.replace(/^\/uploads\//, ''));
+    const coverPath = path.join(uploadDir, decodeURIComponent(resource.image_url.replace(/^\/uploads\//, '')));
+    assert.equal(await fs.readFile(htmlPath, 'utf8'), '<html><body>streamed</body></html>');
+    assert.equal(await fs.readFile(coverPath, 'utf8'), 'PNGDATA');
+  } finally {
+    pool.query = realQuery;
+    config.uploadDir = originalUploadDir;
+    await app.close();
+    await fs.rm(uploadDir, { recursive: true, force: true });
+  }
+});
+
+test('upload route extracts a ZIP work and preserves its asset directory', async () => {
+  config.nodeEnv = 'test';
+  config.storageDriver = 'local';
+  const originalUploadDir = config.uploadDir;
+  const uploadDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mathflow-zip-upload-test-'));
+  config.uploadDir = uploadDir;
+
+  const realQuery = pool.query.bind(pool);
+  pool.query = async (text, params) => {
+    if (text === 'SELECT id FROM resources WHERE route_path = $1 LIMIT 1') return { rows: [] };
+    if (text.includes('INSERT INTO resources')) {
+      return {
+        rows: [
+          {
+            id: 'zip-resource',
+            title: params[0],
+            description: params[1],
+            category: params[2],
+            grade: params[3],
+            image_url: params[4],
+            file_path: params[5],
+            route_path: params[6],
+            resource_type: params[7],
+            created_at: new Date().toISOString(),
+          },
+        ],
+      };
+    }
+    return realQuery(text, params);
+  };
+
+  const app = await buildApp();
+  try {
+    const loginResponse = await app.inject({
+      method: 'POST',
+      url: '/api/admin/login',
+      payload: { password: 'secret-pass' },
+    });
+    const boundary = '----MathflowZipBoundary';
+    const zipContent = await fs.readFile(new URL('./fixtures/multi-file-work.zip', import.meta.url));
+    const payload = buildMultipartPayload(
+      boundary,
+      [
+        ['section', 'ai'],
+        ['title', 'ZIP 作品'],
+        ['description', '多文件作品'],
+        ['category', '数与代数'],
+        ['grade', '一年级'],
+        ['routeSlug', 'zip-demo'],
+      ],
+      [
+        { name: 'htmlFile', filename: 'work.zip', contentType: 'application/zip', content: zipContent },
+        { name: 'coverFile', filename: 'cover.png', contentType: 'image/png', content: Buffer.from('PNG') },
+      ]
+    );
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/admin/upload',
+      headers: {
+        cookie: loginResponse.headers['set-cookie'],
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+      },
+      payload,
+    });
+
+    assert.equal(response.statusCode, 201);
+    const resource = response.json();
+    assert.equal(resource.route_path, '/works/zip-demo');
+    assert.match(resource.file_path, /^\/uploads\/apps\/bundles\/[^/]+\/index\.html$/);
+    const indexPath = path.join(uploadDir, resource.file_path.replace(/^\/uploads\//, ''));
+    assert.match(await fs.readFile(indexPath, 'utf8'), /assets\/app\.js/);
+    assert.equal(await fs.readFile(path.join(path.dirname(indexPath), 'assets', 'app.js'), 'utf8'), 'console.log("ok")');
+  } finally {
+    pool.query = realQuery;
+    config.uploadDir = originalUploadDir;
+    await app.close();
+    await fs.rm(uploadDir, { recursive: true, force: true });
+  }
+});
+
+test('upload route generates a cover when no cover file is provided', async () => {
+  config.nodeEnv = 'test';
+  config.storageDriver = 'local';
+  const originalUploadDir = config.uploadDir;
+  const uploadDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mathflow-auto-cover-test-'));
+  config.uploadDir = uploadDir;
+
+  const realQuery = pool.query.bind(pool);
+  pool.query = async (text, params) => {
+    if (text === 'SELECT id FROM resources WHERE route_path = $1 LIMIT 1') return { rows: [] };
+    if (text.includes('INSERT INTO resources')) {
+      return {
+        rows: [{
+          id: 'auto-cover-resource',
+          title: params[0],
+          description: params[1],
+          category: params[2],
+          grade: params[3],
+          image_url: params[4],
+          file_path: params[5],
+          route_path: params[6],
+          resource_type: params[7],
+          created_at: new Date().toISOString(),
+        }],
+      };
+    }
+    return realQuery(text, params);
+  };
+
+  let capturedHtmlPath = '';
+  const app = await buildApp({
+    coverGenerator: async ({ htmlFilePath, outputPath }) => {
+      capturedHtmlPath = htmlFilePath;
+      await fs.writeFile(outputPath, 'AUTO-COVER');
+    },
+  });
+
+  try {
+    const loginResponse = await app.inject({
+      method: 'POST',
+      url: '/api/admin/login',
+      payload: { password: 'secret-pass' },
+    });
+    const boundary = '----MathflowAutoCoverBoundary';
+    const payload = buildMultipartPayload(
+      boundary,
+      [
+        ['section', 'tools'],
+        ['title', '自动封面作品'],
+        ['description', '封面截图测试'],
+        ['routeSlug', 'auto-cover-demo'],
+      ],
+      [{
+        name: 'htmlFile',
+        filename: 'auto-cover.html',
+        contentType: 'text/html',
+        content: Buffer.from('<html><body>cover me</body></html>'),
+      }]
+    );
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/admin/upload',
+      headers: {
+        cookie: loginResponse.headers['set-cookie'],
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+      },
+      payload,
+    });
+
+    assert.equal(response.statusCode, 201);
+    const resource = response.json();
+    assert.match(capturedHtmlPath, /\.upload$/);
+    const coverPath = path.join(uploadDir, decodeURIComponent(resource.image_url.replace(/^\/uploads\//, '')));
+    assert.equal(await fs.readFile(coverPath, 'utf8'), 'AUTO-COVER');
+  } finally {
+    pool.query = realQuery;
+    config.uploadDir = originalUploadDir;
+    await app.close();
+    await fs.rm(uploadDir, { recursive: true, force: true });
+  }
+});
+
+test('resource replacement keeps the route and removes old files after the database update', async () => {
+  config.nodeEnv = 'test';
+  config.storageDriver = 'local';
+  const originalUploadDir = config.uploadDir;
+  const uploadDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mathflow-replace-test-'));
+  config.uploadDir = uploadDir;
+  await fs.mkdir(path.join(uploadDir, 'apps'), { recursive: true });
+  await fs.mkdir(path.join(uploadDir, 'images'), { recursive: true });
+  await fs.writeFile(path.join(uploadDir, 'apps', 'old.html'), 'OLD-WORK');
+  await fs.writeFile(path.join(uploadDir, 'images', 'old.png'), 'OLD-COVER');
+
+  const previous = {
+    id: 'replace-resource',
+    title: '旧标题',
+    description: '旧描述',
+    category: '数与代数',
+    grade: '一年级',
+    image_url: '/uploads/images/old.png',
+    file_path: '/uploads/apps/old.html',
+    route_path: '/works/stable-link',
+    resource_type: 'html',
+    created_at: new Date().toISOString(),
+  };
+  const realQuery = pool.query.bind(pool);
+  let databaseUpdated = false;
+  pool.query = async (text, params) => {
+    if (text === 'SELECT * FROM resources WHERE id = $1') return { rows: [previous] };
+    if (text.includes('UPDATE resources')) {
+      await fs.access(path.join(uploadDir, 'apps', 'old.html'));
+      await fs.access(path.join(uploadDir, 'images', 'old.png'));
+      databaseUpdated = true;
+      return {
+        rows: [{
+          ...previous,
+          title: params[0],
+          description: params[1],
+          category: params[2],
+          grade: params[3],
+          file_path: params[4],
+          image_url: params[5],
+        }],
+      };
+    }
+    return realQuery(text, params);
+  };
+
+  const app = await buildApp();
+  try {
+    const loginResponse = await app.inject({
+      method: 'POST',
+      url: '/api/admin/login',
+      payload: { password: 'secret-pass' },
+    });
+    const boundary = '----MathflowReplaceBoundary';
+    const payload = buildMultipartPayload(
+      boundary,
+      [
+        ['title', '新标题'],
+        ['description', '新描述'],
+        ['category', '数与代数'],
+        ['grade', '二年级'],
+        ['regenerateCover', 'false'],
+      ],
+      [
+        { name: 'htmlFile', filename: 'new.html', contentType: 'text/html', content: Buffer.from('NEW-WORK') },
+        { name: 'coverFile', filename: 'new.png', contentType: 'image/png', content: Buffer.from('NEW-COVER') },
+      ]
+    );
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/admin/resources/replace-resource/replace',
+      headers: {
+        cookie: loginResponse.headers['set-cookie'],
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+      },
+      payload,
+    });
+
+    assert.equal(response.statusCode, 200);
+    const resource = response.json();
+    assert.equal(databaseUpdated, true);
+    assert.equal(resource.route_path, '/works/stable-link');
+    await assert.rejects(fs.access(path.join(uploadDir, 'apps', 'old.html')));
+    await assert.rejects(fs.access(path.join(uploadDir, 'images', 'old.png')));
+    const newWorkPath = path.join(uploadDir, decodeURIComponent(resource.file_path.replace(/^\/uploads\//, '')));
+    const newCoverPath = path.join(uploadDir, decodeURIComponent(resource.image_url.replace(/^\/uploads\//, '')));
+    assert.equal(await fs.readFile(newWorkPath, 'utf8'), 'NEW-WORK');
+    assert.equal(await fs.readFile(newCoverPath, 'utf8'), 'NEW-COVER');
+  } finally {
+    pool.query = realQuery;
+    config.uploadDir = originalUploadDir;
+    await app.close();
+    await fs.rm(uploadDir, { recursive: true, force: true });
+  }
+});
+
+test('resource replacement rolls back new files when the database update fails', async () => {
+  config.nodeEnv = 'test';
+  config.storageDriver = 'local';
+  const originalUploadDir = config.uploadDir;
+  const uploadDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mathflow-replace-rollback-test-'));
+  config.uploadDir = uploadDir;
+  await fs.mkdir(path.join(uploadDir, 'apps'), { recursive: true });
+  await fs.mkdir(path.join(uploadDir, 'images'), { recursive: true });
+  await fs.writeFile(path.join(uploadDir, 'apps', 'old.html'), 'OLD-WORK');
+  await fs.writeFile(path.join(uploadDir, 'images', 'old.png'), 'OLD-COVER');
+
+  const previous = {
+    id: 'rollback-resource',
+    title: '旧标题',
+    description: '旧描述',
+    category: '数与代数',
+    grade: '一年级',
+    image_url: '/uploads/images/old.png',
+    file_path: '/uploads/apps/old.html',
+    route_path: '/works/rollback-link',
+    resource_type: 'html',
+    created_at: new Date().toISOString(),
+  };
+  const realQuery = pool.query.bind(pool);
+  pool.query = async (text) => {
+    if (text === 'SELECT * FROM resources WHERE id = $1') return { rows: [previous] };
+    if (text.includes('UPDATE resources')) throw new Error('simulated database failure');
+    return realQuery(text);
+  };
+
+  const app = await buildApp();
+  try {
+    const loginResponse = await app.inject({
+      method: 'POST',
+      url: '/api/admin/login',
+      payload: { password: 'secret-pass' },
+    });
+    const boundary = '----MathflowReplaceRollbackBoundary';
+    const payload = buildMultipartPayload(
+      boundary,
+      [
+        ['title', '新标题'],
+        ['description', '新描述'],
+        ['category', '数与代数'],
+        ['grade', '二年级'],
+        ['regenerateCover', 'false'],
+      ],
+      [
+        { name: 'htmlFile', filename: 'new.html', contentType: 'text/html', content: Buffer.from('NEW-WORK') },
+        { name: 'coverFile', filename: 'new.png', contentType: 'image/png', content: Buffer.from('NEW-COVER') },
+      ]
+    );
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/admin/resources/rollback-resource/replace',
+      headers: {
+        cookie: loginResponse.headers['set-cookie'],
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+      },
+      payload,
+    });
+
+    assert.equal(response.statusCode, 500);
+    assert.equal(await fs.readFile(path.join(uploadDir, 'apps', 'old.html'), 'utf8'), 'OLD-WORK');
+    assert.equal(await fs.readFile(path.join(uploadDir, 'images', 'old.png'), 'utf8'), 'OLD-COVER');
+    assert.deepEqual(await fs.readdir(path.join(uploadDir, 'apps')), ['old.html']);
+    assert.deepEqual(await fs.readdir(path.join(uploadDir, 'images')), ['old.png']);
+  } finally {
+    pool.query = realQuery;
+    config.uploadDir = originalUploadDir;
+    await app.close();
+    await fs.rm(uploadDir, { recursive: true, force: true });
+  }
+});
+
+test('database uniqueness violations return a conflict response', async () => {
+  config.nodeEnv = 'test';
+  const realQuery = pool.query.bind(pool);
+  pool.query = async (text) => {
+    if (text.includes('INSERT INTO resources')) {
+      const error = new Error('duplicate key value violates unique constraint');
+      error.code = '23505';
+      error.constraint = 'uq_resources_route_path';
+      throw error;
+    }
+    return realQuery(text);
+  };
+
+  const app = await buildApp();
+  try {
+    const loginResponse = await app.inject({
+      method: 'POST',
+      url: '/api/admin/login',
+      payload: { password: 'secret-pass' },
+    });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/admin/resources',
+      headers: { cookie: loginResponse.headers['set-cookie'] },
+      payload: {
+        title: '重复短链接作品',
+        description: '测试数据库唯一约束',
+        category: '数与代数',
+        grade: '一年级',
+        image_url: '/uploads/images/demo.png',
+        file_path: '/uploads/apps/demo.html',
+        route_path: '/works/duplicate',
+        resource_type: 'html',
+      },
+    });
+
+    assert.equal(response.statusCode, 409);
+    assert.equal(response.json().error, '这个作品短链接已经被使用');
+  } finally {
+    pool.query = realQuery;
+    await app.close();
+  }
+});
+
+test('resource deletion commits the database change before removing stored files', async () => {
+  config.nodeEnv = 'test';
+  config.storageDriver = 'local';
+  const originalUploadDir = config.uploadDir;
+  const uploadDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mathflow-delete-test-'));
+  config.uploadDir = uploadDir;
+  await fs.mkdir(path.join(uploadDir, 'apps'), { recursive: true });
+  await fs.writeFile(path.join(uploadDir, 'apps', 'demo.html'), 'demo');
+
+  const realConnect = pool.connect.bind(pool);
+  let committed = false;
+  pool.connect = async () => ({
+    async query(text) {
+      if (text === 'SELECT * FROM resources WHERE id = $1') {
+        return { rows: [{ file_path: '/uploads/apps/demo.html', image_url: '' }] };
+      }
+      if (text === 'COMMIT') committed = true;
+      if (text === 'DELETE FROM resources WHERE id = $1') {
+        await fs.access(path.join(uploadDir, 'apps', 'demo.html'));
+      }
+      return { rows: [] };
+    },
+    release() {},
+  });
+
+  const app = await buildApp();
+  try {
+    const loginResponse = await app.inject({
+      method: 'POST',
+      url: '/api/admin/login',
+      payload: { password: 'secret-pass' },
+    });
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/admin/resources/resource-id',
+      headers: { cookie: loginResponse.headers['set-cookie'] },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(committed, true);
+    await assert.rejects(fs.access(path.join(uploadDir, 'apps', 'demo.html')));
+  } finally {
+    pool.connect = realConnect;
+    config.uploadDir = originalUploadDir;
+    await app.close();
+    await fs.rm(uploadDir, { recursive: true, force: true });
+  }
 });
 
 test('requireRow throws a 404-style error when the row is missing', () => {

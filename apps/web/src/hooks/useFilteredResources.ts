@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Resource } from '../lib/types';
-import { matchSearch } from '../lib/pinyinSearch';
+import { matchBasicSearch, type SearchMatch } from '../lib/basicSearch';
+
+type SearchMatcher = (text: string, query: string) => SearchMatch;
 
 interface CategoryOption {
   id: string;
@@ -32,6 +34,20 @@ export function useFilteredResources({
   pageSize = 20,
 }: UseFilteredResourcesOptions) {
   const [page, setPage] = useState(1);
+  const [searchMatcher, setSearchMatcher] = useState<SearchMatcher>(() => matchBasicSearch);
+
+  useEffect(() => {
+    if (!/^[a-z\s]+$/i.test(debouncedSearch)) return undefined;
+
+    let active = true;
+    import('../lib/pinyinSearch').then(({ matchSearch }) => {
+      if (active) setSearchMatcher(() => matchSearch);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [debouncedSearch]);
 
   useEffect(() => {
     setPage(1);
@@ -59,8 +75,8 @@ export function useFilteredResources({
     if (debouncedSearch) {
       filtered = filtered
         .map((app) => {
-          const titleMatch = matchSearch(app.title, debouncedSearch);
-          const descMatch = matchSearch(app.description, debouncedSearch);
+          const titleMatch = searchMatcher(app.title, debouncedSearch);
+          const descMatch = searchMatcher(app.description, debouncedSearch);
           const score = Math.max(titleMatch.score, descMatch.score);
           return { app, matched: titleMatch.matched || descMatch.matched, score };
         })
@@ -70,7 +86,7 @@ export function useFilteredResources({
     }
 
     return filtered;
-  }, [resources, activeCategory, activeGrade, debouncedSearch, categories, grades]);
+  }, [resources, activeCategory, activeGrade, debouncedSearch, categories, grades, searchMatcher]);
 
   const paginatedApps = useMemo(() => displayApps.slice(0, page * pageSize), [displayApps, page, pageSize]);
 

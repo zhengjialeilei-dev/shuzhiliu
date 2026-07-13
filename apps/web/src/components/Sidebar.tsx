@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Zap, GraduationCap, Hexagon, Sparkles, ThumbsUp, Menu, X, Gamepad2 } from 'lucide-react';
+import { Zap, GraduationCap, Hexagon, Sparkles, ThumbsUp, Gamepad2 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 
@@ -14,7 +14,6 @@ const MENU_ITEMS = [
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const clickCountsRef = useRef<Record<string, number>>({});
   const clickTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
   const [showHint, setShowHint] = useState<string | null>(null);
@@ -42,7 +41,6 @@ const Sidebar = () => {
         e.preventDefault();
         clickCountsRef.current[key] = 0;
         navigate(item.adminPath);
-        setMobileMenuOpen(false);
         return;
       }
 
@@ -50,23 +48,13 @@ const Sidebar = () => {
         clickCountsRef.current[key] = 0;
       }, 2000);
 
-      setMobileMenuOpen(false);
     },
     [navigate]
   );
 
   const handleLogoClick = useCallback(() => {
     navigate('/admin/upload');
-    setMobileMenuOpen(false);
   }, [navigate]);
-
-  const toggleMobileMenu = useCallback(() => {
-    setMobileMenuOpen((prev) => !prev);
-  }, []);
-
-  const closeMobileMenu = useCallback(() => {
-    setMobileMenuOpen(false);
-  }, []);
 
   return (
     <>
@@ -74,12 +62,14 @@ const Sidebar = () => {
         <div className="pt-10 pb-8 px-8 flex items-center gap-4">
           <div className="relative group">
             <div className="absolute inset-0 bg-emerald-500 rounded-2xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500 animate-pulse" />
-            <div
+            <button
+              type="button"
               onClick={handleLogoClick}
-              className="relative w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30 text-white transform group-hover:scale-105 transition-transform duration-300 cursor-pointer select-none"
+              aria-label="打开资源管理"
+              className="relative w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30 text-white transform group-hover:scale-105 transition-transform duration-300 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
             >
               <Hexagon className="w-7 h-7 stroke-[2.5]" />
-            </div>
+            </button>
           </div>
           <div className="flex flex-col">
             <h1 className="text-2xl font-sans font-bold text-slate-800 tracking-tight leading-none group-hover:text-emerald-700 transition-colors">
@@ -155,8 +145,13 @@ const Sidebar = () => {
       </div>
 
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3" onClick={handleLogoClick}>
+        <div className="flex items-center px-4 py-3">
+          <button
+            type="button"
+            className="flex items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+            onClick={handleLogoClick}
+            aria-label="打开资源管理"
+          >
             <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-xl flex items-center justify-center text-white">
               <Hexagon className="w-5 h-5 stroke-[2.5]" />
             </div>
@@ -164,54 +159,12 @@ const Sidebar = () => {
               <h1 className="text-lg font-bold text-slate-800">MathFlow</h1>
               <span className="text-[10px] text-slate-400 tracking-wider">数智流</span>
             </div>
-          </div>
-          <button onClick={toggleMobileMenu} className="p-2 rounded-xl bg-slate-100 text-slate-600">
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={closeMobileMenu} />
-      )}
-
-      <div
-        className={clsx(
-          'md:hidden fixed top-[60px] right-0 bottom-0 w-64 bg-white z-50 shadow-2xl transition-transform duration-300 ease-out',
-          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        )}
-      >
-        <nav className="p-4 space-y-2">
-          {MENU_ITEMS.map((item, index) => {
-            const isActive = location.pathname === item.path;
-            const isHinting = showHint === item.path;
-            return (
-              <Link
-                key={index}
-                to={item.path}
-                onClick={(e) => handleNavClick(e, item)}
-                className={clsx(
-                  'relative flex items-center px-4 py-3 rounded-xl transition-all',
-                  isActive
-                    ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-lg'
-                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                )}
-              >
-                <item.icon className={clsx('w-5 h-5 mr-3', isActive ? 'text-white' : 'text-slate-500')} />
-                <span className={clsx('font-medium', isActive ? 'text-white' : 'text-slate-700')}>
-                  {item.label}
-                </span>
-                {isHinting && (
-                  <div className="absolute right-3 w-2 h-2 bg-amber-400 rounded-full animate-ping" />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-t border-slate-200 safe-area-pb">
-        <nav className="flex items-center justify-around py-2 px-2">
+        <nav className="flex items-center py-2 px-1" aria-label="主要导航">
           {MENU_ITEMS.map((item, index) => {
             const isActive = location.pathname === item.path;
             return (
@@ -220,7 +173,7 @@ const Sidebar = () => {
                 to={item.path}
                 onClick={(e) => handleNavClick(e, item)}
                 className={clsx(
-                  'flex flex-col items-center py-2 px-4 rounded-xl transition-all min-w-[70px]',
+                  'flex min-w-0 flex-1 flex-col items-center rounded-xl px-1 py-2 transition-all',
                   isActive ? 'text-emerald-600' : 'text-slate-400'
                 )}
               >

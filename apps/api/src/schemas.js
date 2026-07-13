@@ -50,6 +50,8 @@ export const resourceSchema = {
     route_path: { type: ['string', 'null'] },
     resource_type: { type: 'string' },
     created_at: { type: ['string', 'object'] },
+    updated_at: { type: ['string', 'object', 'null'] },
+    version: { type: 'integer', minimum: 1 },
   },
 };
 
@@ -65,6 +67,8 @@ export const teachingResourceSchema = {
     file_url: { type: 'string' },
     file_type: { type: 'string' },
     created_at: { type: ['string', 'object', 'null'] },
+    updated_at: { type: ['string', 'object', 'null'] },
+    version: { type: 'integer', minimum: 1 },
   },
 };
 

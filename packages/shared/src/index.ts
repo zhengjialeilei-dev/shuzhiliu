@@ -11,6 +11,8 @@ export interface Resource {
   route_path?: string | null;
   resource_type: string;
   created_at: string;
+  updated_at?: string | null;
+  version?: number;
 }
 
 export interface TeachingResource {
@@ -21,6 +23,8 @@ export interface TeachingResource {
   file_url: string;
   file_type: string;
   created_at?: string;
+  updated_at?: string | null;
+  version?: number;
 }
 
 export interface HealthCheck {

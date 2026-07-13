@@ -10,8 +10,9 @@ import { config, validateRuntimeConfig } from './config.js';
 import { registerAuth } from './plugins/auth.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { registerPublicRoutes } from './routes/public.js';
+import { generateWorkCover } from './utils/workCover.js';
 
-export async function buildApp() {
+export async function buildApp(options = {}) {
   validateRuntimeConfig();
   await fs.mkdir(config.uploadDir, { recursive: true });
 
@@ -68,10 +69,21 @@ export async function buildApp() {
 
   await registerAuth(app);
   await registerPublicRoutes(app);
-  await registerAdminRoutes(app);
+  await registerAdminRoutes(app, {
+    coverGenerator: options.coverGenerator || generateWorkCover,
+  });
 
   app.setErrorHandler((error, _request, reply) => {
     app.log.error(error);
+    if (error?.code === '23505') {
+      reply.code(409).send({
+        error: error.constraint === 'uq_resources_route_path'
+          ? '这个作品短链接已经被使用'
+          : '相同的数据已经存在',
+      });
+      return;
+    }
+
     if (
       error?.code === 'FST_REQ_FILE_TOO_LARGE' ||
       error?.code === 'FST_FILES_LIMIT' ||

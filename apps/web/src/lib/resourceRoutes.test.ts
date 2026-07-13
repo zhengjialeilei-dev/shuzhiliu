@@ -48,4 +48,22 @@ describe('resourceRoutes', () => {
     expect(findHtmlResourceByPath([resource], '/sd')).toEqual(resource);
     expect(findHtmlResourceByPath([resource], '/zhijing/sudoku-fun')).toBeNull();
   });
+
+  it('preserves a managed works route', () => {
+    const resource = {
+      id: 'managed-route-1',
+      title: '分数实验室',
+      category: '数与代数',
+      grade: '五年级',
+      image_url: 'https://example.com/fraction.png',
+      description: '分数互动实验',
+      file_path: 'https://example.com/apps/bundles/demo/index.html',
+      route_path: '/works/fraction-lab',
+      resource_type: 'html' as const,
+      created_at: new Date().toISOString(),
+    };
+
+    expect(getHtmlResourcePath(resource)).toBe('/works/fraction-lab');
+    expect(findHtmlResourceByPath([resource], '/works/fraction-lab')).toEqual(resource);
+  });
 });

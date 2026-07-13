@@ -15,6 +15,8 @@ export function normalizeResource(row) {
     route_path: row.route_path,
     resource_type: row.resource_type,
     created_at: row.created_at,
+    updated_at: row.updated_at || row.created_at,
+    version: row.version || 1,
   };
 }
 
@@ -27,6 +29,8 @@ export function normalizeTeachingResource(row) {
     file_url: row.file_url,
     file_type: row.file_type,
     created_at: row.created_at,
+    updated_at: row.updated_at || row.created_at || null,
+    version: row.version || 1,
   };
 }
 
@@ -45,6 +49,17 @@ export function inferContentType(filename, fallback = 'application/octet-stream'
   if (ext === '.webp') return 'image/webp';
   if (ext === '.png') return 'image/png';
   if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+  if (ext === '.svg') return 'image/svg+xml';
+  if (ext === '.css') return 'text/css; charset=utf-8';
+  if (ext === '.js' || ext === '.mjs') return 'text/javascript; charset=utf-8';
+  if (ext === '.json') return 'application/json; charset=utf-8';
+  if (ext === '.mp3') return 'audio/mpeg';
+  if (ext === '.wav') return 'audio/wav';
+  if (ext === '.ogg') return 'audio/ogg';
+  if (ext === '.mp4') return 'video/mp4';
+  if (ext === '.webm') return 'video/webm';
+  if (ext === '.wasm') return 'application/wasm';
+  if (ext === '.woff2') return 'font/woff2';
   return fallback;
 }
 

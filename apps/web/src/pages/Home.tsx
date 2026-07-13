@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Filter, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useResources } from '../hooks/useResources';
 import { useDebounce } from '../hooks/useDebounce';
@@ -32,7 +32,7 @@ const GRADES = [
 ];
 
 const Home = () => {
-  const { allResources, loading } = useResources();
+  const { allResources, loading, error, refresh } = useResources();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeCategory, setActiveCategory] = useState(searchParams.get('cat') || 'all');
   const [activeGrade, setActiveGrade] = useState(searchParams.get('grade') || '');
@@ -116,7 +116,7 @@ const Home = () => {
       <div className="flex flex-col gap-4 mb-6 sm:mb-10">
         <PageHeader title="AI赋能" subtitle="探索精彩的数学教学互动资源库" />
 
-        <div className="flex items-center gap-2 sm:gap-4 bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-white/50 shadow-sm w-full">
+        <div className="bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-white/50 shadow-sm w-full">
           <SearchBar
             value={search}
             onChange={setSearch}
@@ -131,11 +131,25 @@ const Home = () => {
             historyRef={historyRef}
             inputRef={searchInputRef}
           />
-          <button className="p-2.5 hover:bg-white hover:shadow-md rounded-xl text-gray-500 hover:text-orange-600 transition-all duration-300 flex-shrink-0">
-            <Filter className="w-5 h-5" />
-          </button>
         </div>
       </div>
+
+      {error ? (
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span className="flex min-w-0 items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">资源更新失败，当前内容可能不是最新版本。</span>
+          </span>
+          <button
+            type="button"
+            onClick={refresh}
+            className="flex flex-shrink-0 items-center gap-1 rounded-lg px-2 py-1 font-medium hover:bg-amber-100"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            重试
+          </button>
+        </div>
+      ) : null}
 
       {debouncedSearch && (
         <div className="mb-6 flex items-center gap-2 text-sm">
@@ -167,12 +181,13 @@ const Home = () => {
           AI 教学应用
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-          {paginatedApps.map((app) => (
+          {paginatedApps.map((app, index) => (
             <ResourceCard
               key={app.id}
               resource={app}
               searchQuery={debouncedSearch || undefined}
               accentColor="orange"
+              priority={index < 4}
             />
           ))}
           {paginatedApps.length === 0 && (

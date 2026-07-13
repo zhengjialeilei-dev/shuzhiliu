@@ -1,6 +1,8 @@
 FROM node:20-alpine
 WORKDIR /app
 
+RUN apk add --no-cache chromium font-noto-cjk
+
 COPY apps/api apps/api
 
 WORKDIR /app/apps/api

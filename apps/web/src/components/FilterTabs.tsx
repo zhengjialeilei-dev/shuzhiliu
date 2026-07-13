@@ -28,8 +28,10 @@ const FilterTabs: React.FC<FilterTabsProps> = ({
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap scrollbar-hide">
         {categories.map((cat) => (
           <button
+            type="button"
             key={cat.id}
             onClick={() => onCategoryChange(cat.id)}
+            aria-pressed={activeCategory === cat.id}
             className={clsx(
               'px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium transition-all duration-300 ease-out border whitespace-nowrap flex-shrink-0',
               activeCategory === cat.id
@@ -49,8 +51,10 @@ const FilterTabs: React.FC<FilterTabsProps> = ({
           </span>
           {grades.map((grade) => (
             <button
+              type="button"
               key={grade.id}
               onClick={() => onGradeChange(activeGrade === grade.id ? '' : grade.id)}
+              aria-pressed={activeGrade === grade.id}
               className={clsx(
                 'px-3 sm:px-4 py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-all duration-200 border whitespace-nowrap flex-shrink-0',
                 activeGrade === grade.id

@@ -129,6 +129,19 @@ jobs:
             done
           fi
 
+          MIGRATION_FILE="$SOURCE_ROOT/deploy/db/migrations/20260714_harden_resource_schema.sql"
+          if [ -f "$MIGRATION_FILE" ]; then
+            BACKUP_DIR="$LEGACY_ROOT/deploy/backups"
+            install -d -m 700 "$BACKUP_DIR"
+            docker exec mathflow-postgres sh -c \
+              'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' \
+              > "$BACKUP_DIR/mathflow-before-$DEPLOY_SHA.dump"
+            docker exec -i mathflow-postgres sh -c \
+              'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+              < "$MIGRATION_FILE"
+            find "$BACKUP_DIR" -type f -name 'mathflow-before-*.dump' -mtime +14 -delete
+          fi
+
           docker compose \
             --project-directory "$SOURCE_ROOT/deploy" \
             --env-file "$ENV_FILE" \

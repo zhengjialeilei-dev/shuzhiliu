@@ -4,7 +4,7 @@ import { useResources } from '../hooks/useResources';
 import { TOOL_CATEGORY } from '../lib/resourceCategories';
 
 const Empowerment = () => {
-  const { allResources, loading } = useResources();
+  const { allResources, loading, error, refresh } = useResources();
   const toolResources = useMemo(
     () => allResources.filter((resource) => resource.category === TOOL_CATEGORY && (resource.route_path || resource.file_path)),
     [allResources]
@@ -19,6 +19,8 @@ const Empowerment = () => {
       gradientColors="from-emerald-400 to-teal-500"
       resources={toolResources}
       loading={loading}
+      error={error}
+      onRetry={refresh}
       searchPlaceholder="搜索工具..."
     />
   );

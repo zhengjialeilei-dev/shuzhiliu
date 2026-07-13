@@ -75,7 +75,12 @@ export const config = {
   htmlProxyTimeoutMs: optionalInt('HTML_PROXY_TIMEOUT_MS', 10000),
   htmlProxyCacheTtlMs: optionalInt('HTML_PROXY_CACHE_TTL_MS', 5 * 60 * 1000),
   htmlProxyCacheMaxEntries: optionalInt('HTML_PROXY_CACHE_MAX_ENTRIES', 200),
+  htmlProxyCacheMaxMb: optionalInt('HTML_PROXY_CACHE_MAX_MB', 20),
+  htmlProxyMaxFileSizeMb: optionalInt('HTML_PROXY_MAX_FILE_SIZE_MB', 10),
   maxUploadFileSizeMb: optionalInt('MAX_UPLOAD_FILE_SIZE_MB', 200),
+  coverBrowserExecutablePath: process.env.COVER_BROWSER_EXECUTABLE_PATH || '',
+  coverScreenshotTimeoutMs: optionalInt('COVER_SCREENSHOT_TIMEOUT_MS', 10000),
+  coverScreenshotDelayMs: optionalInt('COVER_SCREENSHOT_DELAY_MS', 1200),
 };
 
 export function validateRuntimeConfig() {

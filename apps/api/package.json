@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "build": "node --check src/index.js && node --check src/app.js && node --check src/config.js && node --check src/db.js && node --check src/storage.js && node --check src/plugins/auth.js && node --check src/routes/admin.js && node --check src/routes/public.js && node --check src/utils/serializers.js",
+    "build": "node --check src/index.js && node --check src/app.js && node --check src/config.js && node --check src/db.js && node --check src/storage.js && node --check src/plugins/auth.js && node --check src/routes/admin.js && node --check src/routes/public.js && node --check src/utils/serializers.js && node --check src/utils/zipBundle.js && node --check src/utils/workCover.js",
     "migrate:local-to-s3": "node src/scripts/migrate-local-assets-to-s3.js",
     "start": "node src/index.js",
     "test": "node --test test/*.test.js"
@@ -20,6 +20,8 @@
     "@fastify/static": "^10.1.0",
     "dotenv": "^16.6.1",
     "fastify": "^5.10.0",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "puppeteer-core": "^24.16.0",
+    "yauzl": "^3.4.0"
   }
 }

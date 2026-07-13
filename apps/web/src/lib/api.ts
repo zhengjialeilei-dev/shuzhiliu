@@ -86,6 +86,13 @@ export function updateResource(
   });
 }
 
+export function replaceResource(id: string, formData: FormData) {
+  return request<Resource>(`/api/admin/resources/${id}/replace`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
 export function deleteResource(id: string) {
   return request<{ success: boolean }>(`/api/admin/resources/${id}`, {
     method: 'DELETE',

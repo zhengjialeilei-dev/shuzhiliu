@@ -96,6 +96,23 @@ python deploy/import_ai_apps_collection.py ...
 
 先把迁移脚本放到 `deploy/db/migrations/`，再通过统一的 SSH 容器命令执行，不要随手在服务器上直接敲散命令。
 
+执行迁移前先备份数据库，并在容器内运行：
+
+```bash
+docker exec -i mathflow-postgres pg_dump -U mathflow -d mathflow -Fc > mathflow-before-migration.dump
+docker exec -i mathflow-postgres psql -v ON_ERROR_STOP=1 -U mathflow -d mathflow \
+  < deploy/db/migrations/20260714_harden_resource_schema.sql
+```
+
+迁移完成后检查版本和关键约束：
+
+```sql
+SELECT * FROM schema_migrations ORDER BY applied_at DESC;
+SELECT route_path, COUNT(*) FROM resources
+WHERE route_path IS NOT NULL
+GROUP BY route_path HAVING COUNT(*) > 1;
+```
+
 ## 以后新增项目时的要求
 
 以后新增 HTML 应用、封面图、短链接或资源导入，都遵守这套逻辑：

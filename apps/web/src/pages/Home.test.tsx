@@ -74,6 +74,7 @@ describe('Home', () => {
 
     await act(async () => {
       vi.advanceTimersByTime(350);
+      await vi.dynamicImportSettled();
     });
 
     expect(screen.getByText(/找到/)).toHaveTextContent('找到 1 个结果');
@@ -93,8 +94,9 @@ describe('Home', () => {
       vi.advanceTimersByTime(350);
     });
 
+    vi.useRealTimers();
+    expect(await screen.findByRole('link', { name: /圆的面积推导/ })).toBeInTheDocument();
     expect(screen.getByText((_, element) => element?.textContent === '搜索 "ydmjtd" 找到 1 个结果')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /圆的面积推导/ })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /分数练习/ })).not.toBeInTheDocument();
   });
 

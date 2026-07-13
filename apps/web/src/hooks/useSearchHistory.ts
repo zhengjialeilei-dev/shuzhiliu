@@ -4,7 +4,7 @@ import {
   addSearchHistory,
   clearSearchHistory,
   removeSearchHistoryItem,
-} from '../lib/pinyinSearch';
+} from '../lib/searchHistory';
 
 export function useSearchHistory(inputRef: React.RefObject<HTMLElement | null>) {
   const [history, setHistory] = useState<string[]>([]);

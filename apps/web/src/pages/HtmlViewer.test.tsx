@@ -1,4 +1,6 @@
-import { cleanup, fireEvent, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import HtmlViewer from './HtmlViewer';
 import { renderWithProviders } from '../test/render';
@@ -102,5 +104,30 @@ describe('HtmlViewer', () => {
       'src',
       '/api/html-proxy?iframe=1&path=%2Fll'
     );
+  });
+
+  it('returns direct visitors to the home page when no in-app history exists', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Resource not found' }),
+    } as Response);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/view?url=https://example.com/demo.html']}>
+          <Routes>
+            <Route path="/view" element={<HtmlViewer />} />
+            <Route path="/" element={<div>首页内容</div>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    await screen.findByTitle('数学应用');
+    fireEvent.click(screen.getByRole('button', { name: '返回' }));
+    expect(screen.getByText('首页内容')).toBeInTheDocument();
   });
 });

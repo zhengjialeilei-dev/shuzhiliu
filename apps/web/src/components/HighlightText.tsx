@@ -1,5 +1,5 @@
-import React from 'react';
-import { highlightMatch } from '../lib/pinyinSearch';
+import React, { useEffect, useState } from 'react';
+import { highlightLiteralMatch, type HighlightPart } from '../lib/basicSearch';
 
 interface HighlightTextProps {
   text: string;
@@ -12,7 +12,27 @@ interface HighlightTextProps {
  * 将匹配到的文本片段用 <mark> 标签高亮显示
  */
 const HighlightText: React.FC<HighlightTextProps> = ({ text, query, className = '' }) => {
-  const parts = highlightMatch(text, query);
+  const [parts, setParts] = useState<HighlightPart[]>(() => highlightLiteralMatch(text, query));
+
+  useEffect(() => {
+    const literalParts = highlightLiteralMatch(text, query);
+    setParts(literalParts);
+
+    if (
+      literalParts.some((part) => part.highlighted) ||
+      !/^[a-z\s]+$/i.test(query.trim())
+    ) return undefined;
+
+    let active = true;
+    import('../lib/pinyinSearch').then(({ highlightMatch }) => {
+      if (active) setParts(highlightMatch(text, query));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [query, text]);
+
   return (
     <span className={className}>
       {parts.map((part, i) =>
