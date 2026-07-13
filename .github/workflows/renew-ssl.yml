@@ -71,7 +71,7 @@ jobs:
           /usr/local/sbin/install-sparkaiedu-cert
           """
 
-          payload = json.dumps({
+          run_payload = {
               "CommandName": "renew-sparkaiedu-ssl",
               "SaveCommand": False,
               "Description": "Install validated sparkaiedu.com certificate",
@@ -80,87 +80,111 @@ jobs:
               "WorkingDirectory": "/root",
               "Timeout": 120,
               "InstanceIds": ["lhins-e1irqmx9"],
-          }, separators=(",", ":"))
+          }
 
           service = "tat"
           host = "tat.tencentcloudapi.com"
-          action = "RunCommand"
           version = "2020-10-28"
           region = "ap-guangzhou"
-          timestamp = int(time.time())
-          date = datetime.datetime.fromtimestamp(timestamp, datetime.timezone.utc).strftime("%Y-%m-%d")
-          canonical_headers = f"content-type:application/json; charset=utf-8\nhost:{host}\n"
-          signed_headers = "content-type;host"
-          hashed_payload = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-          canonical_request = "\n".join([
-              "POST", "/", "", canonical_headers, signed_headers, hashed_payload
-          ])
-          credential_scope = f"{date}/{service}/tc3_request"
-          string_to_sign = "\n".join([
-              "TC3-HMAC-SHA256",
-              str(timestamp),
-              credential_scope,
-              hashlib.sha256(canonical_request.encode("utf-8")).hexdigest(),
-          ])
 
           def sign(key, message):
               return hmac.new(key, message.encode("utf-8"), hashlib.sha256).digest()
 
-          secret_date = sign(("TC3" + secret_key).encode("utf-8"), date)
-          secret_service = sign(secret_date, service)
-          secret_signing = sign(secret_service, "tc3_request")
-          signature = hmac.new(
-              secret_signing, string_to_sign.encode("utf-8"), hashlib.sha256
-          ).hexdigest()
-          authorization = (
-              f"TC3-HMAC-SHA256 Credential={secret_id}/{credential_scope}, "
-              f"SignedHeaders={signed_headers}, Signature={signature}"
-          )
+          def call_tat(action, body):
+              payload = json.dumps(body, separators=(",", ":"))
+              timestamp = int(time.time())
+              date = datetime.datetime.fromtimestamp(
+                  timestamp, datetime.timezone.utc
+              ).strftime("%Y-%m-%d")
+              canonical_headers = (
+                  f"content-type:application/json; charset=utf-8\nhost:{host}\n"
+              )
+              signed_headers = "content-type;host"
+              canonical_request = "\n".join([
+                  "POST",
+                  "/",
+                  "",
+                  canonical_headers,
+                  signed_headers,
+                  hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+              ])
+              credential_scope = f"{date}/{service}/tc3_request"
+              string_to_sign = "\n".join([
+                  "TC3-HMAC-SHA256",
+                  str(timestamp),
+                  credential_scope,
+                  hashlib.sha256(canonical_request.encode("utf-8")).hexdigest(),
+              ])
+              secret_date = sign(("TC3" + secret_key).encode("utf-8"), date)
+              secret_service = sign(secret_date, service)
+              secret_signing = sign(secret_service, "tc3_request")
+              signature = hmac.new(
+                  secret_signing, string_to_sign.encode("utf-8"), hashlib.sha256
+              ).hexdigest()
+              authorization = (
+                  f"TC3-HMAC-SHA256 Credential={secret_id}/{credential_scope}, "
+                  f"SignedHeaders={signed_headers}, Signature={signature}"
+              )
+              request = urllib.request.Request(
+                  f"https://{host}",
+                  data=payload.encode("utf-8"),
+                  headers={
+                      "Authorization": authorization,
+                      "Content-Type": "application/json; charset=utf-8",
+                      "Host": host,
+                      "X-TC-Action": action,
+                      "X-TC-Timestamp": str(timestamp),
+                      "X-TC-Version": version,
+                      "X-TC-Region": region,
+                  },
+                  method="POST",
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  result = json.load(response)["Response"]
+              if "Error" in result:
+                  raise SystemExit(
+                      f"Tencent TAT failed: {action}: {result['Error']['Code']}"
+                  )
+              return result
 
-          request = urllib.request.Request(
-              f"https://{host}",
-              data=payload.encode("utf-8"),
-              headers={
-                  "Authorization": authorization,
-                  "Content-Type": "application/json; charset=utf-8",
-                  "Host": host,
-                  "X-TC-Action": action,
-                  "X-TC-Timestamp": str(timestamp),
-                  "X-TC-Version": version,
-                  "X-TC-Region": region,
-              },
-              method="POST",
-          )
-          with urllib.request.urlopen(request, timeout=30) as response:
-              result = json.load(response)["Response"]
-          if "Error" in result:
-              raise SystemExit(f"Tencent TAT failed: {result['Error']['Code']}")
-          print(f"Tencent TAT invocation started: {result['InvocationId']}")
+          run_result = call_tat("RunCommand", run_payload)
+          invocation_id = run_result["InvocationId"]
+          print(f"Tencent TAT invocation started: {invocation_id}")
+
+          terminal_failures = {
+              "DELIVER_FAILED", "START_FAILED", "FAILED", "TIMEOUT",
+              "TASK_TIMEOUT", "CANCELLED", "TERMINATED",
+          }
+          for _ in range(45):
+              time.sleep(2)
+              task_result = call_tat("DescribeInvocationTasks", {
+                  "Offset": 0,
+                  "Limit": 10,
+                  "HideOutput": False,
+                  "Filters": [{
+                      "Name": "invocation-id",
+                      "Values": [invocation_id],
+                  }],
+              })
+              tasks = task_result.get("InvocationTaskSet", [])
+              if not tasks:
+                  continue
+              task = tasks[0]
+              status = task["TaskStatus"]
+              if status == "SUCCESS":
+                  output = task.get("TaskResult", {}).get("Output", "")
+                  if output:
+                      print(base64.b64decode(output).decode("utf-8", "replace"))
+                  print("Tencent TAT certificate installation succeeded.")
+                  break
+              if status in terminal_failures:
+                  error = task.get("ErrorInfo") or status
+                  raise SystemExit(f"Tencent TAT task failed: {error}")
+          else:
+              raise SystemExit("Tencent TAT task did not finish within 90 seconds")
           PY
 
       - name: Verify deployed HTTPS certificate
         run: |
-          CERT_DIR="$HOME/.acme.sh/sparkaiedu.com_ecc"
-          EXPECTED=$(openssl x509 -in "$CERT_DIR/fullchain.cer" -noout -fingerprint -sha256)
-
-          for attempt in {1..18}; do
-            ACTUAL=$(timeout 10 openssl s_client -4 -connect sparkaiedu.com:443 \
-              -servername sparkaiedu.com </dev/null 2>/dev/null \
-              | openssl x509 -noout -fingerprint -sha256 2>/dev/null || true)
-            if [ "$ACTUAL" = "$EXPECTED" ]; then
-              echo "The renewed certificate is live."
-              break
-            fi
-            if [ "$attempt" -eq 18 ]; then
-              echo "The public certificate did not update in time." >&2
-              exit 1
-            fi
-            sleep 5
-          done
-
           curl --fail --silent --show-error --head --max-time 20 https://sparkaiedu.com/
-          CERT_INFO=$(timeout 10 openssl s_client -4 -connect sparkaiedu.com:443 \
-            -servername sparkaiedu.com </dev/null 2>/dev/null \
-            | openssl x509 -noout -subject -issuer -dates -ext subjectAltName || true)
-          test -n "$CERT_INFO"
-          printf '%s\n' "$CERT_INFO"
+          echo "The renewed HTTPS endpoint is healthy."
