@@ -40,8 +40,41 @@ jobs:
           Tencent_SecretId: ${{ secrets.TENCENT_SECRET_ID }}
           Tencent_SecretKey: ${{ secrets.TENCENT_SECRET_KEY }}
         run: |
+          ARCHIVE_FILE="$RUNNER_TEMP/mathflow-$GITHUB_SHA.tar.gz"
+          git archive --format=tar.gz --output="$ARCHIVE_FILE" "$GITHUB_SHA"
+
+          {
+            printf "ENV_FILE='%s'\n" "/opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu/deploy/.env"
+            printf "OBJECT_KEY='%s'\n" "deployments/github/$GITHUB_SHA.tar.gz"
+            cat <<'SCRIPT'
+          set -euo pipefail
+          test -f "$ENV_FILE"
+          python3 - "$ENV_FILE" "$OBJECT_KEY" <<'PYTHON'
+          SCRIPT
+            cat .github/scripts/presign_cos_transfer.py
+            cat <<'SCRIPT'
+          PYTHON
+          SCRIPT
+          } > "$RUNNER_TEMP/prepare-transfer.sh"
+
+          TRANSFER_OUTPUT=$(python .github/scripts/run_tat_command.py \
+            --command-file "$RUNNER_TEMP/prepare-transfer.sh" \
+            --name prepare-mathflow-transfer \
+            --description "Prepare MathFlow transfer for $GITHUB_SHA" \
+            --timeout 120)
+          PUT_URL=$(printf '%s\n' "$TRANSFER_OUTPUT" | sed -n 's/^PUT_URL=//p')
+          GET_URL=$(printf '%s\n' "$TRANSFER_OUTPUT" | sed -n 's/^GET_URL=//p')
+          DELETE_URL=$(printf '%s\n' "$TRANSFER_OUTPUT" | sed -n 's/^DELETE_URL=//p')
+          test -n "$PUT_URL" && test -n "$GET_URL" && test -n "$DELETE_URL"
+          echo "::add-mask::$PUT_URL"
+          echo "::add-mask::$GET_URL"
+          echo "::add-mask::$DELETE_URL"
+          curl --fail --silent --show-error --request PUT --upload-file "$ARCHIVE_FILE" "$PUT_URL"
+
           {
             printf "DEPLOY_SHA='%s'\n" "$GITHUB_SHA"
+            printf "SOURCE_ARCHIVE='%s'\n" "$GET_URL"
+            printf "DELETE_URL='%s'\n" "$DELETE_URL"
             cat <<'SCRIPT'
           set -euo pipefail
 
@@ -51,7 +84,6 @@ jobs:
           LEGACY_ROOT=/opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu
           ENV_FILE="$LEGACY_ROOT/deploy/.env"
           SITE_ROOT=/opt/1panel/www/sites/sparkaiedu.com/index
-          SOURCE_ARCHIVE="https://codeload.github.com/zhengjialeilei-dev/shuzhiliu/tar.gz/$DEPLOY_SHA"
           WEB_IMAGE="mathflow-web-deploy:$DEPLOY_SHA"
           STAGING_DIR=$(mktemp -d /tmp/mathflow-web.XXXXXX)
           ARCHIVE_FILE=$(mktemp /tmp/mathflow-source.XXXXXX.tar.gz)
@@ -62,6 +94,7 @@ jobs:
             docker image rm "$WEB_IMAGE" >/dev/null 2>&1 || true
             rm -rf "$STAGING_DIR" "$NEXT_SOURCE_ROOT"
             rm -f "$ARCHIVE_FILE"
+            curl --fail --silent --show-error --request DELETE "$DELETE_URL" >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
 
@@ -70,7 +103,7 @@ jobs:
           curl --fail --location --silent --show-error \
             --connect-timeout 20 --max-time 1200 --retry 3 --retry-all-errors \
             "$SOURCE_ARCHIVE" -o "$ARCHIVE_FILE"
-          tar -xzf "$ARCHIVE_FILE" --strip-components=1 -C "$NEXT_SOURCE_ROOT"
+          tar -xzf "$ARCHIVE_FILE" -C "$NEXT_SOURCE_ROOT"
           test -f "$NEXT_SOURCE_ROOT/package.json"
           test -f "$NEXT_SOURCE_ROOT/apps/web/Dockerfile"
           test -f "$NEXT_SOURCE_ROOT/apps/api/package.json"
