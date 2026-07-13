@@ -53,7 +53,7 @@ jobs:
         env:
           SERVER_HOST: ${{ secrets.CERTDEPLOY_HOST }}
         run: |
-          CERT_DIR="$RUNNER_TEMP/acme-home/sparkaiedu.com_ecc"
+          CERT_DIR="$HOME/.acme.sh/sparkaiedu.com_ecc"
           SSH=(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes certdeploy@"$SERVER_HOST")
           SCP=(scp -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes)
 
