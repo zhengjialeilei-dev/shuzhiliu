@@ -16,7 +16,7 @@ permissions:
 jobs:
   renew-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       Tencent_SecretId: ${{ secrets.TENCENT_SECRET_ID }}
       Tencent_SecretKey: ${{ secrets.TENCENT_SECRET_KEY }}
@@ -33,7 +33,7 @@ jobs:
           "$RUNNER_TEMP/acme-home/acme.sh" --issue \
             --server letsencrypt \
             --dns dns_tencent \
-            --dnssleep 45 \
+            --dnssleep 660 \
             --keylength ec-256 \
             --force \
             -d sparkaiedu.com \
