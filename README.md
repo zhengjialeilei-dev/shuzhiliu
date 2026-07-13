@@ -36,40 +36,15 @@ npm run build
 
 ## 固定部署流程
 
-前端上线必须走统一脚本，不要再手动猜目录。
+生产环境统一通过 GitHub Actions 和腾讯云 TAT 部署，不开放 SSH 密码登录。
 
-### 1. 准备部署环境变量
+1. 将通过校验的改动提交并推送到 `main`
+2. GitHub Actions 执行 lint、测试、构建和生产依赖审计
+3. TAT 在服务器专用目录检出本次精确提交
+4. Docker 构建前端并更新 1Panel 站点目录
+5. Docker Compose 重建 API，最后执行公网健康检查
 
-复制 `deploy/.deploy.env.example`，按实际服务器信息设置：
-
-- `MATHFLOW_DEPLOY_HOST`
-- `MATHFLOW_DEPLOY_USER`
-- `MATHFLOW_DEPLOY_PASSWORD`
-- `MATHFLOW_SITE_URL`
-- `MATHFLOW_REMOTE_REPO_ROOT`
-- `MATHFLOW_REMOTE_SITE_ROOT`
-- `MATHFLOW_OPENRESTY_CONTAINER`
-- `MATHFLOW_POSTGRES_CONTAINER`
-
-### 2. 发布前端
-
-```bash
-npm run deploy:web
-```
-
-这个脚本会自动完成：
-
-1. 本地构建 `@mathflow/web`
-2. 把 `apps/web/dist` 上传到 1Panel 真正对外服务的站点目录
-3. 同步关键前端源码到服务器工作区
-4. 重载 OpenResty
-5. 用公网地址回查，确认线上真的在吃当前构建产物
-
-如果你已经提前构建过，也可以用：
-
-```bash
-npm run deploy:web:skip-build
-```
+`npm run deploy:web` 仅保留给已单独配置受限 SSH 账号的本地维护场景，不用于生产自动部署。
 
 ## 资源导入
 
@@ -97,13 +72,9 @@ Push to `main` now triggers GitHub Actions auto deployment to `https://sparkaied
 
 In GitHub repository settings: `Settings -> Secrets and variables -> Actions`, add:
 
-- `MATHFLOW_DEPLOY_HOST` (example: `119.29.152.213`)
-- `MATHFLOW_DEPLOY_USER` (example: `root`)
-- `MATHFLOW_DEPLOY_PASSWORD` (your server SSH password)
-- `MATHFLOW_SITE_URL` (use `https://sparkaiedu.com`)
-- `MATHFLOW_REMOTE_REPO_ROOT` (example: `/opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu`)
-- `MATHFLOW_REMOTE_SITE_ROOT` (example: `/opt/1panel/www/sites/sparkaiedu.com/index`)
-- `MATHFLOW_OPENRESTY_CONTAINER` (example: `1Panel-openresty-z1xG`)
-- `MATHFLOW_POSTGRES_CONTAINER` (example: `mathflow-postgres`)
+- `TENCENT_SECRET_ID`
+- `TENCENT_SECRET_KEY`
+
+该受限腾讯云账号只允许在指定轻量应用服务器上执行 TAT 命令并读取执行结果，不需要保存服务器密码。
 
 After secrets are set, any new push to `main` will deploy automatically.

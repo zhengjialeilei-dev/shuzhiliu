@@ -169,7 +169,38 @@ export async function registerPublicRoutes(app) {
         },
       },
     },
-    async () => fetchHealth()
+    async (_request, reply) => {
+      const health = await fetchHealth();
+      const isHealthy = [health.auth, health.database, health.storage].every(
+        (component) => component.status === 'success'
+      );
+      const publicHealth = {
+        api: {
+          status: health.api.status,
+          message: 'API service is available',
+          storageDriver: 'configured',
+        },
+        auth: {
+          status: health.auth.status,
+          message: 'Authentication service is available',
+        },
+        database: {
+          status: health.database.status,
+          message:
+            health.database.status === 'success'
+              ? 'Database service is healthy'
+              : 'Database service is unavailable',
+        },
+        storage: {
+          status: health.storage.status,
+          message:
+            health.storage.status === 'success'
+              ? 'Storage service is healthy'
+              : 'Storage service is unavailable',
+        },
+      };
+      return reply.code(isHealthy ? 200 : 503).send(publicHealth);
+    }
   );
 
   app.get(

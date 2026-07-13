@@ -21,3 +21,9 @@ deploy/local-*.png
 deploy/local-*.json
 deploy/recommend-local-*.png
 deploy/_verify_*
+deploy/preview-*.png
+deploy/*_preview-*.png
+deploy/_*.json
+deploy/_*.sql
+output/
+tmp/

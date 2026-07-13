@@ -38,6 +38,7 @@ export const config = {
   rootDir,
   port: optionalInt('PORT', 3001),
   host: process.env.HOST || '0.0.0.0',
+  trustProxy: optionalBoolean('TRUST_PROXY', process.env.NODE_ENV === 'production'),
   apiBaseUrl: process.env.API_BASE_URL || '',
   cookieSecure: optionalBoolean('COOKIE_SECURE', process.env.NODE_ENV === 'production'),
   corsOrigins: (process.env.CORS_ORIGINS || '')

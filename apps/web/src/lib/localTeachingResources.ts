@@ -34,14 +34,6 @@ export const LOCAL_TEXTBOOK_RESOURCES: TeachingResource[] = [
     file_type: 'pdf',
   },
   {
-    id: 'local-textbook-rj-math-g2-v2',
-    title: '人教版二年级下册数学电子课本',
-    description: '二年级下册数学电子课本',
-    zone: 'textbook',
-    file_url: '/files/textbooks/rj-math-grade-2-volume-2.pdf',
-    file_type: 'pdf',
-  },
-  {
     id: 'local-textbook-rj-math-g3-v1-2025-fall',
     title: '人教版三年级上册数学电子课本（2025秋版）',
     description: '三年级上册数学电子课本（2025秋版）',
@@ -55,14 +47,6 @@ export const LOCAL_TEXTBOOK_RESOURCES: TeachingResource[] = [
     description: '三年级下册数学电子课本（2026春版）',
     zone: 'textbook',
     file_url: '/files/textbooks/rj-math-grade-3-volume-2-2026-spring.pdf',
-    file_type: 'pdf',
-  },
-  {
-    id: 'local-textbook-rj-math-g3-v2',
-    title: '人教版三年级下册数学电子课本',
-    description: '三年级下册数学电子课本',
-    zone: 'textbook',
-    file_url: '/files/textbooks/rj-math-grade-3-volume-2.pdf',
     file_type: 'pdf',
   },
   {
@@ -117,12 +101,15 @@ export const LOCAL_TEXTBOOK_RESOURCES: TeachingResource[] = [
 
 export function mergeLocalTextbooks(resources: TeachingResource[]) {
   const merged = [...resources];
-  const seen = new Set(resources.map((resource) => `${resource.zone}|${resource.title}`));
+  const seen = new Set(
+    resources
+      .filter((resource) => resource.zone === 'textbook')
+      .map((resource) => resource.file_url),
+  );
 
   for (const resource of LOCAL_TEXTBOOK_RESOURCES) {
-    const key = `${resource.zone}|${resource.title}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (seen.has(resource.file_url)) continue;
+    seen.add(resource.file_url);
     merged.push(resource);
   }
 

@@ -13,7 +13,7 @@ concurrency:
 jobs:
   deploy-web:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -25,25 +25,85 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
       - name: Install Dependencies
         run: npm ci
 
-      - name: Install Deploy Dependencies
-        run: python -m pip install --upgrade pip paramiko
+      - name: Verify Project
+        run: |
+          npm run lint
+          npm test
+          npm run build
+          npm audit --omit=dev --audit-level=high
 
-      - name: Deploy To Server
+      - name: Deploy through Tencent TAT
         env:
-          MATHFLOW_DEPLOY_HOST: ${{ secrets.MATHFLOW_DEPLOY_HOST }}
-          MATHFLOW_DEPLOY_USER: ${{ secrets.MATHFLOW_DEPLOY_USER }}
-          MATHFLOW_DEPLOY_PASSWORD: ${{ secrets.MATHFLOW_DEPLOY_PASSWORD }}
-          MATHFLOW_SITE_URL: ${{ secrets.MATHFLOW_SITE_URL }}
-          MATHFLOW_REMOTE_REPO_ROOT: ${{ secrets.MATHFLOW_REMOTE_REPO_ROOT }}
-          MATHFLOW_REMOTE_SITE_ROOT: ${{ secrets.MATHFLOW_REMOTE_SITE_ROOT }}
-          MATHFLOW_OPENRESTY_CONTAINER: ${{ secrets.MATHFLOW_OPENRESTY_CONTAINER }}
-          MATHFLOW_POSTGRES_CONTAINER: ${{ secrets.MATHFLOW_POSTGRES_CONTAINER }}
-        run: npm run deploy:web
+          Tencent_SecretId: ${{ secrets.TENCENT_SECRET_ID }}
+          Tencent_SecretKey: ${{ secrets.TENCENT_SECRET_KEY }}
+        run: |
+          {
+            printf "DEPLOY_SHA='%s'\n" "$GITHUB_SHA"
+            cat <<'SCRIPT'
+          set -euo pipefail
+
+          SOURCE_ROOT=/opt/1panel/apps/mathflow-sparkaiedu/github-deploy
+          LEGACY_ROOT=/opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu
+          ENV_FILE="$LEGACY_ROOT/deploy/.env"
+          SITE_ROOT=/opt/1panel/www/sites/sparkaiedu.com/index
+          REPOSITORY=https://github.com/zhengjialeilei-dev/shuzhiliu.git
+          WEB_IMAGE="mathflow-web-deploy:$DEPLOY_SHA"
+          STAGING_DIR=$(mktemp -d /tmp/mathflow-web.XXXXXX)
+          CONTAINER_ID=""
+
+          cleanup() {
+            if [ -n "$CONTAINER_ID" ]; then docker rm -f "$CONTAINER_ID" >/dev/null 2>&1 || true; fi
+            docker image rm "$WEB_IMAGE" >/dev/null 2>&1 || true
+            rm -rf "$STAGING_DIR"
+          }
+          trap cleanup EXIT
+
+          test -f "$ENV_FILE"
+          install -d -m 755 "$SOURCE_ROOT" "$SITE_ROOT"
+          if [ ! -d "$SOURCE_ROOT/.git" ]; then
+            git clone --no-checkout "$REPOSITORY" "$SOURCE_ROOT"
+          fi
+
+          git -C "$SOURCE_ROOT" remote set-url origin "$REPOSITORY"
+          git -C "$SOURCE_ROOT" fetch --depth 1 origin "$DEPLOY_SHA"
+          git -C "$SOURCE_ROOT" checkout --force --detach "$DEPLOY_SHA"
+          git -C "$SOURCE_ROOT" clean -ffd
+
+          docker build --pull -t "$WEB_IMAGE" -f "$SOURCE_ROOT/apps/web/Dockerfile" "$SOURCE_ROOT"
+          CONTAINER_ID=$(docker create "$WEB_IMAGE")
+          docker cp "$CONTAINER_ID:/usr/share/nginx/html/." "$STAGING_DIR/"
+          test -f "$STAGING_DIR/index.html"
+          test -d "$STAGING_DIR/files/textbooks"
+
+          find "$STAGING_DIR" -mindepth 1 -maxdepth 1 ! -name index.html \
+            -exec cp -a {} "$SITE_ROOT/" \;
+          cp "$STAGING_DIR/index.html" "$SITE_ROOT/index.html"
+
+          if [ -d "$SITE_ROOT/assets" ] && [ -d "$STAGING_DIR/assets" ]; then
+            find "$SITE_ROOT/assets" -maxdepth 1 -type f | while read -r asset; do
+              test -f "$STAGING_DIR/assets/$(basename "$asset")" || rm -f "$asset"
+            done
+          fi
+
+          docker compose \
+            --project-directory "$SOURCE_ROOT/deploy" \
+            --env-file "$ENV_FILE" \
+            -f "$SOURCE_ROOT/deploy/docker-compose.yml" \
+            up -d --build api
+
+          docker exec 1Panel-openresty-z1xG openresty -s reload \
+            || docker exec 1Panel-openresty-z1xG nginx -s reload
+
+          curl --fail --silent --show-error --head --max-time 30 https://sparkaiedu.com/
+          curl --fail --silent --show-error --max-time 30 https://sparkaiedu.com/api/health
+          SCRIPT
+          } > "$RUNNER_TEMP/deploy.sh"
+
+          python .github/scripts/run_tat_command.py \
+            --command-file "$RUNNER_TEMP/deploy.sh" \
+            --name deploy-mathflow-web \
+            --description "Deploy MathFlow commit $GITHUB_SHA" \
+            --timeout 1800

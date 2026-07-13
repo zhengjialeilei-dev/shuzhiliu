@@ -9,15 +9,15 @@ export const parseTextbookOrder = (titleOrDesc: string) => {
   const source = (titleOrDesc || '').replace(/\s+/g, '');
 
   const normalizedSource = source
-    .replace(/浜屽勾绾?/g, '二年级')
-    .replace(/涓夊勾绾?/g, '三年级')
-    .replace(/鍥涘勾绾?/g, '四年级')
-    .replace(/浜斿勾绾?/g, '五年级')
-    .replace(/鍏勾绾?/g, '六年级')
-    .replace(/涓€骞寸骇/g, '一年级')
-    .replace(/涓婂唽/g, '上册')
-    .replace(/涓嬪唽/g, '下册')
-    .replace(/鏁板/g, '数学');
+    .replace(/娴滃苯鍕剧痪?/g, '二年级')
+    .replace(/娑撳鍕剧痪?/g, '三年级')
+    .replace(/閸ユ稑鍕剧痪?/g, '四年级')
+    .replace(/娴滄柨鍕剧痪?/g, '五年级')
+    .replace(/閸忣厼鍕剧痪?/g, '六年级')
+    .replace(/娑撯偓楠炲楠?/g, '一年级')
+    .replace(/娑撳﹤鍞?/g, '上册')
+    .replace(/娑撳鍞?/g, '下册')
+    .replace(/閺佹澘顒?/g, '数学');
 
   const cnToNum: Record<string, number> = {
     一: 1,

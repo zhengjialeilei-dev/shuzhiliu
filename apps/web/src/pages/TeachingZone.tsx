@@ -60,7 +60,7 @@ const ZONES: ZoneInfo[] = [
 
 const LOCAL_RESOURCES: TeachingResource[] = [
   {
-    id: 'local-1',
+    id: 'local-standard-1',
     title: '数学课程标准',
     description: '本地静态示例资源，可作为部署前的占位内容。',
     zone: 'standard',
@@ -68,7 +68,7 @@ const LOCAL_RESOURCES: TeachingResource[] = [
     file_type: 'pdf',
   },
   {
-    id: 'local-2',
+    id: 'local-standard-2',
     title: '课程实施方案',
     description: '本地静态示例资源，可作为部署前的占位内容。',
     zone: 'standard',
@@ -124,6 +124,20 @@ const fetchTeachingResources = async () => {
   return remoteResources.length > 0 ? mergeLocalTextbooks(remoteResources) : LOCAL_RESOURCES;
 };
 
+const sortTeachingResources = (zone: string, list: TeachingResource[]) => {
+  if (zone !== 'textbook') return list;
+
+  return [...list].sort((a, b) => {
+    const left = parseTextbookOrder(a.title || a.description);
+    const right = parseTextbookOrder(b.title || b.description);
+
+    if (left.gradeNum !== right.gradeNum) return left.gradeNum - right.gradeNum;
+    if (left.term !== right.term) return left.term - right.term;
+
+    return (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN');
+  });
+};
+
 const TeachingZone = () => {
   const [activeZone, setActiveZone] = useState('standard');
   const [notice, setNotice] = useState<string | null>(null);
@@ -143,15 +157,7 @@ const TeachingZone = () => {
 
   const filteredResources = useMemo(() => {
     const list = resources.filter((resource) => resource.zone === activeZone);
-    if (activeZone !== 'textbook') return list;
-
-    return [...list].sort((a, b) => {
-      const left = parseTextbookOrder(a.title || a.description);
-      const right = parseTextbookOrder(b.title || b.description);
-      if (left.gradeNum !== right.gradeNum) return left.gradeNum - right.gradeNum;
-      if (left.term !== right.term) return left.term - right.term;
-      return (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN');
-    });
+    return sortTeachingResources(activeZone, list);
   }, [activeZone, resources]);
 
   const handleOpenFile = useCallback((url: string) => {

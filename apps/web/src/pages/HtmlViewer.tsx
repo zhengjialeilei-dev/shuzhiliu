@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
@@ -18,7 +18,6 @@ const HtmlViewer = () => {
   const { slug } = useParams();
   const legacyUrl = searchParams.get('url');
   const [isFrameLoading, setIsFrameLoading] = useState(true);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const currentPath = useMemo(() => {
     if (!slug || location.pathname === '/view') return null;
@@ -59,10 +58,10 @@ const HtmlViewer = () => {
     : legacyUrl && EXTERNAL_URL_PATTERN.test(legacyUrl)
       ? legacyUrl
       : null;
-  const iframeUrl = directUrl
-    ? directUrl
-    : currentPath
-      ? buildHtmlProxyUrl({ path: currentPath, title })
+  const iframeUrl = currentPath
+    ? buildHtmlProxyUrl({ path: currentPath })
+    : directUrl
+      ? buildHtmlProxyUrl({ url: directUrl, title })
       : legacyUrl
         ? buildHtmlProxyUrl({ url: legacyUrl, title })
         : matchedResource?.file_path
@@ -76,28 +75,6 @@ const HtmlViewer = () => {
     }
 
     setIsFrameLoading(true);
-  }, [iframeUrl]);
-
-  useEffect(() => {
-    if (!iframeUrl) return undefined;
-
-    const interval = window.setInterval(() => {
-      const doc = iframeRef.current?.contentDocument;
-      if (!doc) return;
-
-      const readyState = doc.readyState;
-      const hasRenderableContent =
-        Boolean(doc.body && doc.body.childElementCount > 0) ||
-        Boolean(doc.documentElement && doc.documentElement.innerHTML.length > 100);
-
-      if ((readyState === 'interactive' || readyState === 'complete') && hasRenderableContent) {
-        setIsFrameLoading(false);
-      }
-    }, 150);
-
-    return () => {
-      window.clearInterval(interval);
-    };
   }, [iframeUrl]);
 
   if (currentPath && isResolvingResource && !matchedResource && !iframeUrl) {
@@ -156,11 +133,10 @@ const HtmlViewer = () => {
 
         <iframe
           id="html-frame"
-          ref={iframeRef}
           src={iframeUrl}
           title={title}
           className="h-full w-full border-none bg-white"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+          sandbox="allow-scripts allow-forms allow-popups allow-modals"
           referrerPolicy="no-referrer"
           onLoad={() => {
             setIsFrameLoading(false);

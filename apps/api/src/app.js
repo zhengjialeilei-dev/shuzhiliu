@@ -15,7 +15,20 @@ export async function buildApp() {
   validateRuntimeConfig();
   await fs.mkdir(config.uploadDir, { recursive: true });
 
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: true,
+    trustProxy: config.trustProxy,
+  });
+
+  app.addHook('onRequest', async (_request, reply) => {
+    reply.headers({
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'SAMEORIGIN',
+    });
+  });
 
   const allowedOrigins = new Set(
     config.corsOrigins.length > 0
@@ -71,8 +84,12 @@ export async function buildApp() {
     }
 
     const statusCode = error.statusCode || 500;
+    const publicMessage =
+      statusCode >= 500 && config.nodeEnv === 'production'
+        ? 'Internal server error'
+        : error.message || 'Server error';
     reply.code(statusCode).send({
-      error: error.message || 'Server error',
+      error: publicMessage,
     });
   });
 

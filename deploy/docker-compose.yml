@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-mathflow}
       POSTGRES_USER: ${POSTGRES_USER:-mathflow}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mathflow123}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -31,12 +31,13 @@ services:
       NODE_ENV: production
       PORT: 3001
       HOST: 0.0.0.0
+      TRUST_PROXY: ${TRUST_PROXY:-true}
       API_BASE_URL: ${API_BASE_URL:-http://localhost:3001}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mathflow}:${POSTGRES_PASSWORD:-mathflow123}@postgres:5432/${POSTGRES_DB:-mathflow}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mathflow}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env}@postgres:5432/${POSTGRES_DB:-mathflow}
       STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
       UPLOAD_DIR: /app/apps/api/uploads
       PUBLIC_ASSET_BASE_URL: ${PUBLIC_ASSET_BASE_URL:-}
@@ -59,7 +60,7 @@ services:
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3001/api/health').then((res)=>process.exit(res.ok?0:1)).catch(()=>process.exit(1))"
+          "fetch('http://127.0.0.1:3001/api/health').then((res)=>process.exit(res.status===200?0:1)).catch(()=>process.exit(1))"
         ]
       interval: 15s
       timeout: 5s

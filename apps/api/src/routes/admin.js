@@ -496,38 +496,44 @@ export async function registerAdminRoutes(app) {
 
         const htmlKey = `apps/${sanitizeFilename(htmlFile.filename)}`;
         const coverKey = `images/${sanitizeFilename(coverFile.filename)}`;
-        const [fileUrl, imageUrl] = await Promise.all([
-          uploadObject({
+        const uploadedUrls = [];
+        try {
+          const fileUrl = await uploadObject({
             key: htmlKey,
             body: htmlFile.buffer,
             contentType: inferContentType(htmlFile.filename, htmlFile.mimetype),
-          }),
-          uploadObject({
+          });
+          uploadedUrls.push(fileUrl);
+          const imageUrl = await uploadObject({
             key: coverKey,
             body: coverFile.buffer,
             contentType: inferContentType(coverFile.filename, coverFile.mimetype),
-          }),
-        ]);
+          });
+          uploadedUrls.push(imageUrl);
 
-        const result = await query(
-          `INSERT INTO resources
-            (title, description, category, grade, image_url, file_path, route_path, resource_type)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           RETURNING *`,
-          [
-            fields.title,
-            fields.description || '',
-            section === 'tools' ? TOOL_CATEGORY : section === 'games' ? GAME_CATEGORY : fields.category,
-            section === 'tools' || section === 'games' ? '通用' : fields.grade,
-            imageUrl,
-            fileUrl,
-            null,
-            'html',
-          ]
-        );
+          const result = await query(
+            `INSERT INTO resources
+              (title, description, category, grade, image_url, file_path, route_path, resource_type)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             RETURNING *`,
+            [
+              fields.title,
+              fields.description || '',
+              section === 'tools' ? TOOL_CATEGORY : section === 'games' ? GAME_CATEGORY : fields.category,
+              section === 'tools' || section === 'games' ? '通用' : fields.grade,
+              imageUrl,
+              fileUrl,
+              null,
+              'html',
+            ]
+          );
 
-        reply.code(201);
-        return normalizeResource(result.rows[0]);
+          reply.code(201);
+          return normalizeResource(result.rows[0]);
+        } catch (error) {
+          await Promise.allSettled(uploadedUrls.map((url) => deleteObjectByUrl(url)));
+          throw error;
+        }
       }
 
       if (section === 'teaching') {
@@ -540,15 +546,20 @@ export async function registerAdminRoutes(app) {
           contentType: inferContentType(teachingFile.filename, teachingFile.mimetype),
         });
 
-        const result = await query(
-          `INSERT INTO teaching_resources (title, description, zone, file_url, file_type)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING *`,
-          [fields.title, fields.description || '', fields.zone, fileUrl, fileExt]
-        );
+        try {
+          const result = await query(
+            `INSERT INTO teaching_resources (title, description, zone, file_url, file_type)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING *`,
+            [fields.title, fields.description || '', fields.zone, fileUrl, fileExt]
+          );
 
-        reply.code(201);
-        return normalizeTeachingResource(result.rows[0]);
+          reply.code(201);
+          return normalizeTeachingResource(result.rows[0]);
+        } catch (error) {
+          await deleteObjectByUrl(fileUrl).catch(() => undefined);
+          throw error;
+        }
       }
 
       return reply.code(400).send({ error: `Unsupported section: ${section}` });

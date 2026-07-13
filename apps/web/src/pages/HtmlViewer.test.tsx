@@ -30,6 +30,8 @@ describe('HtmlViewer', () => {
       'src',
       '/api/html-proxy?iframe=1&url=https%3A%2F%2Fexample.com%2Fdemo.html&title=%E6%95%B0%E5%AD%A6%E5%BA%94%E7%94%A8'
     );
+    expect(iframe).toHaveAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-modals');
+    expect(iframe).not.toHaveAttribute('sandbox', expect.stringContaining('allow-same-origin'));
   });
 
   it('shows empty-url state', () => {
@@ -68,7 +70,7 @@ describe('HtmlViewer', () => {
     const iframe = await screen.findByTitle('数学应用');
     expect(iframe).toHaveAttribute(
       'src',
-      '/api/html-proxy?iframe=1&path=%2Fzhijing%2Fpotion-percentages&title=%E6%95%B0%E5%AD%A6%E5%BA%94%E7%94%A8'
+      '/api/html-proxy?iframe=1&path=%2Fzhijing%2Fpotion-percentages'
     );
   });
 
@@ -98,7 +100,7 @@ describe('HtmlViewer', () => {
     const iframe = await screen.findByTitle('数学应用');
     expect(iframe).toHaveAttribute(
       'src',
-      '/api/html-proxy?iframe=1&path=%2Fll&title=%E6%95%B0%E5%AD%A6%E5%BA%94%E7%94%A8'
+      '/api/html-proxy?iframe=1&path=%2Fll'
     );
   });
 });

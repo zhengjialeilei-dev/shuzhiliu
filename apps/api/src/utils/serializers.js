@@ -1,8 +1,7 @@
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '../config.js';
 import { query } from '../db.js';
-import { isSafeUploadPath } from '../storage.js';
+import { checkStorageConnection, isSafeUploadPath } from '../storage.js';
 
 export function normalizeResource(row) {
   return {
@@ -116,18 +115,10 @@ export async function fetchHealth() {
   }
 
   try {
-    if (config.storageDriver === 'local') {
-      await fs.access(config.uploadDir);
-      result.storage = {
-        status: 'success',
-        message: `Local storage ready at ${config.uploadDir}`,
-      };
-    } else {
-      result.storage = {
-        status: 'success',
-        message: `S3 storage configured for bucket ${config.s3Bucket}`,
-      };
-    }
+    result.storage = {
+      status: 'success',
+      message: await checkStorageConnection(),
+    };
   } catch (error) {
     result.storage = {
       status: 'error',

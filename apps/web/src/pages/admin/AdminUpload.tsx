@@ -743,7 +743,13 @@ function ResourceListItem({
 }) {
   return (
     <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-      <img src={imageUrl} alt={title} className="w-16 h-16 rounded-xl object-cover" />
+      <img
+        src={imageUrl}
+        alt={title}
+        loading="lazy"
+        decoding="async"
+        className="w-16 h-16 rounded-xl object-cover"
+      />
       <div className="flex-1 min-w-0">
         <h3 className="font-bold text-slate-800 truncate">{title}</h3>
         <p className="text-xs text-slate-500 truncate">{description}</p>

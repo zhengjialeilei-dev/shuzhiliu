@@ -35,6 +35,13 @@ test('protected admin route returns 401 without cookie', async () => {
 
   assert.equal(response.statusCode, 401);
   assert.equal(response.json().error, 'Unauthorized');
+  assert.equal(response.headers['x-content-type-options'], 'nosniff');
+  assert.equal(response.headers['x-frame-options'], 'SAMEORIGIN');
+  assert.equal(response.headers['referrer-policy'], 'strict-origin-when-cross-origin');
+  assert.equal(
+    response.headers['permissions-policy'],
+    'camera=(), microphone=(), geolocation=()'
+  );
 
   await app.close();
 });

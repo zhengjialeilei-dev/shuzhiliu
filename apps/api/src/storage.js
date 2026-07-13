@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { config } from './config.js';
 
 let s3Client = null;
@@ -153,4 +153,14 @@ export async function deleteObjectByUrl(url) {
   if (!resolvedFullPath.startsWith(`${resolvedUploadDir}${path.sep}`)) return;
 
   await fs.rm(fullPath, { force: true });
+}
+
+export async function checkStorageConnection() {
+  if (config.storageDriver === 's3') {
+    await getS3Client().send(new HeadBucketCommand({ Bucket: config.s3Bucket }));
+    return `S3 storage is reachable for bucket ${config.s3Bucket}`;
+  }
+
+  await fs.access(config.uploadDir);
+  return `Local storage ready at ${config.uploadDir}`;
 }
