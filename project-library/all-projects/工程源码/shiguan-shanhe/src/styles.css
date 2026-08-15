@@ -1,0 +1,1044 @@
+:root {
+  color: #1d302f;
+  background: #e9ddc3;
+  font-family: "Noto Serif SC", "Songti SC", SimSun, serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(255, 250, 231, 0.7), transparent 30%),
+    radial-gradient(circle at 82% 80%, rgba(126, 101, 55, 0.14), transparent 38%),
+    #e9ddc3;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0.12;
+  background-image:
+    repeating-linear-gradient(91deg, transparent 0 4px, rgba(83, 63, 35, 0.12) 5px, transparent 6px 13px),
+    repeating-linear-gradient(2deg, transparent 0 7px, rgba(255, 255, 255, 0.25) 8px, transparent 9px 18px);
+  mix-blend-mode: multiply;
+}
+
+button {
+  color: inherit;
+  font: inherit;
+}
+
+button:focus-visible,
+.poem-marker:focus-visible {
+  outline: 3px solid rgba(173, 59, 43, 0.3);
+  outline-offset: 3px;
+}
+
+.atlas-shell {
+  position: relative;
+  width: min(1740px, 100%);
+  height: 100svh;
+  min-height: 650px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: 82px minmax(0, 1fr) 82px;
+  isolation: isolate;
+}
+
+.atlas-header {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 15px;
+  padding: 12px clamp(20px, 2.4vw, 42px);
+  border-bottom: 1px solid rgba(55, 57, 46, 0.17);
+  background: rgba(238, 228, 204, 0.86);
+  backdrop-filter: blur(14px);
+}
+
+.brand-seal {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  color: #f8e9d0;
+  border: 1px solid rgba(110, 29, 24, 0.5);
+  background: #a93b2e;
+  box-shadow: inset 0 0 0 4px rgba(255, 240, 215, 0.12);
+  transform: rotate(-2deg);
+}
+
+.brand-seal span {
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.brand-copy p,
+.brand-copy h1 {
+  margin: 0;
+}
+
+.brand-copy p {
+  color: #7a6c57;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.brand-copy h1 {
+  margin-top: 1px;
+  color: #192c2b;
+  font-size: clamp(1.75rem, 2.7vw, 2.55rem);
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: 0.13em;
+}
+
+.header-note {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: #6f6250;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+.header-note span {
+  color: #a93b2e;
+  font-family: Georgia, serif;
+  font-size: 1.65rem;
+}
+
+.header-note small {
+  font-size: 0.72rem;
+}
+
+.atlas-workspace {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(178px, 0.68fr) minmax(520px, 2.65fr) minmax(300px, 1fr);
+  background: rgba(237, 226, 201, 0.48);
+}
+
+.region-rail {
+  min-width: 0;
+  padding: 30px 20px 24px clamp(20px, 2.3vw, 38px);
+  overflow-y: auto;
+  border-right: 1px solid rgba(55, 57, 46, 0.15);
+  background: rgba(243, 234, 213, 0.56);
+}
+
+.rail-label,
+.filter-label {
+  color: #8d7c62;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.rail-label {
+  margin: 0 0 22px;
+}
+
+.region-button {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 9px;
+  padding: 15px 0;
+  color: #6f6657;
+  border: 0;
+  border-bottom: 1px solid rgba(77, 72, 58, 0.12);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: color 220ms ease, padding-left 220ms ease;
+}
+
+.region-button::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  background: #a93b2e;
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 220ms ease;
+}
+
+.region-button:hover {
+  color: #243b39;
+  padding-left: 4px;
+}
+
+.region-button.is-active {
+  color: #1d3432;
+}
+
+.region-button.is-active::before {
+  transform: scaleY(1);
+}
+
+.region-index {
+  padding-top: 3px;
+  color: #ad8d70;
+  font-family: Georgia, serif;
+  font-size: 0.7rem;
+}
+
+.region-button.is-active .region-index {
+  color: #a93b2e;
+}
+
+.region-button b,
+.region-button small {
+  display: block;
+}
+
+.region-button b {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+
+.region-button small {
+  margin-top: 5px;
+  color: #94846d;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.65rem;
+  line-height: 1.5;
+}
+
+.map-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 252, 235, 0.82), transparent 58%),
+    linear-gradient(155deg, rgba(250, 241, 218, 0.8), rgba(224, 207, 174, 0.64));
+}
+
+.map-stage::before,
+.map-stage::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.map-stage::before {
+  inset: 0;
+  opacity: 0.2;
+  background:
+    repeating-radial-gradient(ellipse at 18% 34%, transparent 0 12px, rgba(71, 89, 72, 0.18) 13px 14px, transparent 15px 25px),
+    repeating-radial-gradient(ellipse at 83% 75%, transparent 0 19px, rgba(89, 67, 43, 0.14) 20px 21px, transparent 22px 34px);
+  mask-image: linear-gradient(90deg, #000, transparent 42%, #000);
+}
+
+.map-stage::after {
+  width: 270px;
+  height: 270px;
+  right: -100px;
+  top: -90px;
+  border: 1px solid rgba(142, 52, 40, 0.2);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 18px rgba(142, 52, 40, 0.025), inset 0 0 0 42px rgba(142, 52, 40, 0.018);
+}
+
+.stage-topline {
+  position: absolute;
+  z-index: 4;
+  top: 20px;
+  left: 24px;
+  right: 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  pointer-events: none;
+}
+
+.stage-topline p,
+.stage-topline b {
+  margin: 0;
+}
+
+.stage-topline p {
+  color: #716450;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.stage-topline b {
+  display: block;
+  margin-top: 5px;
+  color: #2d4845;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.67rem;
+}
+
+.route-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 8px 12px;
+  color: #7f705a;
+  border: 0;
+  border-left: 1px solid rgba(72, 66, 54, 0.18);
+  background: transparent;
+  cursor: pointer;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.7rem;
+  pointer-events: auto;
+}
+
+.route-swatch {
+  width: 29px;
+  height: 1px;
+  background: #998871;
+  transition: background 180ms ease;
+}
+
+.route-toggle.is-active {
+  color: #8e3428;
+}
+
+.route-toggle.is-active .route-swatch {
+  background: #a93b2e;
+  box-shadow: 8px -4px 0 -3px #a93b2e, 16px 3px 0 -3px #a93b2e;
+}
+
+.map-host {
+  position: absolute;
+  z-index: 2;
+  inset: 55px 16px 88px;
+}
+
+.map-host svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.province {
+  fill: url(#ink-land);
+  stroke: rgba(232, 220, 188, 0.56);
+  stroke-width: 0.75;
+  vector-effect: non-scaling-stroke;
+  filter: url(#paper-shadow);
+  transition: fill 450ms ease, opacity 450ms ease, stroke 450ms ease;
+}
+
+.province:nth-child(3n + 1) { fill: #254d54; }
+.province:nth-child(3n + 2) { fill: #395c56; }
+.province:nth-child(3n) { fill: #526654; }
+
+.province.is-region {
+  fill: #6e7151;
+  stroke: rgba(255, 235, 195, 0.88);
+  stroke-width: 1.35;
+}
+
+.province.is-active {
+  fill: #834b3d;
+  stroke: #f4dcc0;
+  stroke-width: 1.7;
+}
+
+.poetry-route {
+  fill: none;
+  stroke: rgba(169, 59, 46, 0.75);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 6 7;
+  vector-effect: non-scaling-stroke;
+  animation: route-flow 16s linear infinite, route-appear 800ms ease both;
+}
+
+@keyframes route-flow {
+  to { stroke-dashoffset: -130; }
+}
+
+@keyframes route-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.poem-marker {
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+  transition: opacity 320ms ease;
+}
+
+.poem-marker.is-visible {
+  opacity: 0.76;
+  pointer-events: auto;
+}
+
+.poem-marker:hover,
+.poem-marker.is-active {
+  opacity: 1;
+}
+
+.marker-aura {
+  fill: rgba(246, 221, 177, 0.12);
+  stroke: rgba(246, 221, 177, 0.3);
+  stroke-width: 1;
+}
+
+.marker-ring {
+  fill: #f1d9ad;
+  stroke: #7f2f27;
+  stroke-width: 1.2;
+}
+
+.marker-core {
+  fill: #a93b2e;
+}
+
+.poem-marker.is-active .marker-aura {
+  fill: rgba(247, 220, 174, 0.34);
+  stroke: #f7dfb8;
+  filter: url(#marker-glow);
+  animation: marker-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes marker-pulse {
+  50% { r: 19px; opacity: 0.42; }
+}
+
+.marker-label {
+  opacity: 0;
+  transform-origin: 0 0;
+  transform: translate(13px, -14px) translateY(3px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+}
+
+.poem-marker:hover .marker-label,
+.poem-marker.is-active .marker-label {
+  opacity: 1;
+  transform: translate(13px, -14px) translateY(0);
+}
+
+.marker-label rect {
+  fill: rgba(29, 43, 39, 0.9);
+  stroke: rgba(244, 220, 181, 0.35);
+}
+
+.marker-label text {
+  fill: #f5e6c8;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.map-caption {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: 76px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  color: rgba(91, 79, 60, 0.68);
+  font-size: 0.63rem;
+  letter-spacing: 0.12em;
+  pointer-events: none;
+}
+
+.map-caption i {
+  width: 24px;
+  height: 1px;
+  background: rgba(91, 79, 60, 0.3);
+}
+
+.poem-strip {
+  position: absolute;
+  z-index: 5;
+  left: 20px;
+  right: 20px;
+  bottom: 0;
+  height: 70px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
+  border-top: 1px solid rgba(77, 70, 55, 0.18);
+  background: linear-gradient(180deg, rgba(237, 226, 201, 0.25), rgba(237, 226, 201, 0.92) 30%);
+  backdrop-filter: blur(7px);
+}
+
+.strip-label {
+  display: grid;
+  place-items: center;
+  padding: 0 20px 0 4px;
+  color: #8d7b60;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+}
+
+.poem-list {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(127, 93, 62, 0.4) transparent;
+}
+
+.poem-chip {
+  min-width: max-content;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 18px;
+  color: #655b4c;
+  border: 0;
+  border-left: 1px solid rgba(75, 67, 53, 0.12);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: color 180ms ease, background 180ms ease;
+}
+
+.poem-chip:hover {
+  color: #233b38;
+  background: rgba(255, 249, 231, 0.44);
+}
+
+.poem-chip.is-active {
+  color: #8e3428;
+  background: rgba(255, 246, 224, 0.75);
+  box-shadow: inset 0 3px #a93b2e;
+}
+
+.poem-chip span {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.poem-chip small {
+  margin-top: 4px;
+  color: #9a876b;
+  font-size: 0.62rem;
+}
+
+.empty-strip {
+  margin: auto 0;
+  color: #8a795f;
+  font-size: 0.76rem;
+}
+
+.poem-inspector {
+  min-width: 0;
+  padding: 28px clamp(22px, 2vw, 34px) 24px;
+  overflow-y: auto;
+  border-left: 1px solid rgba(55, 57, 46, 0.15);
+  background:
+    linear-gradient(90deg, rgba(80, 64, 40, 0.04), transparent 16%),
+    rgba(245, 236, 216, 0.7);
+}
+
+.inspector-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 14px;
+  color: #8c785c;
+  border-bottom: 1px solid rgba(72, 65, 52, 0.17);
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.67rem;
+}
+
+.inspector-topline span:first-child::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #a93b2e;
+}
+
+.poem-detail {
+  padding-top: clamp(25px, 4vh, 46px);
+}
+
+.poem-detail.is-entering {
+  animation: detail-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes detail-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.poem-author {
+  margin: 0 0 8px;
+  color: #9a6e51;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+}
+
+.poem-detail h2 {
+  margin: 0;
+  color: #17312f;
+  font-size: clamp(1.8rem, 3.2vw, 3rem);
+  font-weight: 580;
+  line-height: 1.18;
+  letter-spacing: 0.06em;
+}
+
+.poem-detail blockquote {
+  position: relative;
+  margin: clamp(24px, 4vh, 40px) 0;
+  padding: 18px 0 18px 21px;
+  color: #2b413e;
+  border-left: 2px solid #a93b2e;
+  font-size: clamp(1rem, 1.4vw, 1.3rem);
+  line-height: 2;
+  letter-spacing: 0.09em;
+}
+
+.poem-detail blockquote::before {
+  content: "“";
+  position: absolute;
+  top: -26px;
+  left: 4px;
+  color: rgba(169, 59, 46, 0.13);
+  font-family: Georgia, serif;
+  font-size: 5rem;
+  line-height: 1;
+}
+
+.poem-detail blockquote span {
+  position: relative;
+  display: block;
+}
+
+.context-copy {
+  padding-top: 20px;
+  border-top: 1px solid rgba(72, 65, 52, 0.14);
+}
+
+.context-copy small {
+  color: #a93b2e;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.context-copy p {
+  margin: 10px 0 0;
+  color: #6d6354;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.78rem;
+  line-height: 1.85;
+}
+
+.route-note {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 8px;
+  margin-top: 26px;
+  padding: 15px 0;
+  color: #7b4c3f;
+  border-top: 1px solid rgba(72, 65, 52, 0.14);
+  border-bottom: 1px solid rgba(72, 65, 52, 0.14);
+}
+
+.route-note > span {
+  color: #a93b2e;
+  font-size: 1.2rem;
+}
+
+.route-note small,
+.route-note b {
+  display: block;
+}
+
+.route-note small {
+  color: #987e61;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.62rem;
+}
+
+.route-note b {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.inspector-hint {
+  margin: 18px 0 0;
+  color: #9b8b73;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.64rem;
+  line-height: 1.6;
+}
+
+.empty-detail {
+  padding: 40px 0;
+  color: #746854;
+}
+
+.empty-detail b {
+  font-size: 1.5rem;
+}
+
+.empty-detail p {
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.76rem;
+}
+
+.filter-dock {
+  position: relative;
+  z-index: 5;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(300px, 0.8fr) 1px minmax(440px, 1.2fr);
+  align-items: center;
+  gap: 24px;
+  padding: 12px clamp(20px, 2.4vw, 42px);
+  border-top: 1px solid rgba(55, 57, 46, 0.16);
+  background: rgba(240, 229, 204, 0.9);
+  backdrop-filter: blur(12px);
+}
+
+.filter-group {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+}
+
+.filter-options {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filter-options::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-button {
+  position: relative;
+  min-width: max-content;
+  padding: 10px 12px;
+  color: #716551;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.filter-button::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  bottom: 3px;
+  height: 2px;
+  background: #a93b2e;
+  transform: scaleX(0);
+  transition: transform 180ms ease;
+}
+
+.filter-button:hover,
+.filter-button.is-active {
+  color: #8e3428;
+}
+
+.filter-button.is-active::after {
+  transform: scaleX(1);
+}
+
+.dock-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(67, 62, 51, 0.15);
+}
+
+@media (max-width: 1180px) {
+  .atlas-workspace {
+    grid-template-columns: 165px minmax(440px, 1fr) 285px;
+  }
+
+  .region-rail {
+    padding-inline: 19px 15px;
+  }
+
+  .poem-inspector {
+    padding-inline: 22px;
+  }
+
+  .poem-detail h2 {
+    font-size: 1.8rem;
+  }
+
+  .poem-detail blockquote {
+    font-size: 0.94rem;
+  }
+}
+
+@media (max-width: 900px) {
+  body {
+    overflow: auto;
+  }
+
+  .atlas-shell {
+    height: auto;
+    min-height: 100svh;
+    display: block;
+  }
+
+  .atlas-header {
+    min-height: 75px;
+  }
+
+  .header-note {
+    display: none;
+  }
+
+  .atlas-workspace {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .region-rail {
+    order: 1;
+    display: flex;
+    gap: 0;
+    padding: 0 16px;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid rgba(55, 57, 46, 0.15);
+  }
+
+  .rail-label {
+    display: none;
+  }
+
+  .region-button {
+    min-width: max-content;
+    width: auto;
+    grid-template-columns: auto 1fr;
+    padding: 13px 15px;
+    border-bottom: 0;
+  }
+
+  .region-button::before {
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    height: 3px;
+    transform: scaleX(0);
+  }
+
+  .region-button.is-active::before {
+    transform: scaleX(1);
+  }
+
+  .region-button small {
+    display: none;
+  }
+
+  .map-stage {
+    order: 2;
+    height: min(68svh, 620px);
+    min-height: 470px;
+  }
+
+  .poem-inspector {
+    order: 3;
+    padding: 28px 22px 34px;
+    overflow: visible;
+    border-top: 1px solid rgba(55, 57, 46, 0.15);
+    border-left: 0;
+  }
+
+  .poem-detail {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1.2fr);
+    gap: 24px 42px;
+  }
+
+  .poem-detail blockquote {
+    grid-row: 2;
+    margin: 18px 0 0;
+  }
+
+  .context-copy {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    padding: 8px 0 0;
+    border-top: 0;
+  }
+
+  .filter-dock {
+    min-height: 92px;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    padding-block: 12px 16px;
+  }
+
+  .dock-divider {
+    width: 100%;
+    height: 1px;
+  }
+}
+
+@media (max-width: 560px) {
+  .atlas-header {
+    min-height: 68px;
+    padding: 10px 14px;
+  }
+
+  .brand-seal {
+    width: 42px;
+    height: 42px;
+  }
+
+  .brand-copy p {
+    font-size: 0.56rem;
+  }
+
+  .brand-copy h1 {
+    font-size: 1.55rem;
+  }
+
+  .region-button {
+    padding: 12px 11px;
+  }
+
+  .region-index {
+    display: none;
+  }
+
+  .map-stage {
+    height: 56svh;
+    min-height: 420px;
+  }
+
+  .stage-topline {
+    top: 13px;
+    left: 14px;
+    right: 14px;
+  }
+
+  .stage-topline p {
+    font-size: 0.68rem;
+  }
+
+  .route-toggle {
+    font-size: 0.64rem;
+  }
+
+  .map-host {
+    inset: 55px 2px 78px;
+  }
+
+  .poem-marker:not(.is-active) .marker-label {
+    display: none;
+  }
+
+  .poem-strip {
+    left: 10px;
+    right: 10px;
+    height: 64px;
+  }
+
+  .strip-label {
+    display: none;
+  }
+
+  .poem-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .poem-chip {
+    padding-inline: 14px;
+  }
+
+  .poem-inspector {
+    padding: 24px 18px 30px;
+  }
+
+  .poem-detail {
+    display: block;
+    padding-top: 24px;
+  }
+
+  .poem-detail h2 {
+    font-size: 1.75rem;
+  }
+
+  .poem-detail blockquote {
+    margin: 27px 0;
+    font-size: 0.95rem;
+  }
+
+  .context-copy {
+    padding-top: 18px;
+    border-top: 1px solid rgba(72, 65, 52, 0.14);
+  }
+
+  .filter-dock {
+    padding-inline: 15px;
+  }
+
+  .filter-group {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .filter-button {
+    padding-inline: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

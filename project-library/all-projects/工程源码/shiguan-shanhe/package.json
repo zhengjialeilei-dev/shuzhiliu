@@ -1,0 +1,21 @@
+{
+  "name": "shiguan-shanhe-refactored",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build && node scripts/inline-build.mjs",
+    "typecheck": "tsc -b --pretty false",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "d3-geo": "^3.1.1"
+  },
+  "devDependencies": {
+    "@types/d3-geo": "^3.1.0",
+    "@types/geojson": "^7946.0.16",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0"
+  }
+}
