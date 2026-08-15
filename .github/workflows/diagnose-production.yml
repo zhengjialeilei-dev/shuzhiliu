@@ -15,6 +15,41 @@ jobs:
           sparse-checkout: |
             .github/scripts
 
+      - name: Inspect Tencent TAT invocation state
+        env:
+          Tencent_SecretId: ${{ secrets.TENCENT_SECRET_ID }}
+          Tencent_SecretKey: ${{ secrets.TENCENT_SECRET_KEY }}
+        run: |
+          python - <<'PYTHON'
+          import os
+          import sys
+
+          sys.path.insert(0, ".github/scripts")
+          from run_tat_command import call_tat
+
+          result = call_tat(
+              "DescribeInvocations",
+              {"Offset": 0, "Limit": 100},
+              os.environ["Tencent_SecretId"],
+              os.environ["Tencent_SecretKey"],
+          )
+          invocations = [
+              item
+              for item in result.get("InvocationSet", [])
+              if "MathFlow" in item.get("Description", "")
+          ]
+          invocations.sort(key=lambda item: item.get("CreatedTime", ""), reverse=True)
+          print("=== TENCENT TAT INVOCATIONS ===")
+          for item in invocations[:15]:
+              print(
+                  item.get("InvocationId", "-"),
+                  item.get("InvocationStatus", "-"),
+                  item.get("CreatedTime", "-"),
+                  item.get("Description", "-"),
+                  sep=" | ",
+              )
+          PYTHON
+
       - name: Inspect production deployment state
         env:
           Tencent_SecretId: ${{ secrets.TENCENT_SECRET_ID }}
