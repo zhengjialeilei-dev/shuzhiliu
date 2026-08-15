@@ -143,6 +143,7 @@ test('failed logins are rate limited on the sixth attempt', async () => {
 test('html proxy rejects external URL when allowlist is empty in production', async () => {
   config.nodeEnv = 'production';
   config.htmlProxyAllowlist = [];
+  config.apiBaseUrl = '';
   config.publicAssetBaseUrl = '';
   config.s3PublicBaseUrl = '';
 
@@ -160,6 +161,43 @@ test('html proxy rejects external URL when allowlist is empty in production', as
   assert.equal(response.json().error, 'URL not allowed');
 
   await app.close();
+});
+
+test('html proxy allows static resources from the configured site origin', async () => {
+  config.nodeEnv = 'production';
+  config.htmlProxyAllowlist = [];
+  config.apiBaseUrl = 'https://sparkaiedu.com';
+  config.publicAssetBaseUrl = '';
+  config.s3PublicBaseUrl = '';
+
+  const realFetch = global.fetch;
+  global.fetch = async () => ({
+    ok: true,
+    body: null,
+    text: async () => '<html><head></head><body><main>Static lesson</main></body></html>',
+  });
+
+  const app = await buildApp();
+
+  try {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/html-proxy',
+      query: {
+        url: 'https://sparkaiedu.com/ai-apps/menghui-fanhua/index.html',
+        iframe: '1',
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.match(
+      response.body,
+      /<base href="https:\/\/sparkaiedu\.com\/ai-apps\/menghui-fanhua\/" \/>/
+    );
+  } finally {
+    global.fetch = realFetch;
+    await app.close();
+  }
 });
 
 test('html proxy injects base href and strips google font imports for iframe requests', async () => {

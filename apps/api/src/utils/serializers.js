@@ -66,7 +66,7 @@ export function inferContentType(filename, fallback = 'application/octet-stream'
 export function buildHtmlProxyAllowlist() {
   const hosts = new Set(config.htmlProxyAllowlist);
 
-  for (const value of [config.publicAssetBaseUrl, config.s3PublicBaseUrl]) {
+  for (const value of [config.apiBaseUrl, config.publicAssetBaseUrl, config.s3PublicBaseUrl]) {
     if (!value) continue;
     try {
       hosts.add(new URL(value).host);
