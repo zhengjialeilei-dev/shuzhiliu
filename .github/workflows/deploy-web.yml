@@ -49,11 +49,11 @@ jobs:
         run: |
           ARCHIVE_TAR="$RUNNER_TEMP/mathflow-$GITHUB_SHA.tar"
           ARCHIVE_FILE="$ARCHIVE_TAR.gz"
-          echo "Creating deployment archive from the sparse working tree..."
-          git ls-files -z -- . \
-            ':(exclude)apps/web/public/files/**' \
-            ':(exclude)project-library/**' \
-            | tar --null --files-from=- --create --file="$ARCHIVE_TAR"
+          echo "Creating the minimal production deployment archive..."
+          tar --create --file="$ARCHIVE_TAR" \
+            .dockerignore package.json package-lock.json \
+            apps/api/Dockerfile apps/api/package.json apps/api/src apps/api/seed \
+            deploy/docker-compose.yml deploy/run_migrations.sh deploy/db
           tar --append --file="$ARCHIVE_TAR" \
             --exclude='apps/web/dist/files' apps/web/dist
           gzip "$ARCHIVE_TAR"
