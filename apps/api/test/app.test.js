@@ -582,6 +582,80 @@ test('upload route validates multipart fields before touching database', async (
   await app.close();
 });
 
+test('admin creates teaching resource links only from validated HTTPS URLs', async () => {
+  config.nodeEnv = 'test';
+  const realQuery = pool.query.bind(pool);
+  let insertedParams = null;
+  pool.query = async (text, params) => {
+    if (text.includes('INSERT INTO teaching_resources')) {
+      insertedParams = params;
+      return {
+        rows: [
+          {
+            id: 'official-link',
+            title: params[0],
+            description: params[1],
+            zone: params[2],
+            file_url: params[3],
+            file_type: params[4],
+            created_at: new Date().toISOString(),
+          },
+        ],
+      };
+    }
+    return realQuery(text, params);
+  };
+
+  const app = await buildApp();
+  try {
+    const loginResponse = await app.inject({
+      method: 'POST',
+      url: '/api/admin/login',
+      payload: { password: 'secret-pass' },
+    });
+    const headers = { cookie: loginResponse.headers['set-cookie'] };
+    const validResponse = await app.inject({
+      method: 'POST',
+      url: '/api/admin/teaching-resources',
+      headers,
+      payload: {
+        title: '义务教育数学课程标准',
+        description: '教育部正式发布版本',
+        zone: 'standard',
+        file_url: 'https://www.moe.gov.cn/math-standard.pdf',
+      },
+    });
+
+    assert.equal(validResponse.statusCode, 201);
+    assert.equal(validResponse.json().file_type, 'link');
+    assert.deepEqual(insertedParams, [
+      '义务教育数学课程标准',
+      '教育部正式发布版本',
+      'standard',
+      'https://www.moe.gov.cn/math-standard.pdf',
+      'link',
+    ]);
+
+    const invalidResponse = await app.inject({
+      method: 'POST',
+      url: '/api/admin/teaching-resources',
+      headers,
+      payload: {
+        title: '不安全链接',
+        description: '不应写入数据库',
+        zone: 'standard',
+        file_url: 'http://example.com/resource',
+      },
+    });
+
+    assert.equal(invalidResponse.statusCode, 400);
+    assert.match(invalidResponse.json().error, /必须使用 HTTPS/);
+  } finally {
+    pool.query = realQuery;
+    await app.close();
+  }
+});
+
 test('upload route streams files through temporary storage into the configured upload directory', async () => {
   config.nodeEnv = 'test';
   config.storageDriver = 'local';

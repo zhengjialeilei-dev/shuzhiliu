@@ -76,6 +76,15 @@ export function uploadAdminResource(formData: FormData) {
   });
 }
 
+export function createTeachingResource(
+  payload: Pick<TeachingResource, 'title' | 'description' | 'zone' | 'file_url'>
+) {
+  return request<TeachingResource>('/api/admin/teaching-resources', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function updateResource(
   id: string,
   payload: Pick<Resource, 'title' | 'description' | 'category' | 'grade'>
@@ -101,7 +110,7 @@ export function deleteResource(id: string) {
 
 export function updateTeachingResource(
   id: string,
-  payload: Pick<TeachingResource, 'title' | 'description' | 'zone'>
+  payload: Pick<TeachingResource, 'title' | 'description' | 'zone'> & { file_url?: string }
 ) {
   return request<TeachingResource>(`/api/admin/teaching-resources/${id}`, {
     method: 'PUT',

@@ -1,10 +1,18 @@
-import fs from 'node:fs/promises';
-import { createWriteStream } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { pipeline } from 'node:stream/promises';
 import { config } from '../config.js';
 import { query, withTransaction } from '../db.js';
+import {
+  AI_CATEGORIES,
+  ALL_RESOURCE_CATEGORIES,
+  GAME_CATEGORY,
+  GRADES,
+  TEACHING_ZONES,
+  TOOL_CATEGORY,
+  normalizeExternalTeachingUrl,
+  normalizeRoutePath,
+  validateResourceReplacement,
+  validateUpload,
+} from '../domain/uploadPolicy.js';
 import {
   adminSessionSchema,
   errorResponseSchema,
@@ -12,224 +20,23 @@ import {
   successResponseSchema,
   teachingResourceSchema,
 } from '../schemas.js';
-import { deleteObjectByUrl, deleteResourceFilesByUrl, sanitizeFilename, uploadFile } from '../storage.js';
+import { sanitizeFilename, uploadFile } from '../storage.js';
+import {
+  cleanupObjects,
+  cleanupReplacedResourceObjects,
+  cleanupResourceObjects,
+  collectMultipartUpload,
+  removeTempDirectory,
+  uploadWorkFile,
+} from '../services/uploadAssets.js';
 import { createLoginRateLimiter } from '../utils/security.js';
 import {
   inferContentType,
   normalizeResource,
   normalizeTeachingResource,
 } from '../utils/serializers.js';
-import { extractZipBundle } from '../utils/zipBundle.js';
 
 const loginRateLimiter = createLoginRateLimiter();
-const AI_CATEGORIES = ['数与代数', '图形与几何', '统计与概率', '综合实践', '微课', '习题', '其他'];
-const GAME_CATEGORY = '互动游戏';
-const TOOL_CATEGORY = '互动工具';
-const ALL_RESOURCE_CATEGORIES = [...AI_CATEGORIES, GAME_CATEGORY, TOOL_CATEGORY];
-const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '通用', '拓展'];
-const TEACHING_ZONES = ['standard', 'textbook', 'plan', 'courseware'];
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
-const WORK_EXTENSIONS = new Set(['.html', '.htm', '.zip']);
-const TEACHING_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.ppt', '.pptx']);
-
-function getFileExtension(filename) {
-  return path.extname(filename || '').toLowerCase();
-}
-
-function assertNonEmptyString(value, fieldName) {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error(`${fieldName} is required`);
-  }
-}
-
-function assertAllowedValue(value, allowedValues, fieldName) {
-  if (!allowedValues.includes(value)) {
-    throw new Error(`${fieldName} is invalid`);
-  }
-}
-
-function assertFile(file, allowedExtensions, fieldName) {
-  if (!file?.filename) {
-    throw new Error(`${fieldName} is required`);
-  }
-  const extension = getFileExtension(file.filename);
-  if (!allowedExtensions.has(extension)) {
-    throw new Error(`${fieldName} has an unsupported file type`);
-  }
-}
-
-function validateUpload(fields, files) {
-  const section = fields.section;
-  if (!['ai', 'games', 'tools', 'teaching'].includes(section)) {
-    throw new Error('section is invalid');
-  }
-
-  assertNonEmptyString(fields.title, 'title');
-
-  if (section === 'ai') {
-    assertNonEmptyString(fields.description, 'description');
-    assertAllowedValue(fields.category, AI_CATEGORIES, 'category');
-    assertAllowedValue(fields.grade, GRADES, 'grade');
-    assertFile(files.htmlFile, WORK_EXTENSIONS, 'htmlFile');
-    if (files.coverFile) assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
-  }
-
-  if (section === 'tools') {
-    assertNonEmptyString(fields.description, 'description');
-    assertFile(files.htmlFile, WORK_EXTENSIONS, 'htmlFile');
-    if (files.coverFile) assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
-  }
-
-  if (section === 'games') {
-    assertNonEmptyString(fields.description, 'description');
-    assertFile(files.htmlFile, WORK_EXTENSIONS, 'htmlFile');
-    if (files.coverFile) assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
-  }
-
-  if (section === 'teaching') {
-    assertNonEmptyString(fields.description, 'description');
-    assertAllowedValue(fields.zone, TEACHING_ZONES, 'zone');
-    assertFile(files.teachingFile, TEACHING_EXTENSIONS, 'teachingFile');
-  }
-}
-
-function normalizeRoutePath(value) {
-  if (typeof value !== 'string' || value.trim().length === 0) return null;
-  const slug = value.trim().toLowerCase().replace(/^\/+(?:works\/)?/, '').replace(/\/+$/, '');
-  if (!/^[a-z0-9][a-z0-9-]{1,49}$/.test(slug)) {
-    throw new Error('作品短链接只能包含 2-50 个小写字母、数字或连字符');
-  }
-  return `/works/${slug}`;
-}
-
-async function collectMultipartUpload(request) {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mathflow-upload-'));
-  const fields = {};
-  const files = {};
-
-  try {
-    for await (const part of request.parts()) {
-      if (part.type !== 'file') {
-        fields[part.fieldname] = part.value;
-        continue;
-      }
-
-      if (files[part.fieldname]) {
-        throw new Error(`${part.fieldname} was provided more than once`);
-      }
-
-      const filePath = path.join(tempDir, `${Object.keys(files).length}.upload`);
-      await pipeline(part.file, createWriteStream(filePath, { flags: 'wx', mode: 0o600 }));
-      if (part.file.truncated) {
-        const error = new Error(`${part.fieldname} exceeds the upload size limit`);
-        error.statusCode = 413;
-        throw error;
-      }
-
-      files[part.fieldname] = {
-        filename: part.filename,
-        mimetype: part.mimetype,
-        filePath,
-      };
-    }
-
-    return { fields, files, tempDir };
-  } catch (error) {
-    await fs.rm(tempDir, { recursive: true, force: true });
-    throw error;
-  }
-}
-
-async function cleanupObjects(urls, logger) {
-  const results = await Promise.allSettled(urls.filter(Boolean).map((url) => deleteObjectByUrl(url)));
-  const failedCount = results.filter((result) => result.status === 'rejected').length;
-  if (failedCount > 0) {
-    logger.warn({ failedCount }, 'Failed to clean up one or more stored resource objects');
-  }
-}
-
-async function cleanupResourceObjects(fileUrl, imageUrl, logger) {
-  const results = await Promise.allSettled([
-    deleteResourceFilesByUrl(fileUrl),
-    deleteObjectByUrl(imageUrl),
-  ]);
-  const failedCount = results.filter((result) => result.status === 'rejected').length;
-  if (failedCount > 0) {
-    logger.warn({ failedCount }, 'Failed to clean up one or more stored resource objects');
-  }
-}
-
-async function cleanupReplacedResourceObjects(previous, current, logger) {
-  const operations = [];
-  if (previous.file_path && previous.file_path !== current.file_path) {
-    operations.push(deleteResourceFilesByUrl(previous.file_path));
-  }
-  if (previous.image_url && previous.image_url !== current.image_url) {
-    operations.push(deleteObjectByUrl(previous.image_url));
-  }
-
-  const results = await Promise.allSettled(operations);
-  const failedCount = results.filter((result) => result.status === 'rejected').length;
-  if (failedCount > 0) {
-    logger.warn({ failedCount }, 'Failed to clean up one or more replaced resource objects');
-  }
-}
-
-async function uploadWorkFile(file, tempDir, uploadedUrls) {
-  if (getFileExtension(file.filename) !== '.zip') {
-    const key = `apps/${sanitizeFilename(file.filename)}`;
-    const url = await uploadFile({
-      key,
-      filePath: file.filePath,
-      contentType: inferContentType(file.filename, file.mimetype),
-    });
-    uploadedUrls.push(url);
-    return { fileUrl: url, previewFilePath: file.filePath };
-  }
-
-  const extractedDir = path.join(tempDir, 'bundle');
-  let bundle;
-  try {
-    bundle = await extractZipBundle(file.filePath, extractedDir, {
-      maxEntries: 500,
-      maxUncompressedBytes: Math.min(config.maxUploadFileSizeMb * 4, 500) * 1024 * 1024,
-    });
-  } catch (error) {
-    if (error instanceof Error) error.statusCode = 400;
-    throw error;
-  }
-  const bundleId = sanitizeFilename(file.filename).replace(/\.zip$/i, '');
-  let fileUrl = null;
-
-  for (let index = 0; index < bundle.files.length; index += 5) {
-    const batch = bundle.files.slice(index, index + 5);
-    const results = await Promise.allSettled(
-      batch.map(async (item) => {
-        const key = `apps/bundles/${bundleId}/${item.relativePath}`;
-        const url = await uploadFile({
-          key,
-          filePath: item.filePath,
-          contentType: inferContentType(item.relativePath),
-        });
-        return { item, url };
-      })
-    );
-
-    for (const result of results) {
-      if (result.status === 'fulfilled') {
-        uploadedUrls.push(result.value.url);
-        if (result.value.item.relativePath === bundle.indexRelativePath) fileUrl = result.value.url;
-      }
-    }
-    const failed = results.find((result) => result.status === 'rejected');
-    if (failed) throw failed.reason;
-  }
-
-  if (!fileUrl) throw new Error('ZIP index.html was not uploaded');
-  const indexFile = bundle.files.find((item) => item.relativePath === bundle.indexRelativePath);
-  if (!indexFile) throw new Error('ZIP index.html could not be resolved');
-  return { fileUrl, previewFilePath: indexFile.filePath };
-}
 
 export function createNotFoundError(entityName) {
   const error = new Error(`${entityName} not found`);
@@ -455,12 +262,7 @@ export async function registerAdminRoutes(app, { coverGenerator }) {
       const uploadedUrls = [];
 
       try {
-        assertNonEmptyString(fields.title, 'title');
-        assertNonEmptyString(fields.description, 'description');
-        assertAllowedValue(fields.category, ALL_RESOURCE_CATEGORIES, 'category');
-        assertAllowedValue(fields.grade, GRADES, 'grade');
-        if (files.htmlFile) assertFile(files.htmlFile, WORK_EXTENSIONS, 'htmlFile');
-        if (files.coverFile) assertFile(files.coverFile, IMAGE_EXTENSIONS, 'coverFile');
+        validateResourceReplacement(fields, files);
 
         const regenerateCover = fields.regenerateCover === 'true';
         if (regenerateCover && !files.htmlFile) {
@@ -519,7 +321,7 @@ export async function registerAdminRoutes(app, { coverGenerator }) {
         await cleanupObjects(uploadedUrls, app.log);
         throw error;
       } finally {
-        await fs.rm(tempDir, { recursive: true, force: true });
+        await removeTempDirectory(tempDir);
       }
     }
   );
@@ -573,13 +375,12 @@ export async function registerAdminRoutes(app, { coverGenerator }) {
         body: {
           type: 'object',
           additionalProperties: false,
-          required: ['title', 'description', 'zone'],
+          required: ['title', 'description', 'zone', 'file_url'],
           properties: {
             title: { type: 'string', minLength: 1 },
             description: { type: 'string', minLength: 1 },
             zone: { type: 'string', enum: TEACHING_ZONES },
-            file_url: { type: 'string' },
-            file_type: { type: 'string' },
+            file_url: { type: 'string', minLength: 1, maxLength: 2048 },
           },
         },
         response: {
@@ -591,12 +392,13 @@ export async function registerAdminRoutes(app, { coverGenerator }) {
     },
     async (request, reply) => {
       const payload = request.body || {};
+      const fileUrl = normalizeExternalTeachingUrl(payload.file_url);
       const result = await query(
         `INSERT INTO teaching_resources
           (title, description, zone, file_url, file_type)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [payload.title, payload.description, payload.zone, payload.file_url || '', payload.file_type || 'pdf']
+        [payload.title, payload.description, payload.zone, fileUrl, 'link']
       );
       reply.code(201);
       return normalizeTeachingResource(result.rows[0]);
@@ -624,6 +426,7 @@ export async function registerAdminRoutes(app, { coverGenerator }) {
             title: { type: 'string', minLength: 1 },
             description: { type: 'string', minLength: 1 },
             zone: { type: 'string', enum: TEACHING_ZONES },
+            file_url: { type: 'string', minLength: 1, maxLength: 2048 },
           },
         },
         response: {
@@ -636,12 +439,15 @@ export async function registerAdminRoutes(app, { coverGenerator }) {
     },
     async (request) => {
       const payload = request.body || {};
+      const fileUrl = payload.file_url === undefined ? null : normalizeExternalTeachingUrl(payload.file_url);
       const result = await query(
         `UPDATE teaching_resources
-         SET title = $1, description = $2, zone = $3
-         WHERE id = $4
+         SET title = $1, description = $2, zone = $3,
+             file_url = COALESCE($4, file_url),
+             file_type = CASE WHEN $4 IS NULL THEN file_type ELSE 'link' END
+         WHERE id = $5
          RETURNING *`,
-        [payload.title, payload.description, payload.zone, request.params.id]
+        [payload.title, payload.description, payload.zone, fileUrl, request.params.id]
       );
       return normalizeTeachingResource(requireRow(result.rows[0], 'Teaching resource'));
     }
@@ -713,7 +519,7 @@ export async function registerAdminRoutes(app, { coverGenerator }) {
       try {
         validateUpload(fields, files);
       } catch (error) {
-        await fs.rm(tempDir, { recursive: true, force: true });
+        await removeTempDirectory(tempDir);
         return reply.code(400).send({
           error: error instanceof Error ? error.message : 'Invalid upload payload',
         });
@@ -810,7 +616,7 @@ export async function registerAdminRoutes(app, { coverGenerator }) {
 
         return reply.code(400).send({ error: `Unsupported section: ${section}` });
       } finally {
-        await fs.rm(tempDir, { recursive: true, force: true });
+        await removeTempDirectory(tempDir);
       }
     }
   );

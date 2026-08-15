@@ -1,4 +1,4 @@
-name: Deploy Web To Tencent Cloud
+name: Deploy MathFlow To Tencent Cloud
 
 on:
   push:
@@ -116,7 +116,6 @@ jobs:
             "$SOURCE_ARCHIVE" -o "$ARCHIVE_FILE"
           tar -xzf "$ARCHIVE_FILE" -C "$NEXT_SOURCE_ROOT"
           test -f "$NEXT_SOURCE_ROOT/package.json"
-          test -f "$NEXT_SOURCE_ROOT/apps/web/Dockerfile"
           test -f "$NEXT_SOURCE_ROOT/apps/api/package.json"
           test -f "$SITE_ROOT/files/textbooks/rj-math-grade-1-volume-1-2024-fall.pdf"
 
@@ -137,18 +136,14 @@ jobs:
             done
           fi
 
-          MIGRATION_FILE="$SOURCE_ROOT/deploy/db/migrations/20260714_harden_resource_schema.sql"
-          if [ -f "$MIGRATION_FILE" ]; then
-            BACKUP_DIR="$LEGACY_ROOT/deploy/backups"
-            install -d -m 700 "$BACKUP_DIR"
-            docker exec mathflow-postgres sh -c \
-              'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' \
-              > "$BACKUP_DIR/mathflow-before-$DEPLOY_SHA.dump"
-            docker exec -i mathflow-postgres sh -c \
-              'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
-              < "$MIGRATION_FILE"
-            find "$BACKUP_DIR" -type f -name 'mathflow-before-*.dump' -mtime +14 -delete
-          fi
+          BACKUP_DIR="$LEGACY_ROOT/deploy/backups"
+          install -d -m 700 "$BACKUP_DIR"
+          docker exec mathflow-postgres sh -c \
+            'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' \
+            > "$BACKUP_DIR/mathflow-before-$DEPLOY_SHA.dump"
+          POSTGRES_CONTAINER=mathflow-postgres sh "$SOURCE_ROOT/deploy/run_migrations.sh" \
+            "$SOURCE_ROOT/deploy/db/migrations"
+          find "$BACKUP_DIR" -type f -name 'mathflow-before-*.dump' -mtime +14 -delete
 
           docker compose \
             --project-directory "$SOURCE_ROOT/deploy" \

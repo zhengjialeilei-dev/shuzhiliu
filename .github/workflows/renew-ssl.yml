@@ -186,5 +186,6 @@ jobs:
 
       - name: Verify deployed HTTPS certificate
         run: |
-          curl --fail --silent --show-error --head --max-time 20 https://sparkaiedu.com/
+          curl --http1.1 --fail --silent --show-error --head --max-time 30 \
+            --retry 5 --retry-delay 2 --retry-all-errors https://sparkaiedu.com/
           echo "The renewed HTTPS endpoint is healthy."

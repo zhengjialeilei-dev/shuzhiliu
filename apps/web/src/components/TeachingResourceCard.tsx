@@ -43,6 +43,8 @@ const getFileIcon = (type: string) => {
     case 'ppt':
     case 'pptx':
       return <Presentation className="w-4 h-4 sm:w-5 sm:h-5" />;
+    case 'link':
+      return <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />;
     default:
       return <FileText className="w-4 h-4 sm:w-5 sm:h-5" />;
   }
@@ -98,7 +100,7 @@ const TeachingResourceCard: React.FC<TeachingResourceCardProps> = ({
             <span
               className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded ${zoneInfo.lightBg} ${zoneInfo.textColor} uppercase`}
             >
-              {resource.file_type}
+              {resource.file_type === 'link' ? '官方外链' : resource.file_type}
             </span>
             <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </div>

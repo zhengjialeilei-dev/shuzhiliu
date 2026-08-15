@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ArrowLeft, Edit3, FileText, FolderOpen, Loader2, Lock, LogOut, Save, Trash2, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Edit3, ExternalLink, FileText, FolderOpen, Loader2, Lock, LogOut, Save, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   deleteResource,
   deleteTeachingResource,
+  createTeachingResource,
   getAdminSession,
   getResources,
   getTeachingResources,
@@ -14,29 +15,26 @@ import {
   uploadAdminResource,
 } from '../../lib/api';
 import type { Resource, TeachingResource } from '../../lib/types';
-import { AI_CATEGORIES, ALL_RESOURCE_CATEGORIES, GAME_CATEGORY, TOOL_CATEGORY } from '../../lib/resourceCategories';
+import { ALL_RESOURCE_CATEGORIES, GAME_CATEGORY, TOOL_CATEGORY } from '../../lib/resourceCategories';
 import { formatCategoryLabel } from '../../lib/displayLabels';
+import { LabeledFile, LabeledInput, LabeledSelect, LabeledTextarea } from './AdminFields';
+import { AdminUploadPanel } from './AdminUploadPanel';
+import {
+  GRADES,
+  TEACHING_ZONES,
+  buildExternalTeachingPayload,
+  buildUploadFormData,
+  createDrafts,
+  createEmptyDraft,
+  createEmptyFiles,
+  createUploadFiles,
+  type Section,
+} from './adminUploadModel';
 
-const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '通用', '拓展'] as const;
-const TEACHING_ZONES = [
-  { id: 'standard', label: '课标' },
-  { id: 'textbook', label: '课本' },
-  { id: 'plan', label: '教案' },
-  { id: 'courseware', label: '课件' },
-] as const;
-
-type Section = 'ai' | 'games' | 'tools' | 'teaching';
 type Mode = 'upload' | 'manage';
-type ResourceForm = { title: string; description: string; category: string; grade: string; routeSlug: string };
-type TeachingForm = { title: string; description: string; zone: string };
 type EditState =
   | { type: 'resource'; id: string; title: string; description: string; category: string; grade: string; routePath: string | null }
-  | { type: 'teaching'; id: string; title: string; description: string; zone: string };
-
-const emptyAiForm: ResourceForm = { title: '', description: '', category: AI_CATEGORIES[0], grade: GRADES[0], routeSlug: '' };
-const emptyGameForm: ResourceForm = { title: '', description: '', category: GAME_CATEGORY, grade: '通用', routeSlug: '' };
-const emptyToolForm: ResourceForm = { title: '', description: '', category: TOOL_CATEGORY, grade: '通用', routeSlug: '' };
-const emptyTeachingForm: TeachingForm = { title: '', description: '', zone: TEACHING_ZONES[0].id };
+  | { type: 'teaching'; id: string; title: string; description: string; zone: string; fileUrl: string; fileType: string };
 
 export default function AdminUpload() {
   const navigate = useNavigate();
@@ -57,18 +55,8 @@ export default function AdminUpload() {
   const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
   const [regenerateEditCover, setRegenerateEditCover] = useState(false);
 
-  const [aiForm, setAiForm] = useState(emptyAiForm);
-  const [gameForm, setGameForm] = useState(emptyGameForm);
-  const [toolForm, setToolForm] = useState(emptyToolForm);
-  const [teachingForm, setTeachingForm] = useState(emptyTeachingForm);
-
-  const [aiHtmlFile, setAiHtmlFile] = useState<File | null>(null);
-  const [aiCoverFile, setAiCoverFile] = useState<File | null>(null);
-  const [gameHtmlFile, setGameHtmlFile] = useState<File | null>(null);
-  const [gameCoverFile, setGameCoverFile] = useState<File | null>(null);
-  const [toolHtmlFile, setToolHtmlFile] = useState<File | null>(null);
-  const [toolCoverFile, setToolCoverFile] = useState<File | null>(null);
-  const [teachingFile, setTeachingFile] = useState<File | null>(null);
+  const [drafts, setDrafts] = useState(createDrafts);
+  const [uploadFiles, setUploadFiles] = useState(createUploadFiles);
 
   const clearStatusSoon = useCallback(() => {
     window.setTimeout(() => setSuccess(null), 2500);
@@ -150,67 +138,24 @@ export default function AdminUpload() {
 
   const handleUpload = async (event: React.FormEvent) => {
     event.preventDefault();
+    const form = event.currentTarget as HTMLFormElement;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
     try {
-      const formData = new FormData();
-
-      if (section === 'ai') {
-        if (!aiHtmlFile) throw new Error('请上传 HTML 或 ZIP 作品文件');
-        formData.set('section', 'ai');
-        formData.set('title', aiForm.title);
-        formData.set('description', aiForm.description);
-        formData.set('category', aiForm.category);
-        formData.set('grade', aiForm.grade);
-        formData.set('routeSlug', aiForm.routeSlug);
-        formData.set('htmlFile', aiHtmlFile);
-        if (aiCoverFile) formData.set('coverFile', aiCoverFile);
+      const draft = drafts[section];
+      const isExternalTeachingLink = section === 'teaching' && draft.teachingSource === 'link';
+      if (isExternalTeachingLink) {
+        await createTeachingResource(buildExternalTeachingPayload(draft));
+      } else {
+        const formData = buildUploadFormData(section, draft, uploadFiles[section]);
+        await uploadAdminResource(formData);
       }
-
-      if (section === 'games') {
-        if (!gameHtmlFile) throw new Error('请上传 HTML 或 ZIP 作品文件');
-        formData.set('section', 'games');
-        formData.set('title', gameForm.title);
-        formData.set('description', gameForm.description);
-        formData.set('routeSlug', gameForm.routeSlug);
-        formData.set('htmlFile', gameHtmlFile);
-        if (gameCoverFile) formData.set('coverFile', gameCoverFile);
-      }
-
-      if (section === 'tools') {
-        if (!toolHtmlFile) throw new Error('请上传 HTML 或 ZIP 作品文件');
-        formData.set('section', 'tools');
-        formData.set('title', toolForm.title);
-        formData.set('description', toolForm.description);
-        formData.set('routeSlug', toolForm.routeSlug);
-        formData.set('htmlFile', toolHtmlFile);
-        if (toolCoverFile) formData.set('coverFile', toolCoverFile);
-      }
-
-      if (section === 'teaching') {
-        if (!teachingFile) throw new Error('请上传教学资源文件');
-        formData.set('section', 'teaching');
-        formData.set('title', teachingForm.title);
-        formData.set('description', teachingForm.description);
-        formData.set('zone', teachingForm.zone);
-        formData.set('teachingFile', teachingFile);
-      }
-
-      await uploadAdminResource(formData);
       await fetchLists();
-      setMessage('上传成功');
-      setAiForm(emptyAiForm);
-      setGameForm(emptyGameForm);
-      setToolForm(emptyToolForm);
-      setTeachingForm(emptyTeachingForm);
-      setAiHtmlFile(null);
-      setAiCoverFile(null);
-      setGameHtmlFile(null);
-      setGameCoverFile(null);
-      setToolHtmlFile(null);
-      setToolCoverFile(null);
-      setTeachingFile(null);
+      setMessage(isExternalTeachingLink ? '外链添加成功' : '上传成功');
+      setDrafts((current) => ({ ...current, [section]: createEmptyDraft(section) }));
+      setUploadFiles((current) => ({ ...current, [section]: createEmptyFiles() }));
+      form.reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : '上传失败');
     } finally {
@@ -243,6 +188,8 @@ export default function AdminUpload() {
       title: resource.title,
       description: resource.description,
       zone: resource.zone,
+      fileUrl: resource.file_url,
+      fileType: resource.file_type,
     });
   };
 
@@ -266,6 +213,7 @@ export default function AdminUpload() {
           title: editing.title,
           description: editing.description,
           zone: editing.zone,
+          ...(editing.fileType === 'link' ? { file_url: editing.fileUrl } : {}),
         });
       }
 
@@ -385,101 +333,25 @@ export default function AdminUpload() {
         {success && <div className="mb-4"><MessageBar tone="success" message={success} /></div>}
 
         {mode === 'upload' ? (
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-800 mb-2">
-              上传{section === 'ai' ? ' AI 应用' : section === 'games' ? '互动游戏' : section === 'tools' ? '实用工具' : '教学资源'}
-            </h2>
-            <p className="text-sm text-slate-500 mb-6">
-              单文件作品选择 HTML；包含图片、音频或脚本目录的作品请上传 ZIP，压缩包内需要有 index.html。
-            </p>
-
-            <form onSubmit={handleUpload} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <LabeledInput
-                  label="标题"
-                  value={section === 'ai' ? aiForm.title : section === 'games' ? gameForm.title : section === 'tools' ? toolForm.title : teachingForm.title}
-                  onChange={(value) => {
-                    if (section === 'ai') setAiForm((prev) => ({ ...prev, title: value }));
-                    if (section === 'games') setGameForm((prev) => ({ ...prev, title: value }));
-                    if (section === 'tools') setToolForm((prev) => ({ ...prev, title: value }));
-                    if (section === 'teaching') setTeachingForm((prev) => ({ ...prev, title: value }));
-                  }}
-                />
-                <LabeledTextarea
-                  label="描述"
-                  value={section === 'ai' ? aiForm.description : section === 'games' ? gameForm.description : section === 'tools' ? toolForm.description : teachingForm.description}
-                  onChange={(value) => {
-                    if (section === 'ai') setAiForm((prev) => ({ ...prev, description: value }));
-                    if (section === 'games') setGameForm((prev) => ({ ...prev, description: value }));
-                    if (section === 'tools') setToolForm((prev) => ({ ...prev, description: value }));
-                    if (section === 'teaching') setTeachingForm((prev) => ({ ...prev, description: value }));
-                  }}
-                />
-              </div>
-
-              {section !== 'teaching' && (
-                <LabeledInput
-                  label="作品短链接（可选）"
-                  value={section === 'ai' ? aiForm.routeSlug : section === 'games' ? gameForm.routeSlug : toolForm.routeSlug}
-                  onChange={(value) => {
-                    const routeSlug = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
-                    if (section === 'ai') setAiForm((prev) => ({ ...prev, routeSlug }));
-                    if (section === 'games') setGameForm((prev) => ({ ...prev, routeSlug }));
-                    if (section === 'tools') setToolForm((prev) => ({ ...prev, routeSlug }));
-                  }}
-                  placeholder="例如 fraction-lab，对应 /works/fraction-lab"
-                  required={false}
-                />
-              )}
-
-              {section === 'ai' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <LabeledSelect label="分类" value={aiForm.category} onChange={(value) => setAiForm((prev) => ({ ...prev, category: value }))} options={AI_CATEGORIES} />
-                  <LabeledSelect label="年级" value={aiForm.grade} onChange={(value) => setAiForm((prev) => ({ ...prev, grade: value }))} options={GRADES} />
-                  <LabeledFile label="作品文件（HTML 或 ZIP）" accept=".html,.htm,.zip" onChange={setAiHtmlFile} />
-                  <LabeledFile label="封面图片（可选，留空自动截图）" accept="image/*" onChange={setAiCoverFile} required={false} />
-                </div>
-              )}
-
-              {section === 'games' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <LabeledFile label="作品文件（HTML 或 ZIP）" accept=".html,.htm,.zip" onChange={setGameHtmlFile} />
-                  <LabeledFile label="封面图片（可选，留空自动截图）" accept="image/*" onChange={setGameCoverFile} required={false} />
-                </div>
-              )}
-
-              {section === 'tools' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <LabeledFile label="作品文件（HTML 或 ZIP）" accept=".html,.htm,.zip" onChange={setToolHtmlFile} />
-                  <LabeledFile label="封面图片（可选，留空自动截图）" accept="image/*" onChange={setToolCoverFile} required={false} />
-                </div>
-              )}
-
-              {section === 'teaching' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <LabeledSelect
-                    label="分区"
-                    value={teachingForm.zone}
-                    onChange={(value) => setTeachingForm((prev) => ({ ...prev, zone: value }))}
-                    options={TEACHING_ZONES.map((item) => item.id)}
-                    renderOption={(value) => TEACHING_ZONES.find((item) => item.id === value)?.label || value}
-                  />
-                  <LabeledFile label="教学文件" accept=".pdf,.doc,.docx,.ppt,.pptx" onChange={setTeachingFile} />
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                {submitting ? '上传中...' : '确认上传'}
-              </button>
-            </form>
-          </div>
-        ) : (
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+          <AdminUploadPanel
+            section={section}
+            draft={drafts[section]}
+            submitting={submitting}
+            onDraftChange={(patch) =>
+              setDrafts((current) => ({
+                ...current,
+                [section]: { ...current[section], ...patch },
+              }))
+            }
+            onFilesChange={(patch) =>
+              setUploadFiles((current) => ({
+                ...current,
+                [section]: { ...current[section], ...patch },
+              }))
+            }
+            onSubmit={handleUpload}
+          />
+        ) : (          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-lg font-bold text-slate-800">资源列表</h2>
@@ -610,15 +482,27 @@ export default function AdminUpload() {
                   </label>
                 </div>
               ) : (
-                <LabeledSelect
-                  label="分区"
-                  value={editing.zone}
-                  onChange={(value) =>
-                    setEditing((prev) => (prev && prev.type === 'teaching' ? { ...prev, zone: value } : prev))
-                  }
-                  options={TEACHING_ZONES.map((item) => item.id)}
-                  renderOption={(value) => TEACHING_ZONES.find((item) => item.id === value)?.label || value}
-                />
+                <div className="space-y-4">
+                  <LabeledSelect
+                    label="分区"
+                    value={editing.zone}
+                    onChange={(value) =>
+                      setEditing((prev) => (prev && prev.type === 'teaching' ? { ...prev, zone: value } : prev))
+                    }
+                    options={TEACHING_ZONES.map((item) => item.id)}
+                    renderOption={(value) => TEACHING_ZONES.find((item) => item.id === value)?.label || value}
+                  />
+                  {editing.fileType === 'link' ? (
+                    <LabeledInput
+                      label="官方资源链接"
+                      type="url"
+                      value={editing.fileUrl}
+                      onChange={(fileUrl) =>
+                        setEditing((prev) => (prev && prev.type === 'teaching' ? { ...prev, fileUrl } : prev))
+                      }
+                    />
+                  ) : null}
+                </div>
               )}
             </div>
             <div className="flex gap-3 mt-8">
@@ -688,114 +572,9 @@ function MessageBar({ tone, message }: { tone: 'error' | 'success'; message: str
   const base =
     tone === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700';
   return (
-    <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 ${base}`}>
+    <div role="status" aria-live="polite" className={`flex items-center gap-2 rounded-2xl border px-4 py-3 ${base}`}>
       <AlertCircle className="w-4 h-4" />
       {message}
-    </div>
-  );
-}
-
-function LabeledInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-  required = true,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  required?: boolean;
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-bold text-slate-700">{label}</label>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-slate-200"
-        required={required}
-      />
-    </div>
-  );
-}
-
-function LabeledTextarea({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-bold text-slate-700">{label}</label>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl border border-slate-200 h-24 resize-none"
-        required
-      />
-    </div>
-  );
-}
-
-function LabeledSelect({
-  label,
-  value,
-  onChange,
-  options,
-  renderOption,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: readonly string[];
-  renderOption?: (value: string) => string;
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-bold text-slate-700">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
-      >
-        {options.map((item) => (
-          <option key={item} value={item}>
-            {renderOption ? renderOption(item) : item}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function LabeledFile({
-  label,
-  accept,
-  onChange,
-  required = true,
-}: {
-  label: string;
-  accept: string;
-  onChange: (file: File | null) => void;
-  required?: boolean;
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-bold text-slate-700">{label}</label>
-      <input
-        type="file"
-        accept={accept}
-        onChange={(e) => onChange(e.target.files?.[0] || null)}
-        className="block w-full text-sm text-slate-500 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-slate-50 file:text-slate-700 cursor-pointer border border-slate-200 rounded-xl"
-        required={required}
-      />
     </div>
   );
 }
@@ -865,7 +644,7 @@ function TeachingListItem({
   return (
     <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
       <div className="w-16 h-16 rounded-xl bg-sky-100 flex items-center justify-center">
-        <FileText className="w-8 h-8 text-sky-600" />
+        {fileType === 'link' ? <ExternalLink className="w-8 h-8 text-sky-600" /> : <FileText className="w-8 h-8 text-sky-600" />}
       </div>
       <div className="flex-1 min-w-0">
         <h3 className="font-bold text-slate-800 truncate">{title}</h3>
@@ -873,7 +652,7 @@ function TeachingListItem({
         <div className="flex items-center gap-2 mt-1">
           <span className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-600">{zone}</span>
           <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 uppercase">
-            {fileType}
+            {fileType === 'link' ? '官方外链' : fileType}
           </span>
         </div>
       </div>
