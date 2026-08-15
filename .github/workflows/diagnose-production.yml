@@ -1,0 +1,61 @@
+name: Diagnose MathFlow Production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout deployment tools
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/scripts
+
+      - name: Inspect production deployment state
+        env:
+          Tencent_SecretId: ${{ secrets.TENCENT_SECRET_ID }}
+          Tencent_SecretKey: ${{ secrets.TENCENT_SECRET_KEY }}
+        run: |
+          cat > "$RUNNER_TEMP/diagnose-production.sh" <<'SCRIPT'
+          set -u
+
+          echo '=== CLOCK ==='
+          date --iso-8601=seconds
+          uptime
+
+          echo '=== DEPLOYMENT PROCESSES ==='
+          ps -eo pid,ppid,etime,stat,args | grep -E \
+            'mathflow|docker (compose|build)|buildx|npm (ci|install)|flock' \
+            | grep -v grep || true
+
+          echo '=== DEPLOYMENT LOCKS ==='
+          if command -v lslocks >/dev/null 2>&1; then
+            lslocks | grep -E 'mathflow|COMMAND' || true
+          else
+            echo 'lslocks is unavailable'
+          fi
+
+          echo '=== CONTAINERS ==='
+          docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' || true
+
+          echo '=== DOCKER STORAGE ==='
+          docker system df || true
+
+          echo '=== DEPLOYMENT DIRECTORIES ==='
+          du -sh /opt/1panel/apps/mathflow-sparkaiedu/github-deploy* 2>/dev/null || true
+          stat -c '%y %s %n' \
+            /opt/1panel/www/sites/sparkaiedu.com/index/index.html 2>/dev/null || true
+
+          echo '=== DISK ==='
+          df -h / /var/lib/docker 2>/dev/null || df -h /
+          SCRIPT
+
+          python .github/scripts/run_tat_command.py \
+            --command-file "$RUNNER_TEMP/diagnose-production.sh" \
+            --name diagnose-mathflow-production \
+            --description "Read-only MathFlow production diagnostics" \
+            --timeout 120
