@@ -30,21 +30,12 @@ TERMINAL_FAILURES = {
     "CANCELLED",
     "TERMINATED",
 }
-ACTIVE_INVOCATION_STATUSES = {
-    "PENDING",
-    "DELIVERING",
-    "DELIVER_DELAYED",
-    "RUNNING",
-}
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--command-file", required=True, type=Path)
     parser.add_argument("--name", required=True)
     parser.add_argument("--description", default="GitHub Actions deployment")
     parser.add_argument("--timeout", type=int, default=900)
-    parser.add_argument("--cancel-stale-description-prefix")
     return parser.parse_args()
 
 
@@ -113,48 +104,10 @@ def call_tat(action: str, body: dict, secret_id: str, secret_key: str) -> dict:
     return result
 
 
-def cancel_stale_invocations(
-    description_prefix: str, secret_id: str, secret_key: str
-) -> None:
-    result = call_tat(
-        "DescribeInvocations",
-        {"Offset": 0, "Limit": 100},
-        secret_id,
-        secret_key,
-    )
-    for invocation in result.get("InvocationSet", []):
-        description = invocation.get("Description", "")
-        status = invocation.get("InvocationStatus", "")
-        invocation_id = invocation.get("InvocationId")
-        if (
-            not invocation_id
-            or not description.startswith(description_prefix)
-            or status not in ACTIVE_INVOCATION_STATUSES
-        ):
-            continue
-
-        call_tat(
-            "CancelInvocation",
-            {"InvocationId": invocation_id, "InstanceIds": [INSTANCE_ID]},
-            secret_id,
-            secret_key,
-        )
-        print(
-            f"Cancelled stale Tencent TAT invocation: {invocation_id} ({status})",
-            flush=True,
-        )
-
-
 def main() -> None:
     args = parse_args()
     secret_id = os.environ["Tencent_SecretId"]
     secret_key = os.environ["Tencent_SecretKey"]
-    if args.cancel_stale_description_prefix:
-        cancel_stale_invocations(
-            args.cancel_stale_description_prefix,
-            secret_id,
-            secret_key,
-        )
     command = args.command_file.read_bytes()
     result = call_tat(
         "RunCommand",

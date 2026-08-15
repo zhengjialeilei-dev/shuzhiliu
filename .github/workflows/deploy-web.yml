@@ -189,5 +189,4 @@ jobs:
             --command-file "$RUNNER_TEMP/deploy.sh" \
             --name deploy-mathflow-web \
             --description "Deploy MathFlow commit $GITHUB_SHA" \
-            --cancel-stale-description-prefix "Deploy MathFlow commit " \
             --timeout 1800
