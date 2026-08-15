@@ -21,3 +21,5 @@ npm run dev
 ```bash
 npm run build
 ```
+
+构建结束后会自动把 CSS 与 JavaScript 内联到 `dist/index.html`。该单文件发布物可在不授予同源权限的沙箱 iframe 中运行，不依赖对象存储的跨域模块加载。
