@@ -49,12 +49,15 @@ jobs:
         run: |
           ARCHIVE_TAR="$RUNNER_TEMP/mathflow-$GITHUB_SHA.tar"
           ARCHIVE_FILE="$ARCHIVE_TAR.gz"
-          git archive --format=tar --output="$ARCHIVE_TAR" "$GITHUB_SHA" -- . \
+          echo "Creating deployment archive from the sparse working tree..."
+          git ls-files -z -- . \
             ':(exclude)apps/web/public/files/**' \
-            ':(exclude)project-library/**'
+            ':(exclude)project-library/**' \
+            | tar --null --files-from=- --create --file="$ARCHIVE_TAR"
           tar --append --file="$ARCHIVE_TAR" \
             --exclude='apps/web/dist/files' apps/web/dist
           gzip "$ARCHIVE_TAR"
+          du -h "$ARCHIVE_FILE"
 
           {
             printf "ENV_FILE='%s'\n" "/opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu/deploy/.env"
@@ -82,6 +85,7 @@ jobs:
           echo "::add-mask::$PUT_URL"
           echo "::add-mask::$GET_URL"
           echo "::add-mask::$DELETE_URL"
+          echo "Uploading deployment archive to Tencent COS..."
           curl --fail --silent --show-error --request PUT --upload-file "$ARCHIVE_FILE" "$PUT_URL"
 
           {
@@ -180,6 +184,7 @@ jobs:
           SCRIPT
           } > "$RUNNER_TEMP/deploy.sh"
 
+          echo "Dispatching production deployment through Tencent TAT..."
           python .github/scripts/run_tat_command.py \
             --command-file "$RUNNER_TEMP/deploy.sh" \
             --name deploy-mathflow-web \
