@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: deploy-web-main
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy-web:
@@ -22,7 +22,7 @@ jobs:
           filter: blob:none
           sparse-checkout: |
             /*
-            !/apps/web/public/files/textbooks/
+            !/apps/web/public/files/
             !/project-library/
           sparse-checkout-cone-mode: false
 
@@ -49,9 +49,11 @@ jobs:
         run: |
           ARCHIVE_TAR="$RUNNER_TEMP/mathflow-$GITHUB_SHA.tar"
           ARCHIVE_FILE="$ARCHIVE_TAR.gz"
-          git archive --format=tar --output="$ARCHIVE_TAR" "$GITHUB_SHA"
+          git archive --format=tar --output="$ARCHIVE_TAR" "$GITHUB_SHA" -- . \
+            ':(exclude)apps/web/public/files/**' \
+            ':(exclude)project-library/**'
           tar --append --file="$ARCHIVE_TAR" \
-            --exclude='apps/web/dist/files/textbooks' apps/web/dist
+            --exclude='apps/web/dist/files' apps/web/dist
           gzip "$ARCHIVE_TAR"
 
           {
@@ -88,6 +90,11 @@ jobs:
             printf "DELETE_URL='%s'\n" "$DELETE_URL"
             cat <<'SCRIPT'
           set -euo pipefail
+
+          # A cancelled Actions runner cannot stop an already dispatched TAT command.
+          # Serialize deployments on the server so overlapping runs cannot replace each other.
+          exec 9>/tmp/mathflow-deploy.lock
+          flock --wait 1800 9
 
           SOURCE_ROOT=/opt/1panel/apps/mathflow-sparkaiedu/github-deploy
           NEXT_SOURCE_ROOT=/opt/1panel/apps/mathflow-sparkaiedu/github-deploy.next

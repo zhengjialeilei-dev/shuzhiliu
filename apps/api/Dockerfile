@@ -6,10 +6,14 @@ RUN sed -i \
       /etc/apk/repositories \
     && apk add --no-cache chromium font-noto-cjk
 
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/package.json
+RUN npm config set registry https://registry.npmmirror.com \
+  && npm ci --omit=dev --workspace=@mathflow/api \
+    --include-workspace-root=false --no-audit --no-fund
+
 COPY apps/api apps/api
 
 WORKDIR /app/apps/api
-RUN npm config set registry https://registry.npmmirror.com \
-  && npm install --omit=dev --no-audit --no-fund
 
 CMD ["npm", "run", "start"]
