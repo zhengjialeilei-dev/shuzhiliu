@@ -1,6 +1,7 @@
 import type { AtlasFilters, DynastyFilter, Poem, RegionId, ThemeFilter } from "../core/types";
 import { dynastyFilters, poems, regions, themeFilters } from "../data/poems";
 import { PoetryMap } from "../services/student-map";
+import { getSceneVisual } from "../services/scene-visual";
 import { BrowserNarrator, type Narrator } from "../services/narration";
 
 export class PoetryAtlasApp {
@@ -112,6 +113,7 @@ export class PoetryAtlasApp {
             <div class="scene-ridge scene-ridge-near" aria-hidden="true"></div>
             <div class="scene-water" aria-hidden="true"></div>
             <div class="scene-weather" aria-hidden="true"></div>
+            <div class="scene-motif" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
             <div class="scene-landmark" aria-hidden="true"><i></i><i></i><i></i></div>
             <div class="scene-boat" aria-hidden="true"><i></i></div>
             <div class="scene-verse">
@@ -264,8 +266,11 @@ export class PoetryAtlasApp {
     this.stopNarration();
     const sceneIndex = poems.findIndex((item) => item.id === poem.id) + 1;
     const canvas = this.requireElement<HTMLElement>("#scene-canvas");
+    const visual = getSceneVisual(poem);
     canvas.dataset.scene = poem.scene.preset;
+    canvas.dataset.composition = visual.composition;
     canvas.dataset.verseLength = poem.lines.length >= 6 ? "long" : "standard";
+    canvas.setAttribute("aria-label", `《${poem.title}》诗境：${visual.description}`);
     this.requireElement("#scene-number").textContent = String(sceneIndex).padStart(2, "0");
     this.requireElement("#scene-title").textContent = poem.title;
     this.requireElement("#scene-byline").textContent = `${poem.dynasty} · ${poem.author} · ${poem.location.name}`;

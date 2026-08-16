@@ -1623,6 +1623,354 @@ body.scene-open {
   display: none;
 }
 
+/* Poem-specific scene grammar. Each composition combines the shared ink layers differently. */
+.scene-motif {
+  position: absolute;
+  z-index: 7;
+  inset: 0;
+  pointer-events: none;
+  color: var(--scene-ink);
+  filter: drop-shadow(0 12px 16px rgba(18, 31, 29, 0.2));
+}
+
+.scene-motif i,
+.scene-motif i::before,
+.scene-motif i::after {
+  position: absolute;
+  display: none;
+  content: "";
+}
+
+/* 草堂、田园与花径 */
+[data-composition="rain-cottage"] .scene-motif i:nth-child(1),
+[data-composition="broken-hut"] .scene-motif i:nth-child(1),
+[data-composition="chrysanthemum-field"] .scene-motif i:nth-child(1),
+[data-composition="spring-window"] .scene-motif i:nth-child(1),
+[data-composition="flower-path"] .scene-motif i:nth-child(1),
+[data-composition="moon-farm"] .scene-motif i:nth-child(1) {
+  display: block;
+  left: 16%;
+  bottom: 17%;
+  width: 124px;
+  height: 88px;
+  background: color-mix(in srgb, var(--scene-ink) 86%, #9c6b3e);
+  clip-path: polygon(0 34%, 18% 34%, 18% 23%, 48% 0, 82% 24%, 100% 30%, 88% 41%, 88% 100%, 11% 100%, 11% 43%);
+}
+
+[data-composition="broken-hut"] .scene-motif i:nth-child(1) {
+  transform: rotate(-3deg);
+  clip-path: polygon(0 39%, 16% 36%, 18% 25%, 38% 4%, 51% 20%, 65% 6%, 83% 27%, 100% 34%, 87% 44%, 87% 100%, 10% 100%, 10% 47%);
+}
+
+[data-composition="rain-cottage"] .scene-motif i:nth-child(2),
+[data-composition="chrysanthemum-field"] .scene-motif i:nth-child(2),
+[data-composition="spring-window"] .scene-motif i:nth-child(2),
+[data-composition="flower-path"] .scene-motif i:nth-child(2),
+[data-composition="moon-farm"] .scene-motif i:nth-child(2) {
+  display: block;
+  left: 9%;
+  bottom: 17%;
+  width: 54px;
+  height: 126px;
+  border-radius: 52% 44% 28% 30%;
+  background: var(--scene-ink-soft);
+  clip-path: polygon(43% 100%, 47% 62%, 8% 60%, 34% 42%, 11% 37%, 41% 25%, 28% 11%, 53% 21%, 65% 0, 69% 26%, 100% 18%, 77% 42%, 100% 55%, 62% 61%, 58% 100%);
+}
+
+[data-composition="chrysanthemum-field"] .scene-motif i:nth-child(3),
+[data-composition="flower-path"] .scene-motif i:nth-child(3) {
+  display: block;
+  left: 3%;
+  right: 0;
+  bottom: 9%;
+  height: 24%;
+  opacity: 0.9;
+  background-image:
+    radial-gradient(circle, #f1d476 0 4px, transparent 5px),
+    radial-gradient(circle, #e79a87 0 3px, transparent 4px),
+    radial-gradient(circle, #f6e4a3 0 4px, transparent 5px);
+  background-position: 8px 18px, 34px 3px, 57px 30px;
+  background-size: 73px 54px, 91px 68px, 112px 61px;
+}
+
+[data-composition="spring-window"] .scene-motif i:nth-child(3) {
+  display: block;
+  left: 23%;
+  bottom: 24%;
+  width: 50px;
+  height: 35px;
+  border: 5px solid #dfbf75;
+  background: linear-gradient(90deg, transparent 45%, #dfbf75 46% 54%, transparent 55%), linear-gradient(transparent 45%, #dfbf75 46% 54%, transparent 55%);
+}
+
+[data-composition="moon-farm"] .scene-motif i:nth-child(3) {
+  display: block;
+  left: -5%;
+  right: -5%;
+  bottom: 2%;
+  height: 27%;
+  opacity: 0.65;
+  background: repeating-linear-gradient(168deg, transparent 0 20px, rgba(240, 217, 158, 0.58) 21px 23px, transparent 24px 38px);
+}
+
+/* 城门、宫阙、江楼与寺院 */
+[data-composition="city-gate"] .scene-motif i:nth-child(1),
+[data-composition="palace-rider"] .scene-motif i:nth-child(1),
+[data-composition="flute-city"] .scene-motif i:nth-child(1),
+[data-composition="palace-court"] .scene-motif i:nth-child(1),
+[data-composition="riverside-city"] .scene-motif i:nth-child(1),
+[data-composition="ruined-city"] .scene-motif i:nth-child(1),
+[data-composition="willow-inn"] .scene-motif i:nth-child(1),
+[data-composition="jiangnan-temple"] .scene-motif i:nth-child(1) {
+  display: block;
+  left: 0;
+  right: 0;
+  bottom: 16%;
+  height: 72px;
+  opacity: 0.9;
+  background:
+    linear-gradient(90deg, transparent 0 8%, var(--scene-ink) 8% 25%, transparent 25% 29%, var(--scene-ink) 29% 45%, transparent 45% 51%, var(--scene-ink) 51% 72%, transparent 72% 77%, var(--scene-ink) 77% 94%, transparent 94%),
+    linear-gradient(0deg, var(--scene-ink) 0 42%, transparent 43%);
+  clip-path: polygon(0 33%, 8% 33%, 10% 12%, 23% 12%, 26% 33%, 31% 33%, 34% 4%, 42% 4%, 46% 33%, 54% 33%, 57% 15%, 68% 15%, 72% 33%, 78% 33%, 81% 8%, 91% 8%, 94% 33%, 100% 33%, 100% 100%, 0 100%);
+}
+
+[data-composition="ruined-city"] .scene-motif i:nth-child(1) {
+  opacity: 0.62;
+  clip-path: polygon(0 48%, 7% 45%, 10% 18%, 22% 23%, 26% 52%, 34% 50%, 37% 10%, 43% 17%, 48% 57%, 58% 50%, 61% 22%, 70% 31%, 74% 52%, 84% 48%, 88% 17%, 94% 29%, 100% 33%, 100% 100%, 0 100%);
+}
+
+[data-composition="willow-inn"] .scene-motif i:nth-child(2) {
+  display: block;
+  left: 9%;
+  bottom: 15%;
+  width: 90px;
+  height: 190px;
+  border-left: 8px solid var(--scene-ink);
+  border-radius: 55% 0 0 0;
+  transform: rotate(-5deg);
+  box-shadow: -18px -15px 0 -11px var(--scene-ink-soft);
+}
+
+[data-composition="willow-inn"] .scene-motif i:nth-child(2)::before {
+  display: block;
+  left: -34px;
+  top: 14px;
+  width: 118px;
+  height: 136px;
+  border-radius: 52%;
+  background: repeating-linear-gradient(100deg, transparent 0 11px, var(--scene-ink-soft) 12px 15px, transparent 16px 24px);
+  transform: rotate(8deg);
+}
+
+[data-composition="jiangnan-temple"] .scene-motif i:nth-child(2) {
+  display: block;
+  right: 16%;
+  bottom: 17%;
+  width: 60px;
+  height: 166px;
+  background: var(--scene-ink);
+  clip-path: polygon(20% 100%, 20% 32%, 0 32%, 50% 18%, 100% 32%, 80% 32%, 80% 18%, 12% 18%, 50% 0, 88% 18%, 80% 100%);
+}
+
+/* 蜀道、关河与峰顶 */
+[data-composition="perilous-road"] .scene-motif i:nth-child(1) {
+  display: block;
+  right: 9%;
+  bottom: 15%;
+  width: 42%;
+  height: 68%;
+  border: 8px solid rgba(235, 210, 159, 0.86);
+  border-left-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 52% 48% 15% 50%;
+  transform: rotate(-17deg);
+  clip-path: polygon(0 0, 100% 0, 100% 26%, 38% 30%, 82% 49%, 26% 55%, 66% 72%, 13% 80%, 40% 100%, 0 100%);
+}
+
+[data-composition="perilous-road"] .scene-motif i:nth-child(2) {
+  display: block;
+  right: 10%;
+  bottom: 31%;
+  width: 142px;
+  height: 16px;
+  border: 4px solid #b78955;
+  background: repeating-linear-gradient(90deg, #6b4b34 0 10px, #b78955 11px 15px);
+  transform: rotate(-13deg);
+}
+
+[data-composition="river-pass"] .scene-motif i:nth-child(1) {
+  display: block;
+  right: 10%;
+  bottom: 20%;
+  width: 116px;
+  height: 88px;
+  border: 9px solid var(--scene-ink);
+  border-bottom-width: 22px;
+  background: transparent;
+  clip-path: polygon(0 22%, 18% 22%, 23% 0, 77% 0, 82% 22%, 100% 22%, 100% 100%, 63% 100%, 61% 54%, 39% 54%, 37% 100%, 0 100%);
+}
+
+[data-composition="summit"] .scene-ridge-far,
+[data-composition="mountain-festival"] .scene-ridge-far {
+  height: 68%;
+  clip-path: polygon(0 100%, 0 90%, 18% 72%, 35% 75%, 56% 6%, 69% 54%, 83% 68%, 100% 85%, 100% 100%);
+}
+
+[data-composition="layered-mountain"] .scene-ridge-far {
+  opacity: 0.42;
+  filter: blur(5px);
+  transform: translateX(5%);
+}
+
+/* 边塞营帐、雪路与马迹 */
+[data-composition="frontier-camp"] .scene-motif i:nth-child(1),
+[data-composition="snow-horses"] .scene-motif i:nth-child(1) {
+  display: block;
+  left: 16%;
+  bottom: 17%;
+  width: 132px;
+  height: 78px;
+  background: color-mix(in srgb, var(--scene-ink) 82%, #a36a3d);
+  clip-path: polygon(0 100%, 48% 0, 100% 100%, 72% 100%, 49% 45%, 28% 100%);
+}
+
+[data-composition="frontier-camp"] .scene-motif i:nth-child(2) {
+  display: block;
+  left: 35%;
+  bottom: 17%;
+  width: 44px;
+  height: 70px;
+  background: linear-gradient(90deg, transparent 43%, #6e4630 44% 56%, transparent 57%), radial-gradient(ellipse at 50% 80%, #e9683f 0 23%, #eaa94f 24% 45%, transparent 46%);
+  animation: campfire-pulse 1.2s ease-in-out infinite alternate;
+}
+
+[data-composition="snow-horses"] .scene-motif i:nth-child(2) {
+  display: block;
+  left: 40%;
+  right: 5%;
+  bottom: 7%;
+  height: 38%;
+  opacity: 0.55;
+  background-image: radial-gradient(ellipse, #6d716d 0 6px, transparent 7px), radial-gradient(ellipse, #6d716d 0 5px, transparent 6px);
+  background-position: 0 0, 38px 42px;
+  background-size: 82px 82px;
+  transform: rotate(-17deg);
+}
+
+/* 松林、返照与桃花潭 */
+[data-composition="pine-stream"] .scene-motif i:nth-child(1),
+[data-composition="deep-forest"] .scene-motif i:nth-child(1),
+[data-composition="peach-shore"] .scene-motif i:nth-child(1) {
+  display: block;
+  left: 0;
+  right: 0;
+  bottom: 16%;
+  height: 55%;
+  opacity: 0.82;
+  background:
+    linear-gradient(62deg, transparent 46%, var(--scene-ink) 47% 51%, transparent 52%) 10% 100% / 150px 230px repeat-x,
+    linear-gradient(-62deg, transparent 46%, var(--scene-ink-soft) 47% 51%, transparent 52%) 50px 100% / 180px 190px repeat-x;
+  clip-path: polygon(0 100%, 0 72%, 7% 72%, 13% 15%, 20% 72%, 27% 72%, 34% 3%, 41% 72%, 51% 72%, 58% 22%, 65% 72%, 74% 72%, 82% 0, 90% 72%, 100% 72%, 100% 100%);
+}
+
+[data-composition="deep-forest"] .scene-sky {
+  top: 32%;
+  right: 20%;
+  width: 82px;
+  opacity: 0.8;
+}
+
+[data-composition="peach-shore"] .scene-motif i:nth-child(2) {
+  display: block;
+  left: 2%;
+  right: 1%;
+  bottom: 20%;
+  height: 48%;
+  opacity: 0.92;
+  background-image: radial-gradient(circle, #efb3ac 0 5px, transparent 6px), radial-gradient(circle, #f2c2ba 0 4px, transparent 5px);
+  background-position: 8px 10px, 42px 36px;
+  background-size: 84px 76px, 107px 91px;
+}
+
+/* 针对共享预设，重新安排水面、舟船和楼阁。 */
+.scene-landmark { display: none; }
+.scene-boat { display: none; }
+
+[data-composition="city-gate"] .scene-landmark,
+[data-composition="palace-rider"] .scene-landmark,
+[data-composition="flute-city"] .scene-landmark,
+[data-composition="palace-court"] .scene-landmark,
+[data-composition="riverside-city"] .scene-landmark,
+[data-composition="river-tower-sunset"] .scene-landmark,
+[data-composition="white-emperor-boat"] .scene-landmark,
+[data-composition="crane-tower-boat"] .scene-landmark,
+[data-composition="ruined-city"] .scene-landmark,
+[data-composition="west-lake"] .scene-landmark,
+[data-composition="jiangnan-temple"] .scene-landmark {
+  display: block;
+}
+
+[data-composition="moon-boat"] .scene-boat,
+[data-composition="white-emperor-boat"] .scene-boat,
+[data-composition="crane-tower-boat"] .scene-boat,
+[data-composition="river-gate-boat"] .scene-boat,
+[data-composition="peach-shore"] .scene-boat,
+[data-composition="homeward-route"] .scene-boat,
+[data-composition="red-cliff"] .scene-boat,
+[data-composition="west-lake"] .scene-boat,
+[data-composition="autumn-river"] .scene-boat {
+  display: block;
+}
+
+[data-composition="white-emperor-boat"] .scene-water,
+[data-composition="river-gate-boat"] .scene-water,
+[data-composition="homeward-route"] .scene-water,
+[data-composition="autumn-river"] .scene-water,
+[data-composition="red-cliff"] .scene-water,
+[data-composition="west-lake"] .scene-water,
+[data-composition="pine-stream"] .scene-water {
+  display: block;
+}
+
+[data-composition="river-gate-boat"] .scene-ridge-near {
+  clip-path: polygon(0 100%, 0 32%, 25% 18%, 43% 53%, 50% 100%, 55% 100%, 61% 50%, 77% 20%, 100% 34%, 100% 100%);
+}
+
+[data-composition="red-cliff"] .scene-ridge-near {
+  background: #4b302d;
+  clip-path: polygon(0 100%, 0 22%, 22% 9%, 38% 41%, 52% 100%, 58% 100%, 69% 43%, 81% 15%, 100% 25%, 100% 100%);
+}
+
+[data-composition="storm-lake"] .scene-cloud-one {
+  top: 3%;
+  left: -6%;
+  width: 92%;
+  height: 34%;
+  opacity: 0.78;
+  background: radial-gradient(ellipse, #263b40, transparent 68%);
+}
+
+[data-composition="mid-autumn"] .scene-sky {
+  top: 12%;
+  right: 16%;
+  width: clamp(108px, 14vw, 168px);
+}
+
+.scene-canvas[data-composition="west-lake"] { --scene-sky: #8ca9a7; --scene-horizon: #d3cbb1; }
+.scene-canvas[data-composition="peach-shore"] { --scene-sky: #b7c9b2; --scene-horizon: #e4c5ae; --scene-disc: #f2c66e; }
+.scene-canvas[data-composition="spring-window"] { --scene-sky: #9dbbb1; --scene-horizon: #e6d697; --scene-disc: #f3ca65; }
+.scene-canvas[data-composition="flower-path"] { --scene-sky: #a9c4ad; --scene-horizon: #e8c58f; --scene-disc: #f0bf62; }
+.scene-canvas[data-composition="ruined-city"] { --scene-sky: #7b8580; --scene-horizon: #b69b77; --scene-disc: #c85843; }
+.scene-canvas[data-composition="red-cliff"] { --scene-sky: #54676b; --scene-horizon: #a77b63; --scene-disc: #de774e; }
+.scene-canvas[data-composition="pine-stream"] { --scene-sky: #55766e; --scene-horizon: #9eb19c; --scene-disc: #e8d9a7; }
+.scene-canvas[data-composition="deep-forest"] { --scene-sky: #304e49; --scene-horizon: #718a72; --scene-disc: #e0b966; }
+.scene-canvas[data-composition="moon-farm"] { --scene-sky: #3c5355; --scene-horizon: #8d8a6e; --scene-disc: #eee0b1; }
+
+@keyframes campfire-pulse {
+  from { transform: scale(0.92) translateY(2px); filter: brightness(0.9); }
+  to { transform: scale(1.06); filter: brightness(1.16); }
+}
+
 .scene-verse {
   position: absolute;
   z-index: 12;
