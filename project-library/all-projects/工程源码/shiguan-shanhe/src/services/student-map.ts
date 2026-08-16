@@ -1,50 +1,31 @@
 import L, {
-  type GeoJSON as LeafletGeoJSON,
   type Layer,
   type Map as LeafletMap,
   type Marker,
-  type Path,
   type Polyline,
 } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { Feature, FeatureCollection, Geometry } from "geojson";
-import chinaReliefUrl from "../assets/china-relief-natural-earth.jpg?inline";
 import poetRiderSpriteUrl from "../assets/poet-rider-sprite.png?inline";
-import chinaGeoJson from "../data/china.geo.json";
+import tangDynastyMapUrl from "../assets/tang-dynasty-map-ccby.png?inline";
 import type { JourneyStop, Poem, RegionOption } from "../core/types";
 
-type ProvinceFeature = Feature<Geometry, { name?: string }>;
+const TANG_MAP_WIDTH = 1752;
+const TANG_MAP_HEIGHT = 1245;
+const TANG_MAP_BOUNDS = L.latLngBounds([0, 0], [TANG_MAP_HEIGHT, TANG_MAP_WIDTH]);
+const TANG_CORE_BOUNDS = L.latLngBounds(
+  [TANG_MAP_HEIGHT - 1080, 540],
+  [TANG_MAP_HEIGHT - 300, 1540]
+);
 
-const chinaCollection = chinaGeoJson as FeatureCollection<Geometry, { name?: string }>;
-const CHINA_BOUNDS = L.latLngBounds([17.5, 73.2], [53.8, 134.8]);
-const RELIEF_BOUNDS = L.latLngBounds([16, 70], [56, 138]);
-
-const RIVERS = [
-  {
-    name: "黄河",
-    color: "#4ba6c8",
-    labelAt: [37.6, 109.2] as L.LatLngTuple,
-    points: [[35.1, 96.2], [35.6, 99.3], [36.5, 103.2], [37.5, 105], [39.2, 106.4], [40.4, 108.2], [40.7, 111.1], [39.1, 111.7], [37.4, 111.1], [35.8, 110.5], [34.7, 112.1], [34.9, 114.1], [36.2, 116.1], [37.1, 118.4], [37.8, 119.3]] as L.LatLngTuple[],
-  },
-  {
-    name: "长江",
-    color: "#398eb7",
-    labelAt: [29.4, 109.1] as L.LatLngTuple,
-    points: [[33.1, 91.2], [32.1, 94.5], [31.2, 97.1], [29.6, 99.8], [28.5, 101.7], [28.8, 103.4], [29.4, 105], [29.8, 106.6], [30.7, 108.8], [30.9, 111.3], [30.4, 113.4], [30.6, 115.3], [29.9, 117.2], [30.8, 119.3], [31.2, 121.6]] as L.LatLngTuple[],
-  },
-] as const;
-
-const TERRAIN_NOTES = [
-  { label: "天山", position: [43.1, 84.8] as L.LatLngTuple, kind: "mountain" },
-  { label: "祁连山", position: [38.4, 98.4] as L.LatLngTuple, kind: "mountain" },
-  { label: "秦岭", position: [33.7, 108.2] as L.LatLngTuple, kind: "mountain" },
-  { label: "太行山", position: [37.2, 113.8] as L.LatLngTuple, kind: "mountain" },
-  { label: "江南水乡", position: [29.2, 119.0] as L.LatLngTuple, kind: "water" },
-  { label: "巴蜀山川", position: [30.0, 103.0] as L.LatLngTuple, kind: "forest" },
-] as const;
-
-function toLatLng(coordinates: readonly [number, number]): L.LatLngTuple {
-  return [coordinates[1], coordinates[0]];
+/**
+ * Affine calibration from geographic coordinates to this historical map's pixels.
+ * Control points: Dunhuang, Lanzhou, Chang'an, Beijing, Guangzhou and Hangzhou.
+ */
+function toTangLatLng(coordinates: readonly [number, number]): L.LatLng {
+  const [longitude, latitude] = coordinates;
+  const x = 19.644801 * longitude + 0.53138 * latitude - 1013.11182;
+  const y = -2.160393 * longitude - 30.133224 * latitude + 1968.592459;
+  return L.latLng(TANG_MAP_HEIGHT - y, x);
 }
 
 function escapeHtml(value: string): string {
@@ -65,13 +46,10 @@ export interface JourneyPlaybackEvents {
 export class PoetryMap {
   private readonly map: LeafletMap;
   private readonly canvasRenderer = L.canvas({ padding: 0.4, tolerance: 7 });
-  private readonly provinceLayer: LeafletGeoJSON;
-  private readonly provinceElements = new Map<string, Path>();
   private readonly markerElements = new Map<string, Marker>();
   private readonly resizeObserver: ResizeObserver;
   private visiblePoems: readonly Poem[] = [];
   private activePoemId = "";
-  private activeRegion?: RegionOption;
   private routeVisible = true;
   private routeLayer?: Polyline;
   private journeyLayers: Layer[] = [];
@@ -85,15 +63,16 @@ export class PoetryMap {
     private readonly onPoemSelect: (poemId: string) => void
   ) {
     this.host.classList.add("student-poetry-map");
-    this.host.setAttribute("aria-label", "可缩放、可离线使用的中国古诗研学地图");
+    this.host.setAttribute("aria-label", "可缩放、可离线使用的唐朝古诗研学地图");
 
     this.map = L.map(this.host, {
-      center: [35.2, 104.4],
-      zoom: 4,
-      minZoom: 3,
-      maxZoom: 9,
-      zoomSnap: 0.5,
-      zoomDelta: 0.5,
+      crs: L.CRS.Simple,
+      center: toTangLatLng([105, 35]),
+      zoom: 0,
+      minZoom: -1.25,
+      maxZoom: 3,
+      zoomSnap: 0.25,
+      zoomDelta: 0.75,
       wheelPxPerZoomLevel: 95,
       zoomControl: false,
       attributionControl: false,
@@ -103,28 +82,18 @@ export class PoetryMap {
       markerZoomAnimation: true,
       inertia: true,
       inertiaDeceleration: 3800,
-      maxBounds: CHINA_BOUNDS.pad(0.28),
+      maxBounds: TANG_MAP_BOUNDS.pad(0.04),
       maxBoundsViscosity: 0.78,
     });
 
     this.createPanes();
-    L.imageOverlay(chinaReliefUrl, RELIEF_BOUNDS, {
+    L.imageOverlay(tangDynastyMapUrl, TANG_MAP_BOUNDS, {
       pane: "baseMapPane",
-      opacity: 0.82,
+      opacity: 0.96,
       interactive: false,
-      className: "student-relief-image",
-    }).addTo(this.map);
-    this.provinceLayer = L.geoJSON(chinaCollection, {
-      pane: "provincePane",
-      interactive: false,
-      style: (feature) => this.provinceStyle(feature as ProvinceFeature | undefined),
-      onEachFeature: (feature, layer) => {
-        const name = (feature as ProvinceFeature).properties?.name?.trim();
-        if (name && layer instanceof L.Path) this.provinceElements.set(name, layer);
-      },
+      className: "tang-history-image",
     }).addTo(this.map);
 
-    this.addOfflineGeography();
     this.buildMarkers();
     this.addOfflineBadge();
     this.resetView(false);
@@ -147,7 +116,6 @@ export class PoetryMap {
   }): void {
     this.visiblePoems = options.visiblePoems;
     this.activePoemId = options.activePoemId;
-    this.activeRegion = options.activeRegion;
     this.routeVisible = options.routeVisible;
     this.paintState();
   }
@@ -160,8 +128,8 @@ export class PoetryMap {
   }
 
   focusPoem(poem: Poem): void {
-    const targetZoom = Math.max(6.2, Math.min(7, this.map.getZoom() + 1.5));
-    this.map.flyTo(toLatLng(poem.location.coordinates), targetZoom, {
+    const targetZoom = Math.max(1.25, Math.min(2.25, this.map.getZoom() + 1.25));
+    this.map.flyTo(toTangLatLng(poem.location.coordinates), targetZoom, {
       animate: true,
       duration: 0.52,
       easeLinearity: 0.22,
@@ -178,8 +146,11 @@ export class PoetryMap {
   }
 
   resetView(animate = true): void {
-    const wideViewport = this.host.clientWidth / Math.max(this.host.clientHeight, 1) > 1.55;
-    this.map.setView([35.2, 104.4], wideViewport ? 5 : 4, { animate, duration: animate ? 0.5 : 0 });
+    this.map.fitBounds(TANG_CORE_BOUNDS, {
+      animate,
+      duration: animate ? 0.5 : 0,
+      padding: this.host.clientWidth < 720 ? [8, 8] : [20, 20],
+    });
   }
 
   playJourney(poem: Poem, events: JourneyPlaybackEvents): void {
@@ -188,7 +159,7 @@ export class PoetryMap {
 
     this.journeyActive = true;
     this.drawRoute();
-    const stops = poem.journey.map((stop) => L.latLng(toLatLng(stop.coordinates)));
+    const stops = poem.journey.map((stop) => toTangLatLng(stop.coordinates));
     const totalDistance = stops.slice(1).reduce((sum, point, index) => sum + stops[index].distanceTo(point), 0);
     if (totalDistance <= 0) return;
 
@@ -205,7 +176,7 @@ export class PoetryMap {
     this.journeyLayers.push(path);
 
     const stopMarkers = poem.journey.map((stop, index) => {
-      const circle = L.circleMarker(toLatLng(stop.coordinates), {
+      const circle = L.circleMarker(toTangLatLng(stop.coordinates), {
         pane: "journeyPane",
         renderer: this.canvasRenderer,
         radius: 8,
@@ -214,7 +185,7 @@ export class PoetryMap {
         fillColor: "#e3683d",
         fillOpacity: 0.98,
       }).addTo(this.map);
-      const label = L.marker(toLatLng(stop.coordinates), {
+      const label = L.marker(toTangLatLng(stop.coordinates), {
         pane: "journeyPane",
         interactive: false,
         icon: L.divIcon({
@@ -248,7 +219,7 @@ export class PoetryMap {
     this.map.flyToBounds(L.latLngBounds(stops), {
       paddingTopLeft: [190, 120],
       paddingBottomRight: [190, 150],
-      maxZoom: 6.5,
+      maxZoom: 1.75,
       duration: 0.65,
     });
 
@@ -322,53 +293,10 @@ export class PoetryMap {
   }
 
   private createPanes(): void {
-    const paneLevels = { baseMapPane: 210, provincePane: 330, riverPane: 360, decorationPane: 390, routePane: 420, poemMarkerPane: 510, journeyPane: 560, travelerPane: 610 } as const;
+    const paneLevels = { baseMapPane: 210, routePane: 420, poemMarkerPane: 510, journeyPane: 560, travelerPane: 610 } as const;
     Object.entries(paneLevels).forEach(([name, zIndex]) => {
       const pane = this.map.createPane(name);
       pane.style.zIndex = String(zIndex);
-    });
-  }
-
-  private addOfflineGeography(): void {
-    RIVERS.forEach((river) => {
-      L.polyline(river.points, {
-        pane: "riverPane",
-        renderer: this.canvasRenderer,
-        color: "#d9f4ef",
-        opacity: 0.65,
-        weight: 3.5,
-        lineCap: "round",
-        smoothFactor: 2,
-        interactive: false,
-      }).addTo(this.map);
-      L.polyline(river.points, {
-        pane: "riverPane",
-        renderer: this.canvasRenderer,
-        color: river.color,
-        opacity: 0.7,
-        weight: 1.6,
-        lineCap: "round",
-        smoothFactor: 2,
-        interactive: false,
-      }).addTo(this.map);
-      L.marker(river.labelAt, {
-        pane: "decorationPane",
-        interactive: false,
-        icon: L.divIcon({ className: "student-river-label-shell", html: `<span>${river.name}</span>` }),
-      }).addTo(this.map);
-    });
-
-    TERRAIN_NOTES.forEach((note) => {
-      L.marker(note.position, {
-        pane: "decorationPane",
-        interactive: false,
-        icon: L.divIcon({
-          className: "student-terrain-note-shell",
-          html: `<span class="student-terrain-note is-${note.kind}"><i></i><b>${note.label}</b></span>`,
-          iconSize: [74, 50],
-          iconAnchor: [37, 25],
-        }),
-      }).addTo(this.map);
     });
   }
 
@@ -376,33 +304,15 @@ export class PoetryMap {
     const badge = new L.Control({ position: "bottomright" });
     badge.onAdd = () => {
       const element = L.DomUtil.create("div", "student-map-badge");
-      element.innerHTML = "<b>离线自然地形</b><span>Made with Natural Earth</span>";
+      element.innerHTML = "<b>唐朝疆域图 · 离线</b><span>玖巧仔 · CC BY 3.0</span>";
       return element;
     };
     badge.addTo(this.map);
   }
 
-  private provinceStyle(feature?: ProvinceFeature): L.PathOptions {
-    const name = feature?.properties?.name?.trim() ?? "";
-    const regionProvinces = new Set(this.activeRegion?.provinces ?? []);
-    const activePoem = this.poems.find((poem) => poem.id === this.activePoemId);
-    const isActive = activePoem?.location.province === name;
-    const isRegion = regionProvinces.has(name);
-    return {
-      renderer: this.canvasRenderer,
-      color: isActive ? "#bd4934" : isRegion ? "#376f62" : "rgba(66, 82, 66, 0.62)",
-      weight: isActive ? 3 : isRegion ? 2 : 1.05,
-      opacity: name ? 1 : 0,
-      fillColor: isActive ? "#f08a4b" : isRegion ? "#8bc0a2" : "#fff7dc",
-      fillOpacity: isActive ? 0.3 : isRegion ? 0.16 : 0.045,
-      lineCap: "round",
-      lineJoin: "round",
-    };
-  }
-
   private buildMarkers(): void {
     this.poems.forEach((poem) => {
-      const marker = L.marker(toLatLng(poem.location.coordinates), {
+      const marker = L.marker(toTangLatLng(poem.location.coordinates), {
         pane: "poemMarkerPane",
         keyboard: true,
         riseOnHover: true,
@@ -435,7 +345,6 @@ export class PoetryMap {
       if (!visible && onMap) marker.remove();
       marker.getElement()?.classList.toggle("is-active", id === this.activePoemId);
     });
-    this.provinceLayer.setStyle((feature) => this.provinceStyle(feature as ProvinceFeature | undefined));
     this.drawRoute();
   }
 
@@ -446,7 +355,7 @@ export class PoetryMap {
     const routePoems = [...this.visiblePoems]
       .sort((a, b) => a.location.coordinates[0] - b.location.coordinates[0])
       .slice(0, 12);
-    this.routeLayer = L.polyline(routePoems.map((poem) => toLatLng(poem.location.coordinates)), {
+    this.routeLayer = L.polyline(routePoems.map((poem) => toTangLatLng(poem.location.coordinates)), {
       pane: "routePane",
       renderer: this.canvasRenderer,
       color: "#db6542",

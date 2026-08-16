@@ -1,0 +1,8 @@
+唐朝疆域（简） / Tang Dynasty territory map (Simplified Chinese)
+
+Author: 玖巧仔 (Jiu Qiaozai)
+Source: https://commons.wikimedia.org/wiki/File:唐朝疆域（简）.png
+License: Creative Commons Attribution 3.0 Unported (CC BY 3.0)
+License URL: https://creativecommons.org/licenses/by/3.0/
+
+Local modification: bundled offline and displayed beneath the interactive poetry markers.

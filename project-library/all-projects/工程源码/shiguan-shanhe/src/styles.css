@@ -2440,9 +2440,8 @@ body.scene-open {
 .student-poetry-map .leaflet-map-pane { z-index: 1; }
 .student-poetry-map.leaflet-container:active { cursor: grabbing; }
 .student-poetry-map .leaflet-overlay-pane canvas { filter: drop-shadow(0 7px 6px rgba(70, 83, 53, 0.14)); }
-.student-poetry-map .student-relief-image {
-  mix-blend-mode: multiply;
-  filter: saturate(0.92) contrast(0.94) brightness(1.05);
+.student-poetry-map .tang-history-image {
+  filter: saturate(0.92) contrast(0.98) brightness(1.02);
 }
 
 .student-map-badge {
