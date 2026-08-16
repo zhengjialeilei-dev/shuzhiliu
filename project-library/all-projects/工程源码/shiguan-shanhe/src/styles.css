@@ -381,6 +381,96 @@ button:focus-visible,
   animation: route-flow 16s linear infinite, route-appear 800ms ease both;
 }
 
+.active-journey {
+  fill: none;
+  stroke: #d45c49;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 5px rgba(169, 59, 46, 0.55));
+}
+
+.journey-stop {
+  opacity: 0.34;
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.journey-stop-ring {
+  fill: rgba(246, 231, 196, 0.88);
+  stroke: #8b352c;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.journey-stop-core {
+  fill: #8b352c;
+}
+
+.journey-stop-number {
+  fill: #735441;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.journey-stop-label {
+  opacity: 0;
+  transform: translate(14px, -12px) translateY(4px);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.journey-stop-label rect {
+  fill: rgba(32, 49, 46, 0.94);
+  stroke: rgba(247, 223, 181, 0.4);
+}
+
+.journey-stop-label text {
+  fill: #fae9c9;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.journey-stop.is-visited {
+  opacity: 0.82;
+}
+
+.journey-stop.is-active {
+  opacity: 1;
+}
+
+.journey-stop.is-active .journey-stop-ring {
+  fill: #f6deb0;
+  stroke: #a93b2e;
+  animation: journey-stop-pulse 1.25s ease-in-out infinite;
+}
+
+.journey-stop.is-active .journey-stop-label {
+  opacity: 1;
+  transform: translate(14px, -12px) translateY(0);
+}
+
+.journey-traveler {
+  pointer-events: none;
+  filter: drop-shadow(0 3px 6px rgba(38, 27, 22, 0.38));
+}
+
+.traveler-aura {
+  fill: rgba(236, 197, 129, 0.22);
+  stroke: rgba(250, 222, 169, 0.7);
+  animation: traveler-breathe 1.2s ease-in-out infinite;
+}
+
+.traveler-ring {
+  fill: #f2d59f;
+  stroke: #7f2f27;
+  stroke-width: 1.8;
+}
+
+.traveler-mark {
+  fill: #a93b2e;
+}
+
 @keyframes route-flow {
   to { stroke-dashoffset: -130; }
 }
@@ -472,6 +562,115 @@ button:focus-visible,
   font-size: 0.63rem;
   letter-spacing: 0.12em;
   pointer-events: none;
+}
+
+.journey-player {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  bottom: 79px;
+  width: min(500px, calc(100% - 44px));
+  padding: 13px 17px 0;
+  color: #273d39;
+  border: 1px solid rgba(98, 71, 48, 0.22);
+  background: rgba(242, 231, 207, 0.94);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 17px 44px rgba(58, 43, 29, 0.18);
+  transform: translateX(-50%);
+  animation: journey-player-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.journey-player[hidden] {
+  display: none;
+}
+
+.journey-player-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(83, 68, 51, 0.14);
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.64rem;
+}
+
+.journey-player-heading > span {
+  color: #a33d31;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.journey-player-heading > b {
+  color: #766650;
+  font-weight: 600;
+}
+
+.journey-player-heading button {
+  margin-left: auto;
+  padding: 3px 0 3px 12px;
+  color: #8b745b;
+  border: 0;
+  border-left: 1px solid rgba(83, 68, 51, 0.18);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.64rem;
+}
+
+.journey-player-content {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 10px;
+  align-items: center;
+  min-height: 61px;
+}
+
+.journey-player-content > span {
+  color: #a33d31;
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.journey-player-content b,
+.journey-player-content p {
+  display: block;
+  margin: 0;
+}
+
+.journey-player-content b {
+  font-size: 0.86rem;
+  letter-spacing: 0.08em;
+}
+
+.journey-player-content p {
+  margin-top: 4px;
+  overflow: hidden;
+  color: #786c5b;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.65rem;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.journey-progress-track {
+  height: 3px;
+  margin-inline: -17px;
+  background: rgba(92, 78, 60, 0.14);
+}
+
+.journey-progress-track i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: #a93b2e;
+}
+
+.journey-player.is-changing .journey-player-content > div {
+  animation: journey-copy-change 380ms ease both;
+}
+
+.journey-player.is-complete .journey-progress-track i {
+  background: #6f7658;
 }
 
 .map-caption i {
@@ -1598,6 +1797,52 @@ body.scene-open {
   display: block;
 }
 
+.journey-start-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 22px;
+  padding: 14px 2px 14px 0;
+  color: #173330;
+  border: 0;
+  border-top: 1px solid rgba(76, 64, 48, 0.16);
+  border-bottom: 1px solid rgba(76, 64, 48, 0.16);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.journey-start-button span,
+.journey-start-button small,
+.journey-start-button b {
+  display: block;
+}
+
+.journey-start-button small {
+  color: #9b8264;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+}
+
+.journey-start-button b {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+}
+
+.journey-start-button i {
+  color: #a33d31;
+  font-style: normal;
+  font-size: 1.35rem;
+  transition: transform 220ms ease;
+}
+
+.journey-start-button:hover i {
+  transform: translateX(5px);
+}
+
 .scene-geography small {
   color: #9b8264;
   font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
@@ -1625,6 +1870,10 @@ body.scene-open {
 @keyframes waterfall-flow { to { opacity: 0.54; transform: scaleX(1.13); } }
 @keyframes boat-float { 50% { transform: translate(8px, -4px) rotate(-1deg); } }
 @keyframes sound-wave { to { height: 15px; } }
+@keyframes journey-stop-pulse { 50% { r: 14px; opacity: 0.45; } }
+@keyframes traveler-breathe { 50% { r: 22px; opacity: 0.38; } }
+@keyframes journey-player-in { from { opacity: 0; transform: translate(-50%, 12px); } }
+@keyframes journey-copy-change { from { opacity: 0; transform: translateY(5px); } }
 
 @media (max-width: 820px) {
   .scene-theatre {
@@ -1668,6 +1917,20 @@ body.scene-open {
 
   .scene-origin {
     font-size: 0.84rem;
+  }
+
+  .journey-player {
+    bottom: 70px;
+    width: calc(100% - 20px);
+    padding-inline: 13px;
+  }
+
+  .journey-progress-track {
+    margin-inline: -13px;
+  }
+
+  .journey-player-content p {
+    white-space: normal;
   }
 }
 

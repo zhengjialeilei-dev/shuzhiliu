@@ -1,7 +1,7 @@
 import { geoMercator, geoPath, type GeoProjection } from "d3-geo";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import chinaGeoJson from "../data/china.geo.json";
-import type { Poem, RegionOption } from "../core/types";
+import type { JourneyStop, Poem, RegionOption } from "../core/types";
 import { normalizeMapCollection } from "./geo";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -14,10 +14,16 @@ function svgElement<K extends keyof SVGElementTagNameMap>(name: K): SVGElementTa
   return document.createElementNS(SVG_NS, name);
 }
 
+export interface JourneyPlaybackEvents {
+  onProgress: (progress: number, stopIndex: number, stop: JourneyStop) => void;
+  onComplete: () => void;
+}
+
 export class PoetryMap {
   private readonly svg = svgElement("svg");
   private readonly provinceLayer = svgElement("g");
   private readonly routeLayer = svgElement("g");
+  private readonly journeyLayer = svgElement("g");
   private readonly markerLayer = svgElement("g");
   private readonly projection: GeoProjection = geoMercator();
   private readonly path = geoPath(this.projection);
@@ -28,6 +34,8 @@ export class PoetryMap {
   private activePoemId = "";
   private activeRegion?: RegionOption;
   private routeVisible = true;
+  private journeyFrame?: number;
+  private journeyActive = false;
 
   constructor(
     private readonly host: HTMLElement,
@@ -54,8 +62,9 @@ export class PoetryMap {
       </defs>`;
     this.provinceLayer.classList.add("province-layer");
     this.routeLayer.classList.add("route-layer");
+    this.journeyLayer.classList.add("journey-layer");
     this.markerLayer.classList.add("marker-layer");
-    this.svg.append(this.provinceLayer, this.routeLayer, this.markerLayer);
+    this.svg.append(this.provinceLayer, this.routeLayer, this.journeyLayer, this.markerLayer);
     this.host.append(this.svg);
 
     this.buildProvinces();
@@ -79,7 +88,89 @@ export class PoetryMap {
   }
 
   dispose(): void {
+    this.stopJourney();
     this.resizeObserver.disconnect();
+  }
+
+  playJourney(poem: Poem, events: JourneyPlaybackEvents): void {
+    this.stopJourney();
+    const projectedStops = poem.journey
+      .map((stop) => ({ stop, point: this.projection(stop.coordinates) }))
+      .filter((item): item is { stop: JourneyStop; point: [number, number] } => Boolean(item.point));
+    if (projectedStops.length < 2) return;
+
+    this.journeyActive = true;
+    this.drawRoute();
+    const path = svgElement("path");
+    path.classList.add("active-journey");
+    path.setAttribute("d", this.createJourneyPath(projectedStops.map((item) => item.point)));
+    this.journeyLayer.append(path);
+
+    const stopElements = projectedStops.map(({ stop, point }, index) => {
+      const group = svgElement("g");
+      group.classList.add("journey-stop");
+      group.setAttribute("transform", `translate(${point[0]} ${point[1]})`);
+      group.innerHTML = `
+        <circle class="journey-stop-ring" r="10"></circle>
+        <circle class="journey-stop-core" r="3.5"></circle>
+        <text class="journey-stop-number" text-anchor="middle" y="-15">${String(index + 1).padStart(2, "0")}</text>
+        <g class="journey-stop-label" transform="translate(14 -12)">
+          <rect width="${Math.max(64, stop.label.length * 15 + 20)}" height="27" rx="4"></rect>
+          <text x="9" y="18">${stop.label}</text>
+        </g>`;
+      this.journeyLayer.append(group);
+      return group;
+    });
+
+    const traveler = svgElement("g");
+    traveler.classList.add("journey-traveler");
+    traveler.innerHTML = `
+      <circle class="traveler-aura" r="17"></circle>
+      <circle class="traveler-ring" r="8"></circle>
+      <path class="traveler-mark" d="M -3 -4 L 5 0 L -3 4 Z"></path>`;
+    this.journeyLayer.append(traveler);
+
+    const length = path.getTotalLength();
+    path.style.strokeDasharray = String(length);
+    path.style.strokeDashoffset = String(length);
+    const duration = Math.min(10500, Math.max(5200, projectedStops.length * 1750));
+    const startedAt = performance.now();
+    let lastStopIndex = -1;
+
+    const animate = (time: number): void => {
+      const progress = Math.min(1, Math.max(0, (time - startedAt) / duration));
+      const point = path.getPointAtLength(length * progress);
+      traveler.setAttribute("transform", `translate(${point.x} ${point.y})`);
+      path.style.strokeDashoffset = String(length * (1 - progress));
+
+      const stopIndex = Math.min(projectedStops.length - 1, Math.floor(progress * projectedStops.length));
+      stopElements.forEach((element, index) => {
+        element.classList.toggle("is-visited", index <= stopIndex);
+        element.classList.toggle("is-active", index === stopIndex);
+      });
+      if (stopIndex !== lastStopIndex) {
+        lastStopIndex = stopIndex;
+        events.onProgress(progress, stopIndex, projectedStops[stopIndex].stop);
+      } else {
+        events.onProgress(progress, stopIndex, projectedStops[stopIndex].stop);
+      }
+
+      if (progress < 1) {
+        this.journeyFrame = requestAnimationFrame(animate);
+      } else {
+        this.journeyFrame = undefined;
+        events.onComplete();
+      }
+    };
+    this.journeyFrame = requestAnimationFrame(animate);
+  }
+
+  stopJourney(): void {
+    if (this.journeyFrame !== undefined) cancelAnimationFrame(this.journeyFrame);
+    this.journeyFrame = undefined;
+    this.journeyActive = false;
+    this.journeyLayer.replaceChildren();
+    this.drawRoute();
   }
 
   private buildProvinces(): void {
@@ -173,6 +264,7 @@ export class PoetryMap {
 
   private drawRoute(): void {
     this.routeLayer.replaceChildren();
+    if (this.journeyActive) return;
     if (!this.routeVisible || this.visiblePoems.length < 2) return;
 
     const ordered = [...this.visiblePoems]
@@ -193,5 +285,15 @@ export class PoetryMap {
     }, "");
     line.setAttribute("d", pathData);
     this.routeLayer.append(line);
+  }
+
+  private createJourneyPath(points: readonly [number, number][]): string {
+    return points.reduce((result, point, index) => {
+      if (index === 0) return `M ${point[0]} ${point[1]}`;
+      const previous = points[index - 1];
+      const midX = (previous[0] + point[0]) / 2;
+      const curve = Math.min(28, Math.abs(point[0] - previous[0]) * 0.08 + 8);
+      return `${result} Q ${midX} ${Math.min(previous[1], point[1]) - curve} ${point[0]} ${point[1]}`;
+    }, "");
   }
 }

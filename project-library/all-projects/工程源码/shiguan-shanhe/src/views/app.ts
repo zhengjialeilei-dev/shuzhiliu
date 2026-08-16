@@ -52,6 +52,18 @@ export class PoetryAtlasApp {
               </button>
             </div>
             <div id="map-host" class="map-host"></div>
+            <div id="journey-player" class="journey-player" aria-live="polite" hidden>
+              <div class="journey-player-heading">
+                <span>诗人行旅</span>
+                <b id="journey-title"></b>
+                <button type="button" data-action="stop-journey">结束</button>
+              </div>
+              <div class="journey-player-content">
+                <span id="journey-step-number">01</span>
+                <div><b id="journey-stop-name"></b><p id="journey-stop-note"></p></div>
+              </div>
+              <div class="journey-progress-track"><i id="journey-progress"></i></div>
+            </div>
             <div class="map-caption" aria-hidden="true">
               <span>西域</span><i></i><span>中原</span><i></i><span>江南</span>
             </div>
@@ -124,6 +136,10 @@ export class PoetryAtlasApp {
               <p id="narration-status" aria-live="polite">使用系统中文语音，可随时停止</p>
             </div>
             <div class="scene-geography"><small>山河坐标</small><b id="scene-route"></b></div>
+            <button type="button" class="journey-start-button" data-action="play-journey">
+              <span><small>沿地图出发</small><b>播放诗人行旅</b></span>
+              <i aria-hidden="true">→</i>
+            </button>
           </section>
         </article>
       </dialog>`;
@@ -136,6 +152,7 @@ export class PoetryAtlasApp {
   private bindEvents(): void {
     this.root.querySelectorAll<HTMLButtonElement>("[data-region]").forEach((button) => {
       button.addEventListener("click", () => {
+        this.stopJourney();
         this.filters.region = button.dataset.region as RegionId;
         this.reconcileSelection();
         this.render();
@@ -143,6 +160,7 @@ export class PoetryAtlasApp {
     });
     this.root.querySelectorAll<HTMLButtonElement>("[data-dynasty]").forEach((button) => {
       button.addEventListener("click", () => {
+        this.stopJourney();
         this.filters.dynasty = button.dataset.dynasty as DynastyFilter;
         this.reconcileSelection();
         this.render();
@@ -150,6 +168,7 @@ export class PoetryAtlasApp {
     });
     this.root.querySelectorAll<HTMLButtonElement>("[data-theme]").forEach((button) => {
       button.addEventListener("click", () => {
+        this.stopJourney();
         this.filters.theme = button.dataset.theme as ThemeFilter;
         this.reconcileSelection();
         this.render();
@@ -163,6 +182,8 @@ export class PoetryAtlasApp {
     const dialog = this.requireElement<HTMLDialogElement>("#scene-dialog");
     this.requireElement<HTMLButtonElement>('[data-action="close-scene"]').addEventListener("click", () => dialog.close());
     this.requireElement<HTMLButtonElement>('[data-action="narrate-origin"]').addEventListener("click", () => this.toggleNarration());
+    this.requireElement<HTMLButtonElement>('[data-action="play-journey"]').addEventListener("click", () => this.startJourney());
+    this.requireElement<HTMLButtonElement>('[data-action="stop-journey"]').addEventListener("click", () => this.stopJourney());
     dialog.addEventListener("click", (event) => {
       if (event.target === dialog) dialog.close();
     });
@@ -183,6 +204,7 @@ export class PoetryAtlasApp {
   }
 
   private selectPoem(poemId: string): void {
+    this.stopJourney();
     this.activePoemId = poemId;
     this.render();
   }
@@ -271,6 +293,7 @@ export class PoetryAtlasApp {
     this.requireElement("#scene-lines").innerHTML = poem.lines.map((line) => `<span>${line}</span>`).join("");
     this.requireElement("#scene-origin").textContent = poem.scene.origin;
     this.requireElement("#scene-route").textContent = poem.routeNote;
+    this.requireElement<HTMLElement>("[data-action=\"play-journey\"] small").textContent = `${poem.journey.length}站 · 沿地图出发`;
     this.updateNarrationUi();
 
     const dialog = this.requireElement<HTMLDialogElement>("#scene-dialog");
@@ -301,6 +324,50 @@ export class PoetryAtlasApp {
         this.updateNarrationUi("当前浏览器无法调用中文语音，请直接阅读上方来历");
       }
     });
+  }
+
+  private startJourney(): void {
+    const poem = this.scenePoem;
+    if (!poem || !this.map) return;
+    const dialog = this.requireElement<HTMLDialogElement>("#scene-dialog");
+    if (dialog.open) dialog.close();
+    this.requireElement<HTMLElement>(".map-stage").scrollIntoView({ behavior: "smooth", block: "start" });
+
+    const player = this.requireElement<HTMLElement>("#journey-player");
+    player.hidden = false;
+    player.classList.remove("is-complete");
+    this.requireElement("#journey-title").textContent = `《${poem.title}》`;
+    this.requireElement("#journey-stop-name").textContent = poem.journey[0]?.label ?? poem.location.name;
+    this.requireElement("#journey-stop-note").textContent = poem.journey[0]?.note ?? poem.context;
+    this.requireElement("#journey-step-number").textContent = "01";
+    this.requireElement<HTMLElement>("#journey-progress").style.width = "0%";
+
+    let activeStopIndex = -1;
+    this.map.playJourney(poem, {
+      onProgress: (progress, stopIndex, stop) => {
+        this.requireElement<HTMLElement>("#journey-progress").style.width = `${Math.round(progress * 100)}%`;
+        if (stopIndex === activeStopIndex) return;
+        activeStopIndex = stopIndex;
+        this.requireElement("#journey-step-number").textContent = String(stopIndex + 1).padStart(2, "0");
+        this.requireElement("#journey-stop-name").textContent = stop.label;
+        this.requireElement("#journey-stop-note").textContent = stop.note;
+        player.classList.remove("is-changing");
+        void player.offsetWidth;
+        player.classList.add("is-changing");
+      },
+      onComplete: () => {
+        player.classList.add("is-complete");
+        this.requireElement<HTMLButtonElement>('[data-action="stop-journey"]').textContent = "完成";
+      }
+    });
+  }
+
+  private stopJourney(): void {
+    this.map?.stopJourney();
+    const player = this.root.querySelector<HTMLElement>("#journey-player");
+    if (player) player.hidden = true;
+    const stopButton = this.root.querySelector<HTMLButtonElement>('[data-action="stop-journey"]');
+    if (stopButton) stopButton.textContent = "结束";
   }
 
   private stopNarration(): void {

@@ -23,6 +23,13 @@ export const poems: readonly Poem[] = [
     location: { name: "峨眉山", province: "四川省", coordinates: [103.49, 29.60] },
     context: "青年李白离蜀远游，从清溪沿江东下。短短四句连续点出五处地名，把月色、江流与行旅合成一条诗路。",
     routeNote: "峨眉山 → 平羌江 → 清溪 → 三峡 → 渝州",
+    journey: [
+      { label: "峨眉山", coordinates: [103.49, 29.60], note: "半轮秋月从峨眉山升起，成为整段远行的精神坐标。" },
+      { label: "平羌江", coordinates: [103.76, 29.55], note: "月影进入江流，山景开始转化为舟行视角。" },
+      { label: "清溪", coordinates: [103.75, 29.56], note: "夜里从清溪出发，李白正式踏上离蜀远游之路。" },
+      { label: "三峡", coordinates: [110.32, 30.92], note: "诗人的目光越过险峻三峡，指向更辽阔的世界。" },
+      { label: "渝州", coordinates: [106.55, 29.57], note: "舟过渝州，故乡山月仍伴随诗人的思念。" },
+    ],
     scene: { preset: "moon-river", moment: "秋月随舟，江声送远", origin: "这首诗大约写于李白二十六岁离开蜀地远游之时。他从清溪乘舟东下，将故乡的山月一路带入三峡。密集出现的地名，记录了真实行程，也写出青年诗人初次远行时对故土与友人的留恋。" },
   },
   {
@@ -36,6 +43,12 @@ export const poems: readonly Poem[] = [
     location: { name: "剑门关", province: "四川省", coordinates: [105.46, 32.21] },
     context: "秦蜀之间山势险峻，古栈道穿越秦岭与大巴山。诗歌以夸张和想象，把交通地理转化为惊心动魄的空间体验。",
     routeNote: "长安 → 秦岭 → 剑阁 → 成都",
+    journey: [
+      { label: "长安", coordinates: [108.94, 34.27], note: "从关中遥望蜀地，旅途尚未开始，险阻已在想象中铺开。" },
+      { label: "秦岭", coordinates: [107.70, 33.82], note: "层峦阻隔南北，古道在高山之间盘旋。" },
+      { label: "剑阁", coordinates: [105.46, 32.21], note: "剑门一夫当关，成为蜀道险峻最鲜明的象征。" },
+      { label: "成都", coordinates: [104.06, 30.67], note: "穿过群山抵达成都，艰难诗路终于进入蜀地平原。" },
+    ],
     scene: { preset: "mountain-pass", moment: "危峰压栈道，云气入剑门", origin: "《蜀道难》的具体写作时间与赠送对象历来有不同说法。较稳妥的理解是：李白借秦蜀古道的险峻展开浪漫想象，以神话、夸张和急促节奏写出入蜀之难，也寄托了对旅人前途的忧虑。" },
   },
   {
@@ -49,6 +62,11 @@ export const poems: readonly Poem[] = [
     location: { name: "成都草堂", province: "四川省", coordinates: [104.03, 30.66] },
     context: "成都平原水网密布、农事繁盛。杜甫在草堂听春雨入夜，把一场地方气候写成温柔而有生命力的诗境。",
     routeNote: "浣花溪畔 · 成都草堂",
+    journey: [
+      { label: "成都草堂", coordinates: [104.03, 30.66], note: "春夜安静，诗人在草堂听见细雨潜入。" },
+      { label: "浣花溪", coordinates: [104.01, 30.65], note: "雨水滋润溪畔花木，也滋养成都平原的农事。" },
+      { label: "锦官城", coordinates: [104.07, 30.67], note: "天明之后，整座锦官城都将开满湿润而沉重的花。" },
+    ],
     scene: { preset: "spring-rain", moment: "锦官城夜，细雨润花", origin: "唐肃宗上元二年，杜甫居住在成都草堂，生活暂时安定。一个春夜，他听见及时而轻柔的雨声，想到田野与花木将因此滋润，于是写下这首喜悦而克制的咏雨诗。" },
   },
   {
@@ -62,6 +80,11 @@ export const poems: readonly Poem[] = [
     location: { name: "浣花溪", province: "四川省", coordinates: [104.01, 30.65] },
     context: "秋风破屋的现实处境，由个人寒苦推向天下寒士。草堂这一具体地点，因此成为理解杜甫家国情怀的重要坐标。",
     routeNote: "成都西郊 · 浣花溪",
+    journey: [
+      { label: "浣花溪", coordinates: [104.01, 30.65], note: "秋风骤起，溪畔草堂的茅草被卷走。" },
+      { label: "成都草堂", coordinates: [104.03, 30.66], note: "夜雨漏入屋中，诗人由自身寒苦想到天下寒士。" },
+      { label: "天下广厦", coordinates: [105.30, 31.10], note: "诗路从现实地点走向理想：愿所有寒士都能得到庇护。" },
+    ],
     scene: { preset: "autumn-wind", moment: "秋风卷茅，长夜漏雨", origin: "唐肃宗上元二年秋，成都一场大风吹破了杜甫草堂的屋顶，随后又遇连夜秋雨。诗人从自己的困顿想到天下贫寒读书人的处境，于是发出愿得广厦、庇护寒士的愿望。" },
   },
   {
@@ -75,6 +98,11 @@ export const poems: readonly Poem[] = [
     location: { name: "长安", province: "陕西省", coordinates: [108.94, 34.27] },
     context: "诗从长安城阙望向遥远蜀地，以三秦和五津连接两地。空间距离没有放大离愁，反而衬托出开阔的友情。",
     routeNote: "长安 → 三秦 → 蜀中五津",
+    journey: [
+      { label: "长安城阙", coordinates: [108.94, 34.27], note: "送别从三秦护卫的长安城开始。" },
+      { label: "秦蜀古道", coordinates: [107.30, 33.10], note: "友人将沿山路南下，越过秦岭进入蜀地。" },
+      { label: "蜀中五津", coordinates: [104.36, 30.63], note: "遥远渡口并未隔断知己之情，天涯仍如比邻。" },
+    ],
     scene: { preset: "city-farewell", moment: "长安城外，风烟望蜀", origin: "王勃在长安送别即将前往蜀地任职的杜姓友人。面对仕途中的远行，他没有沿用低沉的送别语调，而以“海内存知己”把离别写得开朗昂扬，展现初唐士人的气度。" },
   },
   {
@@ -88,6 +116,11 @@ export const poems: readonly Poem[] = [
     location: { name: "骊山华清宫", province: "陕西省", coordinates: [109.21, 34.36] },
     context: "从长安回望骊山，宫门与驿路构成高速运送荔枝的空间线索。诗人借地景讽喻盛世背后的奢靡。",
     routeNote: "长安 → 骊山 → 华清宫",
+    journey: [
+      { label: "长安", coordinates: [108.94, 34.27], note: "诗人从长安回望，骊山宫阙如锦绣堆叠。" },
+      { label: "古驿道", coordinates: [109.06, 34.32], note: "快马扬起红尘，驿路成为权力与奢靡的通道。" },
+      { label: "华清宫", coordinates: [109.21, 34.36], note: "宫门次第开启，只为送入一篮来自南方的荔枝。" },
+    ],
     scene: { preset: "palace-road", moment: "宫门次第开，一骑入红尘", origin: "晚唐诗人杜牧经过骊山华清宫遗址，联想到唐玄宗与杨贵妃的往事。传说为让杨贵妃吃到新鲜荔枝，驿骑日夜飞驰。诗人用一个看似欢快的瞬间，讽刺统治者的奢靡。" },
   },
   {
@@ -101,6 +134,11 @@ export const poems: readonly Poem[] = [
     location: { name: "潼关", province: "陕西省", coordinates: [110.24, 34.55] },
     context: "潼关夹在群山与黄河之间，是关中东部要塞。险要地形引出王朝兴亡，也把怀古落到普通百姓身上。",
     routeNote: "华山 · 黄河 · 潼关古道",
+    journey: [
+      { label: "华山", coordinates: [110.09, 34.49], note: "峰峦层层聚合，形成潼关南面的天然屏障。" },
+      { label: "黄河", coordinates: [110.28, 34.61], note: "奔涌河水如怒涛，守住关中的北面。" },
+      { label: "潼关", coordinates: [110.24, 34.55], note: "山河夹峙的古关见证王朝兴亡，也见证百姓苦难。" },
+    ],
     scene: { preset: "yellow-river-pass", moment: "峰峦聚合，黄河怒涌", origin: "元代张养浩前往陕西赈灾，途经潼关时望见群山和黄河，又想到历代王朝在此争战兴亡。他最终没有停留在帝王故事上，而把历史结论落在百姓承受的苦难之中。" },
   },
   {
@@ -114,6 +152,11 @@ export const poems: readonly Poem[] = [
     location: { name: "洛阳城", province: "河南省", coordinates: [112.45, 34.62] },
     context: "笛声随春风散满洛阳，城市空间被声音贯通。《折杨柳》的送别意象，让陌生夜色突然连回故园。",
     routeNote: "洛水之滨 · 隋唐洛阳城",
+    journey: [
+      { label: "洛阳客舍", coordinates: [112.43, 34.66], note: "春夜里，客居的诗人忽然听见远处笛声。" },
+      { label: "洛阳城", coordinates: [112.45, 34.62], note: "声音随春风散开，仿佛传遍整座东都。" },
+      { label: "故园", coordinates: [107.40, 31.20], note: "《折杨柳》的旋律越过空间，把思绪带回故乡。" },
+    ],
     scene: { preset: "flute-night", moment: "春风满城，玉笛暗飞", origin: "李白客居洛阳的一个春夜，忽然听见不知从何处传来的笛声。笛曲中的《折杨柳》本就带有惜别怀远之意，于是满城春风触发了诗人的故园之思。" },
   },
   {
@@ -127,6 +170,11 @@ export const poems: readonly Poem[] = [
     location: { name: "洛阳", province: "河南省", coordinates: [112.50, 34.68] },
     context: "繁华东都与江头浣纱形成对照。诗歌借人物生活切开城市表面，让读者看见空间背后的社会差异。",
     routeNote: "洛阳里坊 · 东都旧梦",
+    journey: [
+      { label: "洛阳里坊", coordinates: [112.50, 34.68], note: "高门宅第、香车宝马构成东都繁华的一面。" },
+      { label: "洛水宴游", coordinates: [112.46, 34.65], note: "歌舞宴饮继续铺陈贵族生活的华美。" },
+      { label: "江头浣纱", coordinates: [120.30, 29.20], note: "视线忽然转向贫寒越女，繁华因此显出另一重意味。" },
+    ],
     scene: { preset: "luoyang-court", moment: "东都华宴，江头浣纱", origin: "王维以洛阳贵族女子的华美生活为中心，铺陈宅第、车马与宴游，又在结尾引出贫贱的越女。繁华与清贫的并置，使这首乐府旧题有了含蓄的讽意。" },
   },
   {
@@ -140,6 +188,11 @@ export const poems: readonly Poem[] = [
     location: { name: "柴桑", province: "江西省", coordinates: [115.88, 29.70] },
     context: "陶渊明归隐柴桑，庐山成为日常视野中的南山。诗境并非远游奇观，而是人与土地长期相处后的从容。",
     routeNote: "柴桑田居 · 庐山南麓",
+    journey: [
+      { label: "柴桑田居", coordinates: [115.88, 29.70], note: "归隐之后，诗人的生活回到日常田园。" },
+      { label: "东篱", coordinates: [115.90, 29.66], note: "俯身采菊的平常瞬间，让心境真正远离尘嚣。" },
+      { label: "庐山南麓", coordinates: [115.99, 29.56], note: "抬头见南山与归鸟，人与自然重新获得从容关系。" },
+    ],
     scene: { preset: "field-evening", moment: "东篱采菊，飞鸟归山", origin: "陶渊明辞去彭泽县令后回到故乡田园生活。《饮酒》组诗并非席间即兴，而是借酒抒怀。第五首写日常采菊时偶然望见南山，呈现远离尘俗后的自得心境。" },
   },
   {
@@ -153,6 +206,11 @@ export const poems: readonly Poem[] = [
     location: { name: "庐山", province: "江西省", coordinates: [115.99, 29.56] },
     context: "庐山瀑布的高度、光色和动势被层层放大。真实地貌提供尺度，诗人想象则把山水推向银河般的宇宙景观。",
     routeNote: "香炉峰 · 庐山瀑布",
+    journey: [
+      { label: "香炉峰", coordinates: [115.97, 29.55], note: "阳光照在峰顶水汽上，升起紫色烟霞。" },
+      { label: "远望瀑布", coordinates: [115.99, 29.56], note: "从远处看，瀑布仿佛一匹白练悬挂山前。" },
+      { label: "银河九天", coordinates: [116.02, 29.60], note: "想象继续升高，现实瀑布最终化作银河落下。" },
+    ],
     scene: { preset: "waterfall", moment: "紫烟升峰，银河落川", origin: "李白游览庐山时，被香炉峰瀑布在阳光中的壮丽景象吸引。他从远处观看，以“挂”写瀑布的静态轮廓，再用“飞流直下”释放动势，最终把现实山水想象为银河坠落。" },
   },
   {
@@ -166,6 +224,11 @@ export const poems: readonly Poem[] = [
     location: { name: "西林寺", province: "江西省", coordinates: [115.96, 29.57] },
     context: "行走位置改变，山形也随之改变。诗歌把庐山的多视角观察转化为认识事物的哲理。",
     routeNote: "庐山西林寺 · 移步换景",
+    journey: [
+      { label: "庐山山门", coordinates: [115.95, 29.53], note: "进入庐山，山岭首先以整体轮廓出现。" },
+      { label: "山中小径", coordinates: [115.98, 29.58], note: "随着位置变化，岭、峰、高、低不断转换。" },
+      { label: "西林寺", coordinates: [115.96, 29.57], note: "行至西林寺，诗人领悟身在局中难见全貌。" },
+    ],
     scene: { preset: "misty-mountain", moment: "移步换景，身在山中", origin: "宋神宗元丰七年，苏轼由黄州赴汝州途中游历庐山，沿途写下多首诗。这首题在西林寺墙壁上的作品，是游山将尽时的总结：观察位置不同，所见山势不同，身在局中也难见全貌。" },
   },
   {
@@ -179,6 +242,11 @@ export const poems: readonly Poem[] = [
     location: { name: "泰山", province: "山东省", coordinates: [117.12, 36.25] },
     context: "泰山雄踞齐鲁之间。诗人先从远望写起，再以登顶想象完成空间跃升，山岳成为青年志向的尺度。",
     routeNote: "齐鲁平原 → 泰山之巅",
+    journey: [
+      { label: "齐鲁平原", coordinates: [116.60, 36.10], note: "诗人从平原远望，泰山横亘齐鲁大地。" },
+      { label: "泰山中天门", coordinates: [117.10, 36.23], note: "云气与归鸟让山体从静景转为充满生命的空间。" },
+      { label: "泰山之巅", coordinates: [117.12, 36.25], note: "想象中的登顶，把远望转化为青年人的进取志向。" },
+    ],
     scene: { preset: "high-mountain", moment: "云生胸壑，极目绝顶", origin: "青年杜甫漫游齐赵时远望泰山，写下现存最早的一批代表作之一。诗中视线由远及近、由山下推向想象中的峰顶，“会当凌绝顶”展现了尚未登临却敢于攀登的青年气概。" },
   },
   {
@@ -192,6 +260,11 @@ export const poems: readonly Poem[] = [
     location: { name: "凉州", province: "甘肃省", coordinates: [102.64, 37.93] },
     context: "河西走廊连通中原与西域，物产、乐器和军旅在此交会。宴饮的热烈与征战的残酷被压缩在同一瞬间。",
     routeNote: "河西走廊 · 凉州边城",
+    journey: [
+      { label: "河西走廊", coordinates: [101.80, 38.10], note: "中原与西域的物产、音乐和军旅在走廊中汇聚。" },
+      { label: "凉州军营", coordinates: [102.64, 37.93], note: "葡萄酒、夜光杯与琵琶营造热烈的出征宴饮。" },
+      { label: "边塞沙场", coordinates: [101.30, 39.10], note: "宴饮之外便是沙场，豪迈中始终藏着征战的残酷。" },
+    ],
     scene: { preset: "frontier-night", moment: "琵琶催饮，夜杯映火", origin: "《凉州词》是配合西北边地乐调歌唱的歌词。王翰把葡萄酒、夜光杯、琵琶和战马汇入军中宴饮，以豪放近乎旷达的口吻，写出将士明知征战危险仍纵情一饮的复杂心情。" },
   },
   {
@@ -205,6 +278,11 @@ export const poems: readonly Poem[] = [
     location: { name: "轮台", province: "新疆维吾尔自治区", coordinates: [86.17, 41.78] },
     context: "西域严寒与归京送别共同构成诗歌张力。雪景从奇丽比喻转为山路尽头的一行马迹，空间也从开阔收束到留白。",
     routeNote: "轮台 → 天山雪路 → 长安",
+    journey: [
+      { label: "轮台军营", coordinates: [86.17, 41.78], note: "北风卷地，大雪在军营外铺开奇丽景象。" },
+      { label: "天山雪路", coordinates: [88.20, 43.00], note: "山路转弯，送行的人目送友人逐渐远去。" },
+      { label: "长安方向", coordinates: [108.94, 34.27], note: "马迹指向遥远京城，雪地留白收束了整场送别。" },
+    ],
     scene: { preset: "snow-road", moment: "胡天飞雪，马迹渐远", origin: "岑参第二次出塞时在北庭一带任职，这首诗为送武判官回京而作。奇寒风雪先被写成梨花盛开的壮景，送别之后，画面只留下雪地上的马蹄印，豪迈与惆怅由此相接。" },
   },
   {
@@ -218,6 +296,11 @@ export const poems: readonly Poem[] = [
     location: { name: "秦淮河", province: "江苏省", coordinates: [118.79, 32.02] },
     context: "秦淮夜色、酒家歌声与六朝旧都叠在一起。眼前景物触发历史记忆，使一次停泊变成对现实的忧思。",
     routeNote: "金陵城南 · 秦淮夜泊",
+    journey: [
+      { label: "秦淮河口", coordinates: [118.76, 32.04], note: "烟与月同时笼住寒水和沙岸。" },
+      { label: "夜泊画舫", coordinates: [118.79, 32.02], note: "船靠近酒家，隔江歌声进入夜色。" },
+      { label: "金陵旧梦", coordinates: [118.80, 32.06], note: "《后庭花》牵出六朝亡国记忆，也映照晚唐现实。" },
+    ],
     scene: { preset: "qinhuai-night", moment: "烟月笼水，隔江歌声", origin: "杜牧夜泊金陵秦淮河，眼前是朦胧水色与临河酒家，耳边却传来《玉树后庭花》。这支曲子关联南朝陈后主亡国旧事，因此一次夜泊转化为诗人对晚唐现实的忧思。" },
   },
   {
@@ -231,6 +314,11 @@ export const poems: readonly Poem[] = [
     location: { name: "西湖望湖楼", province: "浙江省", coordinates: [120.15, 30.26] },
     context: "乌云、骤雨、风与湖面在极短时间内连续变化。诗人像记录镜头一样捕捉江南夏日天气。",
     routeNote: "杭州西湖 · 望湖楼",
+    journey: [
+      { label: "西湖船上", coordinates: [120.14, 30.24], note: "黑云翻涌，尚未来得及遮住远山。" },
+      { label: "骤雨湖面", coordinates: [120.15, 30.25], note: "白雨如珠跳入船中，天气镜头迅速推进。" },
+      { label: "望湖楼", coordinates: [120.15, 30.26], note: "卷地风吹散乌云，楼下湖面忽然水天相接。" },
+    ],
     scene: { preset: "lake-storm", moment: "黑云翻墨，白雨跳珠", origin: "宋神宗熙宁五年六月，苏轼任杭州通判时游西湖，在船上遇到骤雨，随后登望湖楼饮酒题诗。乌云、急雨、卷地风和放晴的湖面连续出现，像一组快速切换的镜头。" },
   },
   {
@@ -244,6 +332,11 @@ export const poems: readonly Poem[] = [
     location: { name: "鹳雀楼", province: "山西省", coordinates: [110.45, 34.86] },
     context: "楼、山与黄河构成层层展开的观看空间。向上一步，不仅扩大视野，也成为不断进取的象征。",
     routeNote: "蒲州古城 · 黄河东岸",
+    journey: [
+      { label: "黄河东岸", coordinates: [110.42, 34.84], note: "白日依山落下，黄河在视野中奔向远方。" },
+      { label: "鹳雀楼", coordinates: [110.45, 34.86], note: "登楼让山河层次逐渐展开。" },
+      { label: "更上一层", coordinates: [110.45, 34.87], note: "继续向上一步，地理视野转化为人生境界。" },
+    ],
     scene: { preset: "sunset-tower", moment: "白日依山，黄河入海", origin: "鹳雀楼旧址在蒲州黄河东岸，登楼可以远望中条山与黄河。王之涣先写夕阳和大河构成的辽阔视野，再以“更上一层楼”把真实登临转化为突破眼界的哲理。" },
   },
 ];

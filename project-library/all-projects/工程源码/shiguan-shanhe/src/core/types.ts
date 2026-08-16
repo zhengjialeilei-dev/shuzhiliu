@@ -34,6 +34,12 @@ export interface PoemScene {
   origin: string;
 }
 
+export interface JourneyStop {
+  label: string;
+  coordinates: [number, number];
+  note: string;
+}
+
 export interface Poem {
   id: string;
   title: string;
@@ -46,6 +52,7 @@ export interface Poem {
   context: string;
   routeNote: string;
   scene: PoemScene;
+  journey: readonly JourneyStop[];
 }
 
 export interface RegionOption {
