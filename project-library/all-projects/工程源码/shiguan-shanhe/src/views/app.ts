@@ -265,6 +265,7 @@ export class PoetryAtlasApp {
     const sceneIndex = poems.findIndex((item) => item.id === poem.id) + 1;
     const canvas = this.requireElement<HTMLElement>("#scene-canvas");
     canvas.dataset.scene = poem.scene.preset;
+    canvas.dataset.verseLength = poem.lines.length >= 6 ? "long" : "standard";
     this.requireElement("#scene-number").textContent = String(sceneIndex).padStart(2, "0");
     this.requireElement("#scene-title").textContent = poem.title;
     this.requireElement("#scene-byline").textContent = `${poem.dynasty} · ${poem.author} · ${poem.location.name}`;

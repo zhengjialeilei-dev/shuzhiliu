@@ -1,4 +1,5 @@
 import type { DynastyFilter, Poem, RegionOption, ThemeFilter } from "../core/types";
+import { poetSupplementPoems } from "./poet-supplements";
 
 export const regions: readonly RegionOption[] = [
   { id: "national", label: "九州诗路", description: "纵览诗歌在山河间的迁徙与回响", provinces: [] },
@@ -9,9 +10,9 @@ export const regions: readonly RegionOption[] = [
 ];
 
 export const dynastyFilters: readonly DynastyFilter[] = ["全部", "唐", "宋", "其他"];
-export const themeFilters: readonly ThemeFilter[] = ["全部", "山水", "边塞", "送别", "怀古", "田园"];
+export const themeFilters: readonly ThemeFilter[] = ["全部", "山水", "边塞", "送别", "怀古", "田园", "家国", "思乡"];
 
-export const poems: readonly Poem[] = [
+const foundationalPoems: readonly Poem[] = [
   {
     id: "emei-moon",
     title: "峨眉山月歌",
@@ -148,7 +149,7 @@ export const poems: readonly Poem[] = [
     dynasty: "唐",
     lines: ["谁家玉笛暗飞声，散入春风满洛城。", "此夜曲中闻折柳，何人不起故园情。"],
     region: "luoyang",
-    theme: "送别",
+    theme: "思乡",
     location: { name: "洛阳城", province: "河南省", coordinates: [112.45, 34.62] },
     context: "笛声随春风散满洛阳，城市空间被声音贯通。《折杨柳》的送别意象，让陌生夜色突然连回故园。",
     routeNote: "洛水之滨 · 隋唐洛阳城",
@@ -340,3 +341,5 @@ export const poems: readonly Poem[] = [
     scene: { preset: "sunset-tower", moment: "白日依山，黄河入海", origin: "鹳雀楼旧址在蒲州黄河东岸，登楼可以远望中条山与黄河。王之涣先写夕阳和大河构成的辽阔视野，再以“更上一层楼”把真实登临转化为突破眼界的哲理。" },
   },
 ];
+
+export const poems: readonly Poem[] = [...foundationalPoems, ...poetSupplementPoems];

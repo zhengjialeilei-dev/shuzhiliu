@@ -1,6 +1,6 @@
 export type RegionId = "national" | "sichuan" | "shaanxi" | "luoyang" | "jiangxi";
 export type DynastyFilter = "全部" | "唐" | "宋" | "其他";
-export type ThemeFilter = "全部" | "山水" | "边塞" | "送别" | "怀古" | "田园";
+export type ThemeFilter = "全部" | "山水" | "边塞" | "送别" | "怀古" | "田园" | "家国" | "思乡";
 
 export interface PoemLocation {
   name: string;
