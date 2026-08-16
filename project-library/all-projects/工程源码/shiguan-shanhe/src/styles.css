@@ -1857,6 +1857,12 @@ body.scene-open {
   transform: rotate(-17deg);
 }
 
+[data-composition="snow-fisher"] .scene-boat {
+  left: 46%;
+  bottom: 13%;
+  transform: scale(0.82);
+}
+
 /* 松林、返照与桃花潭 */
 [data-composition="pine-stream"] .scene-motif i:nth-child(1),
 [data-composition="deep-forest"] .scene-motif i:nth-child(1),
@@ -1911,6 +1917,7 @@ body.scene-open {
 }
 
 [data-composition="moon-boat"] .scene-boat,
+[data-composition="riverside-city"] .scene-boat,
 [data-composition="white-emperor-boat"] .scene-boat,
 [data-composition="crane-tower-boat"] .scene-boat,
 [data-composition="river-gate-boat"] .scene-boat,
@@ -1918,7 +1925,8 @@ body.scene-open {
 [data-composition="homeward-route"] .scene-boat,
 [data-composition="red-cliff"] .scene-boat,
 [data-composition="west-lake"] .scene-boat,
-[data-composition="autumn-river"] .scene-boat {
+[data-composition="autumn-river"] .scene-boat,
+[data-composition="snow-fisher"] .scene-boat {
   display: block;
 }
 
@@ -1928,7 +1936,8 @@ body.scene-open {
 [data-composition="autumn-river"] .scene-water,
 [data-composition="red-cliff"] .scene-water,
 [data-composition="west-lake"] .scene-water,
-[data-composition="pine-stream"] .scene-water {
+[data-composition="pine-stream"] .scene-water,
+[data-composition="snow-fisher"] .scene-water {
   display: block;
 }
 

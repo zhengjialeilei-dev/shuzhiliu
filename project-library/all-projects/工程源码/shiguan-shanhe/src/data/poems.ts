@@ -1,4 +1,5 @@
 import type { DynastyFilter, Poem, RegionOption, ThemeFilter } from "../core/types";
+import { classicSupplementPoems } from "./classic-supplements";
 import { poetSupplementPoems } from "./poet-supplements";
 
 export const regions: readonly RegionOption[] = [
@@ -342,4 +343,4 @@ const foundationalPoems: readonly Poem[] = [
   },
 ];
 
-export const poems: readonly Poem[] = [...foundationalPoems, ...poetSupplementPoems];
+export const poems: readonly Poem[] = [...foundationalPoems, ...poetSupplementPoems, ...classicSupplementPoems];

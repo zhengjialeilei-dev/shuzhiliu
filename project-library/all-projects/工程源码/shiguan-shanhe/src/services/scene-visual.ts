@@ -16,6 +16,7 @@ export type SceneComposition =
   | "summit"
   | "frontier-camp"
   | "snow-horses"
+  | "snow-fisher"
   | "riverside-city"
   | "storm-lake"
   | "river-tower-sunset"
@@ -80,6 +81,22 @@ const sceneVisuals: Record<string, SceneVisualProfile> = {
   "double-ninth-memory": { composition: "mountain-festival", description: "重阳登高远望，山路与茱萸寄托乡思" },
   "jiangnan-spring": { composition: "jiangnan-temple", description: "江南水村莺啼，寺院楼台隐入烟雨" },
   "return-farm-three": { composition: "moon-farm", description: "月下田垄延伸，归农荷锄踏着露水回家" },
+  "maple-bridge-night": { composition: "riverside-city", description: "枫桥霜夜里渔火摇动，寒山寺钟声抵达客船" },
+  "qiantang-spring": { composition: "west-lake", description: "西湖早春水面初平，莺燕掠过白沙堤" },
+  "dusk-river-song": { composition: "moon-boat", description: "钱塘江上残阳铺水，新月随后升起" },
+  "spring-dawn": { composition: "spring-window", description: "襄阳山居清晨鸟鸣，庭院留着昨夜落花" },
+  "jiande-river-night": { composition: "moon-boat", description: "建德江烟渚日暮，清月靠近夜泊客船" },
+  "furong-tower-farewell": { composition: "crane-tower-boat", description: "京口寒雨连江，清晨在芙蓉楼送别" },
+  "dongting-lake": { composition: "west-lake", description: "洞庭秋月映湖，君山像银盘中的青螺" },
+  "river-snow": { composition: "snow-fisher", description: "永州千山飞雪，一叶孤舟独钓寒江" },
+  "homecoming-couplet": { composition: "willow-inn", description: "白发归人走到会稽村口，故乡儿童笑问来处" },
+  "moor-at-guazhou": { composition: "moon-boat", description: "瓜洲春风吹绿江南，明月照着隔江归路" },
+  "shanxi-village": { composition: "flower-path", description: "山水重叠处道路转折，柳暗花明露出村庄" },
+  "yellow-sand-night": { composition: "moon-farm", description: "黄沙岭月夜稻香蛙鸣，小雨落在溪桥前" },
+  "jingting-alone": { composition: "layered-mountain", description: "飞鸟孤云离去，只剩诗人与敬亭山相看" },
+  "mission-frontier": { composition: "frontier-camp", description: "居延大漠孤烟直上，长河托住圆圆落日" },
+  "jiangnan-li-guinian": { composition: "ruined-city", description: "江南落花中故人重逢，回望长安盛世旧影" },
+  "little-pond": { composition: "west-lake", description: "晴光树阴落进小池，蜻蜓停在新荷尖角" },
 };
 
 export function getSceneVisual(poem: Poem): SceneVisualProfile {
