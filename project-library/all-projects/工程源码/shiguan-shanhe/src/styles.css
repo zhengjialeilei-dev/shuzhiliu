@@ -1033,6 +1033,644 @@ button:focus-visible,
   }
 }
 
+.enter-scene-button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  width: 100%;
+  margin-top: 24px;
+  padding: 15px 42px 15px 0;
+  overflow: hidden;
+  color: #17312f;
+  border: 0;
+  border-top: 1px solid rgba(72, 65, 52, 0.17);
+  border-bottom: 1px solid rgba(72, 65, 52, 0.17);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.enter-scene-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(169, 59, 46, 0.06);
+  transform: translateX(-101%);
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.enter-scene-button:hover::before,
+.enter-scene-button:focus-visible::before {
+  transform: translateX(0);
+}
+
+.enter-scene-button span,
+.enter-scene-button small,
+.enter-scene-button i {
+  position: relative;
+}
+
+.enter-scene-button span {
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.enter-scene-button small {
+  color: #917d61;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+}
+
+.enter-scene-button i {
+  position: absolute;
+  right: 4px;
+  color: #a93b2e;
+  font-style: normal;
+  font-size: 1.1rem;
+  transition: transform 220ms ease;
+}
+
+.enter-scene-button:hover i {
+  transform: translate(3px, -3px);
+}
+
+body.scene-open {
+  overflow: hidden;
+}
+
+.scene-dialog {
+  width: auto;
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: #263c39;
+}
+
+.scene-dialog::backdrop {
+  background: rgba(15, 24, 23, 0.78);
+  backdrop-filter: blur(12px) saturate(0.7);
+  animation: scene-backdrop-in 360ms ease both;
+}
+
+.scene-theatre {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.72fr);
+  width: min(1180px, calc(100vw - 64px));
+  height: min(720px, calc(100vh - 64px));
+  min-height: 560px;
+  overflow: hidden;
+  background: #eadfc5;
+  box-shadow: 0 36px 100px rgba(0, 0, 0, 0.42);
+  animation: scene-theatre-in 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.scene-close {
+  position: absolute;
+  z-index: 20;
+  top: 18px;
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: #6f5e48;
+  border: 1px solid rgba(71, 63, 50, 0.2);
+  border-radius: 50%;
+  background: rgba(244, 234, 212, 0.7);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  font-family: Arial, sans-serif;
+  font-size: 1.5rem;
+  line-height: 1;
+  transition: color 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.scene-close:hover {
+  color: #fff5e1;
+  background: #a93b2e;
+  transform: rotate(8deg);
+}
+
+.scene-canvas {
+  --scene-sky: #b8c5b9;
+  --scene-horizon: #d8c9a8;
+  --scene-ink: #173c43;
+  --scene-ink-soft: #52675d;
+  --scene-disc: #efd8a3;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, var(--scene-sky), var(--scene-horizon) 70%, #a59c78);
+}
+
+.scene-canvas::before {
+  content: "";
+  position: absolute;
+  z-index: 10;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+  background-image:
+    repeating-radial-gradient(ellipse at 30% 20%, transparent 0 18px, rgba(65, 55, 43, 0.18) 19px 20px, transparent 21px 34px),
+    linear-gradient(105deg, transparent 35%, rgba(255, 248, 221, 0.3) 55%, transparent 70%);
+  mask-image: linear-gradient(90deg, #000, rgba(0, 0, 0, 0.4));
+}
+
+.scene-canvas::after {
+  content: "";
+  position: absolute;
+  z-index: 11;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset -30px 0 70px rgba(28, 35, 31, 0.16), inset 0 0 100px rgba(255, 242, 204, 0.1);
+}
+
+.scene-canvas[data-scene="moon-river"] { --scene-sky: #173b46; --scene-horizon: #58746f; --scene-ink: #132f35; --scene-ink-soft: #36544f; --scene-disc: #f2dba5; }
+.scene-canvas[data-scene="mountain-pass"] { --scene-sky: #9aa59b; --scene-horizon: #d4c6a9; --scene-ink: #1d4143; --scene-ink-soft: #4e6255; }
+.scene-canvas[data-scene="spring-rain"] { --scene-sky: #7f9b95; --scene-horizon: #ccd0b9; --scene-ink: #214b4c; --scene-ink-soft: #557064; }
+.scene-canvas[data-scene="autumn-wind"] { --scene-sky: #8b7864; --scene-horizon: #c8a980; --scene-ink: #3e4540; --scene-ink-soft: #6a5b48; }
+.scene-canvas[data-scene="city-farewell"] { --scene-sky: #b5afa0; --scene-horizon: #dfc8a1; --scene-ink: #2e4b49; --scene-ink-soft: #657264; }
+.scene-canvas[data-scene="palace-road"] { --scene-sky: #c39a76; --scene-horizon: #e4c09b; --scene-ink: #493c38; --scene-ink-soft: #78584b; --scene-disc: #d66b4c; }
+.scene-canvas[data-scene="yellow-river-pass"] { --scene-sky: #99937b; --scene-horizon: #c5a77a; --scene-ink: #2f4642; --scene-ink-soft: #5e624f; }
+.scene-canvas[data-scene="flute-night"] { --scene-sky: #243f4d; --scene-horizon: #667674; --scene-ink: #1b343b; --scene-ink-soft: #344f51; --scene-disc: #e8d9ad; }
+.scene-canvas[data-scene="luoyang-court"] { --scene-sky: #a66d63; --scene-horizon: #d6a985; --scene-ink: #443d3d; --scene-ink-soft: #70544f; --scene-disc: #e9c17e; }
+.scene-canvas[data-scene="field-evening"] { --scene-sky: #9ea991; --scene-horizon: #d6bd83; --scene-ink: #324b42; --scene-ink-soft: #657058; --scene-disc: #dc8a51; }
+.scene-canvas[data-scene="waterfall"] { --scene-sky: #759a9a; --scene-horizon: #c4cfb7; --scene-ink: #183f45; --scene-ink-soft: #49675e; }
+.scene-canvas[data-scene="misty-mountain"] { --scene-sky: #b4c1b7; --scene-horizon: #d9d4bb; --scene-ink: #274a4a; --scene-ink-soft: #708278; }
+.scene-canvas[data-scene="high-mountain"] { --scene-sky: #6f8c94; --scene-horizon: #bbc3b3; --scene-ink: #173b42; --scene-ink-soft: #4b665f; }
+.scene-canvas[data-scene="frontier-night"] { --scene-sky: #263642; --scene-horizon: #8d6f59; --scene-ink: #27383a; --scene-ink-soft: #624f43; --scene-disc: #d9a556; }
+.scene-canvas[data-scene="snow-road"] { --scene-sky: #8eabb2; --scene-horizon: #dce1d8; --scene-ink: #3f5f61; --scene-ink-soft: #80918a; }
+.scene-canvas[data-scene="qinhuai-night"] { --scene-sky: #1d4149; --scene-horizon: #6f7671; --scene-ink: #16353a; --scene-ink-soft: #405752; --scene-disc: #e4ce9a; }
+.scene-canvas[data-scene="lake-storm"] { --scene-sky: #344a4f; --scene-horizon: #9ba9a2; --scene-ink: #183a3f; --scene-ink-soft: #536864; }
+.scene-canvas[data-scene="sunset-tower"] { --scene-sky: #c07f5e; --scene-horizon: #e1bd84; --scene-ink: #29433f; --scene-ink-soft: #626553; --scene-disc: #d9563f; }
+
+.scene-sky {
+  position: absolute;
+  z-index: 1;
+  top: 11%;
+  right: 13%;
+  width: clamp(72px, 10vw, 126px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--scene-disc);
+  box-shadow: 0 0 45px color-mix(in srgb, var(--scene-disc) 45%, transparent);
+  animation: scene-disc-in 1.2s 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.scene-sky i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: radial-gradient(circle at 38% 33%, rgba(255,255,255,0.22), transparent 18%), radial-gradient(circle at 63% 60%, rgba(84,72,54,0.1), transparent 22%);
+}
+
+.scene-cloud {
+  position: absolute;
+  z-index: 4;
+  width: 54%;
+  height: 17%;
+  opacity: 0.38;
+  filter: blur(10px);
+  background: radial-gradient(ellipse, rgba(238, 234, 211, 0.9), transparent 67%);
+  animation: cloud-drift 16s ease-in-out infinite alternate;
+}
+
+.scene-cloud-one { top: 20%; left: -12%; }
+.scene-cloud-two { top: 34%; right: -16%; animation-delay: -8s; }
+
+.scene-ridge {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  bottom: 17%;
+  transform-origin: bottom;
+}
+
+.scene-ridge-far {
+  z-index: 2;
+  height: 56%;
+  opacity: 0.67;
+  background: var(--scene-ink-soft);
+  clip-path: polygon(0 100%, 0 80%, 10% 61%, 20% 70%, 32% 32%, 39% 48%, 51% 18%, 60% 50%, 70% 34%, 78% 55%, 88% 27%, 100% 59%, 100% 100%);
+  animation: ridge-rise 900ms 100ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.scene-ridge-near {
+  z-index: 3;
+  height: 42%;
+  background: var(--scene-ink);
+  clip-path: polygon(0 100%, 0 64%, 13% 42%, 22% 66%, 34% 35%, 45% 68%, 56% 49%, 66% 71%, 78% 38%, 90% 66%, 100% 49%, 100% 100%);
+  animation: ridge-rise 900ms 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.scene-water {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 24%;
+  opacity: 0.78;
+  background:
+    repeating-linear-gradient(178deg, transparent 0 13px, rgba(237, 224, 189, 0.3) 14px 15px, transparent 16px 28px),
+    color-mix(in srgb, var(--scene-ink) 72%, #8d9e8c);
+  animation: water-arrive 1s 260ms ease both;
+}
+
+.scene-weather {
+  position: absolute;
+  z-index: 7;
+  inset: 0;
+  pointer-events: none;
+}
+
+[data-scene="spring-rain"] .scene-weather,
+[data-scene="autumn-wind"] .scene-weather,
+[data-scene="lake-storm"] .scene-weather {
+  opacity: 0.42;
+  background: repeating-linear-gradient(105deg, transparent 0 19px, rgba(232, 238, 220, 0.65) 20px 21px, transparent 22px 36px);
+  background-size: 180% 180%;
+  animation: rain-fall 1.2s linear infinite;
+}
+
+[data-scene="snow-road"] .scene-weather {
+  opacity: 0.85;
+  background-image: radial-gradient(circle, #f7f3e5 0 2px, transparent 2.5px), radial-gradient(circle, rgba(255,255,255,0.75) 0 1px, transparent 1.5px);
+  background-position: 0 0, 33px 47px;
+  background-size: 70px 70px, 48px 48px;
+  animation: snow-fall 7s linear infinite;
+}
+
+[data-scene="frontier-night"] .scene-weather {
+  opacity: 0.55;
+  background-image: radial-gradient(circle, #f0d69e 0 1px, transparent 1.5px);
+  background-size: 86px 73px;
+}
+
+[data-scene="waterfall"] .scene-weather {
+  inset: 18% 19% 12% auto;
+  width: 14%;
+  opacity: 0.8;
+  filter: blur(1px);
+  background: linear-gradient(90deg, transparent, rgba(237, 239, 215, 0.9), transparent);
+  clip-path: polygon(20% 0, 82% 0, 66% 100%, 8% 100%);
+  animation: waterfall-flow 2.2s ease-in-out infinite alternate;
+}
+
+.scene-landmark {
+  position: absolute;
+  z-index: 6;
+  right: 13%;
+  bottom: 18%;
+  width: 88px;
+  height: 118px;
+  filter: drop-shadow(0 10px 12px rgba(18, 31, 29, 0.2));
+}
+
+.scene-landmark i {
+  position: absolute;
+  left: 50%;
+  height: 14px;
+  border-bottom: 4px solid var(--scene-ink);
+  background: color-mix(in srgb, var(--scene-ink) 75%, transparent);
+  transform: translateX(-50%);
+  clip-path: polygon(13% 0, 87% 0, 100% 100%, 0 100%);
+}
+
+.scene-landmark i:nth-child(1) { width: 82px; bottom: 74px; }
+.scene-landmark i:nth-child(2) { width: 66px; bottom: 43px; }
+.scene-landmark i:nth-child(3) { width: 50px; bottom: 13px; }
+
+.scene-landmark::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 38px;
+  height: 88px;
+  border-left: 5px solid var(--scene-ink);
+  border-right: 5px solid var(--scene-ink);
+  transform: translateX(-50%);
+}
+
+.scene-boat {
+  position: absolute;
+  z-index: 8;
+  left: 18%;
+  bottom: 15%;
+  width: 90px;
+  height: 36px;
+  border-bottom: 7px solid #342d26;
+  border-radius: 0 0 65% 50%;
+  animation: boat-float 4.8s ease-in-out infinite;
+}
+
+.scene-boat::before {
+  content: "";
+  position: absolute;
+  left: 43px;
+  bottom: 5px;
+  width: 2px;
+  height: 52px;
+  background: #342d26;
+}
+
+.scene-boat i {
+  position: absolute;
+  left: 45px;
+  bottom: 25px;
+  width: 36px;
+  height: 34px;
+  background: rgba(226, 208, 171, 0.78);
+  clip-path: polygon(0 0, 100% 44%, 0 100%);
+}
+
+[data-scene="mountain-pass"] .scene-water,
+[data-scene="mountain-pass"] .scene-boat,
+[data-scene="high-mountain"] .scene-water,
+[data-scene="high-mountain"] .scene-boat,
+[data-scene="misty-mountain"] .scene-boat,
+[data-scene="autumn-wind"] .scene-boat,
+[data-scene="city-farewell"] .scene-boat,
+[data-scene="palace-road"] .scene-boat,
+[data-scene="luoyang-court"] .scene-boat,
+[data-scene="field-evening"] .scene-boat,
+[data-scene="frontier-night"] .scene-boat,
+[data-scene="snow-road"] .scene-boat {
+  display: none;
+}
+
+[data-scene="moon-river"] .scene-landmark,
+[data-scene="mountain-pass"] .scene-landmark,
+[data-scene="spring-rain"] .scene-landmark,
+[data-scene="yellow-river-pass"] .scene-landmark,
+[data-scene="field-evening"] .scene-landmark,
+[data-scene="waterfall"] .scene-landmark,
+[data-scene="misty-mountain"] .scene-landmark,
+[data-scene="high-mountain"] .scene-landmark,
+[data-scene="snow-road"] .scene-landmark,
+[data-scene="lake-storm"] .scene-landmark {
+  display: none;
+}
+
+.scene-verse {
+  position: absolute;
+  z-index: 12;
+  left: clamp(26px, 5vw, 64px);
+  top: clamp(30px, 8vh, 82px);
+  width: min(440px, 66%);
+  color: #f8ecd0;
+  text-shadow: 0 2px 22px rgba(12, 28, 27, 0.45);
+  animation: verse-arrive 760ms 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.scene-verse > span {
+  display: block;
+  margin-bottom: 15px;
+  color: rgba(255, 239, 204, 0.76);
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.scene-verse blockquote {
+  margin: 0;
+  font-size: clamp(1.45rem, 2.7vw, 2.6rem);
+  line-height: 1.65;
+  letter-spacing: 0.08em;
+}
+
+.scene-verse blockquote span {
+  display: block;
+}
+
+.scene-story {
+  position: relative;
+  z-index: 15;
+  min-width: 0;
+  padding: clamp(58px, 8vh, 82px) clamp(28px, 3.8vw, 52px) 34px;
+  overflow-y: auto;
+  background:
+    linear-gradient(90deg, rgba(73, 61, 42, 0.06), transparent 14%),
+    #eee3ca;
+}
+
+.scene-kicker,
+.scene-byline {
+  margin: 0;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+.scene-kicker {
+  color: #a23c30;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.scene-story h2 {
+  margin: 15px 0 9px;
+  color: #173330;
+  font-size: clamp(2rem, 3vw, 3.1rem);
+  font-weight: 570;
+  line-height: 1.16;
+  letter-spacing: 0.06em;
+}
+
+.scene-byline {
+  color: #806e58;
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+}
+
+.scene-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 30px 0 18px;
+  color: #a23c30;
+  font-size: 0.69rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.scene-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(76, 64, 48, 0.18);
+}
+
+.scene-origin {
+  margin: 0;
+  color: #5f584c;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.88rem;
+  line-height: 2;
+  text-align: justify;
+}
+
+.scene-actions {
+  margin-top: 27px;
+}
+
+.narrate-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 18px;
+  color: #f8ecd3;
+  border: 0;
+  background: #9f3b30;
+  cursor: pointer;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.narrate-button:hover {
+  background: #873128;
+  transform: translateY(-1px);
+}
+
+.narrate-button:disabled {
+  color: #8e806e;
+  background: rgba(94, 83, 65, 0.14);
+  cursor: not-allowed;
+}
+
+.sound-mark {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+}
+
+.sound-mark i {
+  display: block;
+  width: 2px;
+  height: 6px;
+  background: currentColor;
+}
+
+.sound-mark i:nth-child(2) { height: 13px; }
+.sound-mark i:nth-child(3) { height: 9px; }
+
+.narrate-button.is-speaking .sound-mark i {
+  animation: sound-wave 680ms ease-in-out infinite alternate;
+}
+
+.narrate-button.is-speaking .sound-mark i:nth-child(2) { animation-delay: -220ms; }
+.narrate-button.is-speaking .sound-mark i:nth-child(3) { animation-delay: -440ms; }
+
+#narration-status {
+  margin: 8px 0 0;
+  color: #94836d;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.62rem;
+  text-align: center;
+}
+
+.scene-geography {
+  margin-top: 26px;
+  padding-top: 17px;
+  border-top: 1px solid rgba(76, 64, 48, 0.16);
+}
+
+.scene-geography small,
+.scene-geography b {
+  display: block;
+}
+
+.scene-geography small {
+  color: #9b8264;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+}
+
+.scene-geography b {
+  margin-top: 7px;
+  color: #704a3e;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.7;
+}
+
+@keyframes scene-backdrop-in { from { opacity: 0; } }
+@keyframes scene-theatre-in { from { opacity: 0; transform: translateY(28px) scale(0.975); } }
+@keyframes scene-disc-in { from { opacity: 0; transform: translateY(24px) scale(0.7); } }
+@keyframes ridge-rise { from { opacity: 0; transform: translateY(18%) scaleY(0.82); } }
+@keyframes water-arrive { from { opacity: 0; transform: translateY(50%); } }
+@keyframes verse-arrive { from { opacity: 0; transform: translateX(-18px); } }
+@keyframes cloud-drift { to { transform: translateX(12%); } }
+@keyframes rain-fall { to { background-position: -120px 160px; } }
+@keyframes snow-fall { to { background-position: -55px 150px, 70px 190px; } }
+@keyframes waterfall-flow { to { opacity: 0.54; transform: scaleX(1.13); } }
+@keyframes boat-float { 50% { transform: translate(8px, -4px) rotate(-1deg); } }
+@keyframes sound-wave { to { height: 15px; } }
+
+@media (max-width: 820px) {
+  .scene-theatre {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(330px, 52svh) auto;
+    width: 100vw;
+    height: 100svh;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .scene-close {
+    position: fixed;
+    top: 13px;
+    right: 13px;
+  }
+
+  .scene-canvas {
+    min-height: 330px;
+  }
+
+  .scene-verse {
+    top: 40px;
+    left: 24px;
+    width: calc(100% - 48px);
+  }
+
+  .scene-verse blockquote {
+    font-size: clamp(1.25rem, 5.4vw, 1.72rem);
+    line-height: 1.72;
+  }
+
+  .scene-story {
+    overflow: visible;
+    padding: 35px 24px 45px;
+  }
+
+  .scene-story h2 {
+    font-size: 2rem;
+  }
+
+  .scene-origin {
+    font-size: 0.84rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

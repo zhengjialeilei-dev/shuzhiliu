@@ -1,14 +1,20 @@
 import type { AtlasFilters, DynastyFilter, Poem, RegionId, ThemeFilter } from "../core/types";
 import { dynastyFilters, poems, regions, themeFilters } from "../data/poems";
 import { PoetryMap } from "../services/map";
+import { BrowserNarrator, type Narrator } from "../services/narration";
 
 export class PoetryAtlasApp {
   private readonly filters: AtlasFilters = { region: "national", dynasty: "全部", theme: "全部" };
   private activePoemId = poems[0].id;
   private routeVisible = true;
   private map?: PoetryMap;
+  private scenePoem?: Poem;
+  private narrating = false;
 
-  constructor(private readonly root: HTMLElement) {}
+  constructor(
+    private readonly root: HTMLElement,
+    private readonly narrator: Narrator = new BrowserNarrator()
+  ) {}
 
   mount(): void {
     this.root.innerHTML = `
@@ -84,7 +90,43 @@ export class PoetryAtlasApp {
             </div>
           </div>
         </footer>
-      </main>`;
+      </main>
+
+      <dialog id="scene-dialog" class="scene-dialog" aria-labelledby="scene-title">
+        <article class="scene-theatre">
+          <button type="button" class="scene-close" data-action="close-scene" aria-label="关闭诗境">×</button>
+          <section id="scene-canvas" class="scene-canvas" aria-label="诗歌场景插画">
+            <div class="scene-sky" aria-hidden="true"><i></i></div>
+            <div class="scene-cloud scene-cloud-one" aria-hidden="true"></div>
+            <div class="scene-cloud scene-cloud-two" aria-hidden="true"></div>
+            <div class="scene-ridge scene-ridge-far" aria-hidden="true"></div>
+            <div class="scene-ridge scene-ridge-near" aria-hidden="true"></div>
+            <div class="scene-water" aria-hidden="true"></div>
+            <div class="scene-weather" aria-hidden="true"></div>
+            <div class="scene-landmark" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="scene-boat" aria-hidden="true"><i></i></div>
+            <div class="scene-verse">
+              <span id="scene-moment"></span>
+              <blockquote id="scene-lines"></blockquote>
+            </div>
+          </section>
+          <section class="scene-story">
+            <p class="scene-kicker">诗境故事 · <span id="scene-number"></span></p>
+            <h2 id="scene-title"></h2>
+            <p id="scene-byline" class="scene-byline"></p>
+            <div class="scene-divider" aria-hidden="true"><span>来历</span></div>
+            <p id="scene-origin" class="scene-origin"></p>
+            <div class="scene-actions">
+              <button type="button" class="narrate-button" data-action="narrate-origin">
+                <span class="sound-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span data-narration-label>朗读这首诗的来历</span>
+              </button>
+              <p id="narration-status" aria-live="polite">使用系统中文语音，可随时停止</p>
+            </div>
+            <div class="scene-geography"><small>山河坐标</small><b id="scene-route"></b></div>
+          </section>
+        </article>
+      </dialog>`;
 
     this.map = new PoetryMap(this.requireElement("#map-host"), poems, (id) => this.selectPoem(id));
     this.bindEvents();
@@ -116,6 +158,17 @@ export class PoetryAtlasApp {
     this.requireElement<HTMLButtonElement>('[data-action="route"]').addEventListener("click", () => {
       this.routeVisible = !this.routeVisible;
       this.render();
+    });
+
+    const dialog = this.requireElement<HTMLDialogElement>("#scene-dialog");
+    this.requireElement<HTMLButtonElement>('[data-action="close-scene"]').addEventListener("click", () => dialog.close());
+    this.requireElement<HTMLButtonElement>('[data-action="narrate-origin"]').addEventListener("click", () => this.toggleNarration());
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+    dialog.addEventListener("close", () => {
+      this.stopNarration();
+      document.body.classList.remove("scene-open");
     });
   }
 
@@ -196,8 +249,76 @@ export class PoetryAtlasApp {
       <p class="poem-author">${poem.dynasty} · ${poem.author}</p>
       <h2>${poem.title}</h2>
       <blockquote>${poem.lines.map((line) => `<span>${line}</span>`).join("")}</blockquote>
-      <div class="context-copy"><small>地理诗解</small><p>${poem.context}</p></div>`;
+      <div class="context-copy"><small>地理诗解</small><p>${poem.context}</p></div>
+      <button type="button" class="enter-scene-button" data-action="open-scene">
+        <span>进入诗境</span><small>场景 · 来历 · 朗读</small><i aria-hidden="true">↗</i>
+      </button>`;
+    detail.querySelector<HTMLButtonElement>('[data-action="open-scene"]')
+      ?.addEventListener("click", () => this.openScene(poem));
     this.requireElement("#route-note").textContent = poem.routeNote;
+  }
+
+  private openScene(poem: Poem): void {
+    this.scenePoem = poem;
+    this.stopNarration();
+    const sceneIndex = poems.findIndex((item) => item.id === poem.id) + 1;
+    const canvas = this.requireElement<HTMLElement>("#scene-canvas");
+    canvas.dataset.scene = poem.scene.preset;
+    this.requireElement("#scene-number").textContent = String(sceneIndex).padStart(2, "0");
+    this.requireElement("#scene-title").textContent = poem.title;
+    this.requireElement("#scene-byline").textContent = `${poem.dynasty} · ${poem.author} · ${poem.location.name}`;
+    this.requireElement("#scene-moment").textContent = poem.scene.moment;
+    this.requireElement("#scene-lines").innerHTML = poem.lines.map((line) => `<span>${line}</span>`).join("");
+    this.requireElement("#scene-origin").textContent = poem.scene.origin;
+    this.requireElement("#scene-route").textContent = poem.routeNote;
+    this.updateNarrationUi();
+
+    const dialog = this.requireElement<HTMLDialogElement>("#scene-dialog");
+    document.body.classList.add("scene-open");
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+
+  private toggleNarration(): void {
+    if (!this.scenePoem) return;
+    if (this.narrating) {
+      this.stopNarration();
+      return;
+    }
+
+    const narration = `《${this.scenePoem.title}》的创作来历。${this.scenePoem.scene.origin}`;
+    this.narrator.speak(narration, {
+      onStart: () => {
+        this.narrating = true;
+        this.updateNarrationUi();
+      },
+      onEnd: () => {
+        this.narrating = false;
+        this.updateNarrationUi();
+      },
+      onError: () => {
+        this.narrating = false;
+        this.updateNarrationUi("当前浏览器无法调用中文语音，请直接阅读上方来历");
+      }
+    });
+  }
+
+  private stopNarration(): void {
+    this.narrator.stop();
+    this.narrating = false;
+    this.updateNarrationUi();
+  }
+
+  private updateNarrationUi(status?: string): void {
+    const button = this.root.querySelector<HTMLButtonElement>('[data-action="narrate-origin"]');
+    const label = this.root.querySelector<HTMLElement>("[data-narration-label]");
+    const statusLine = this.root.querySelector<HTMLElement>("#narration-status");
+    if (!button || !label || !statusLine) return;
+    button.classList.toggle("is-speaking", this.narrating);
+    button.setAttribute("aria-pressed", String(this.narrating));
+    button.disabled = !this.narrator.supported;
+    label.textContent = this.narrating ? "停止朗读" : "朗读这首诗的来历";
+    statusLine.textContent = status ?? (this.narrator.supported ? "使用系统中文语音，可随时停止" : "当前浏览器不支持语音朗读");
   }
 
   private requireElement<T extends Element = HTMLElement>(selector: string): T {

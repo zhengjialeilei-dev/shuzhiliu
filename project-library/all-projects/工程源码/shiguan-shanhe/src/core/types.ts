@@ -8,6 +8,32 @@ export interface PoemLocation {
   coordinates: [number, number];
 }
 
+export type ScenePreset =
+  | "moon-river"
+  | "mountain-pass"
+  | "spring-rain"
+  | "autumn-wind"
+  | "city-farewell"
+  | "palace-road"
+  | "yellow-river-pass"
+  | "flute-night"
+  | "luoyang-court"
+  | "field-evening"
+  | "waterfall"
+  | "misty-mountain"
+  | "high-mountain"
+  | "frontier-night"
+  | "snow-road"
+  | "qinhuai-night"
+  | "lake-storm"
+  | "sunset-tower";
+
+export interface PoemScene {
+  preset: ScenePreset;
+  moment: string;
+  origin: string;
+}
+
 export interface Poem {
   id: string;
   title: string;
@@ -19,6 +45,7 @@ export interface Poem {
   location: PoemLocation;
   context: string;
   routeNote: string;
+  scene: PoemScene;
 }
 
 export interface RegionOption {
