@@ -230,7 +230,6 @@ export class PoetryMap {
       group.innerHTML = `
         <line class="marker-tether"></line>
         <g class="marker-visual">
-          <circle class="marker-hit" r="17"></circle>
           <circle class="marker-aura" r="15"></circle>
           <circle class="marker-ring" r="8"></circle>
           <circle class="marker-core" r="3.6"></circle>
@@ -238,6 +237,7 @@ export class PoetryMap {
             <rect x="0" y="0" rx="4" ry="4"></rect>
             <text x="9" y="17"></text>
           </g>
+          <circle class="marker-hit" r="17"></circle>
         </g>`;
       const text = group.querySelector("text");
       const rect = group.querySelector("rect");
@@ -250,6 +250,10 @@ export class PoetryMap {
       hit?.setAttribute("role", "button");
       hit?.setAttribute("tabindex", "0");
       hit?.setAttribute("aria-label", `${poem.location.name}，《${poem.title}》，${poem.author}`);
+      hit?.addEventListener("pointerdown", (event) => {
+        // A poetry marker is an action target, not the beginning of a map drag.
+        event.stopPropagation();
+      });
       hit?.addEventListener("click", () => {
         if (!this.wasDragging) this.onPoemSelect(poem.id);
       });
@@ -322,6 +326,8 @@ export class PoetryMap {
 
     this.svg.addEventListener("pointerdown", (event) => {
       if (event.button !== 0) return;
+      const target = event.target;
+      if (target instanceof Element && target.closest(".poem-marker")) return;
       this.pointerId = event.pointerId;
       this.pointerStart = { x: event.clientX, y: event.clientY, viewX: this.viewX, viewY: this.viewY };
       this.wasDragging = false;
