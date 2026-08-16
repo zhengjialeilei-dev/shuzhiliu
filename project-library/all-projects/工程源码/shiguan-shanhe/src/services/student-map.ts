@@ -8,6 +8,7 @@ import L, {
 } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
+import chinaReliefUrl from "../assets/china-relief-natural-earth.jpg?inline";
 import poetRiderSpriteUrl from "../assets/poet-rider-sprite.png?inline";
 import chinaGeoJson from "../data/china.geo.json";
 import type { JourneyStop, Poem, RegionOption } from "../core/types";
@@ -16,20 +17,20 @@ type ProvinceFeature = Feature<Geometry, { name?: string }>;
 
 const chinaCollection = chinaGeoJson as FeatureCollection<Geometry, { name?: string }>;
 const CHINA_BOUNDS = L.latLngBounds([17.5, 73.2], [53.8, 134.8]);
-const PROVINCE_COLORS = ["#f3c879", "#abd69f", "#92c9c1", "#f2a98f", "#c4b9df", "#f5d89d", "#9fc5df"];
+const RELIEF_BOUNDS = L.latLngBounds([16, 70], [56, 138]);
 
 const RIVERS = [
   {
     name: "黄河",
     color: "#4ba6c8",
     labelAt: [37.6, 109.2] as L.LatLngTuple,
-    points: [[35.1, 96.2], [36.4, 101.8], [36.9, 105.6], [39.7, 106.7], [40.7, 110.1], [37.4, 112.2], [35.2, 116.3], [37.5, 119.1]] as L.LatLngTuple[],
+    points: [[35.1, 96.2], [35.6, 99.3], [36.5, 103.2], [37.5, 105], [39.2, 106.4], [40.4, 108.2], [40.7, 111.1], [39.1, 111.7], [37.4, 111.1], [35.8, 110.5], [34.7, 112.1], [34.9, 114.1], [36.2, 116.1], [37.1, 118.4], [37.8, 119.3]] as L.LatLngTuple[],
   },
   {
     name: "长江",
     color: "#398eb7",
     labelAt: [29.4, 109.1] as L.LatLngTuple,
-    points: [[33.1, 91.2], [31.8, 96.4], [28.6, 102.2], [29.6, 105.3], [30.6, 111.1], [30.4, 114.4], [31.2, 121.6]] as L.LatLngTuple[],
+    points: [[33.1, 91.2], [32.1, 94.5], [31.2, 97.1], [29.6, 99.8], [28.5, 101.7], [28.8, 103.4], [29.4, 105], [29.8, 106.6], [30.7, 108.8], [30.9, 111.3], [30.4, 113.4], [30.6, 115.3], [29.9, 117.2], [30.8, 119.3], [31.2, 121.6]] as L.LatLngTuple[],
   },
 ] as const;
 
@@ -53,11 +54,6 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
-
-function colorForProvince(name: string): string {
-  const seed = [...name].reduce((sum, character) => sum + (character.codePointAt(0) ?? 0), 0);
-  return PROVINCE_COLORS[seed % PROVINCE_COLORS.length];
 }
 
 export interface JourneyPlaybackEvents {
@@ -112,6 +108,12 @@ export class PoetryMap {
     });
 
     this.createPanes();
+    L.imageOverlay(chinaReliefUrl, RELIEF_BOUNDS, {
+      pane: "baseMapPane",
+      opacity: 0.82,
+      interactive: false,
+      className: "student-relief-image",
+    }).addTo(this.map);
     this.provinceLayer = L.geoJSON(chinaCollection, {
       pane: "provincePane",
       interactive: false,
@@ -320,7 +322,7 @@ export class PoetryMap {
   }
 
   private createPanes(): void {
-    const paneLevels = { provincePane: 330, riverPane: 360, decorationPane: 390, routePane: 420, poemMarkerPane: 510, journeyPane: 560, travelerPane: 610 } as const;
+    const paneLevels = { baseMapPane: 210, provincePane: 330, riverPane: 360, decorationPane: 390, routePane: 420, poemMarkerPane: 510, journeyPane: 560, travelerPane: 610 } as const;
     Object.entries(paneLevels).forEach(([name, zIndex]) => {
       const pane = this.map.createPane(name);
       pane.style.zIndex = String(zIndex);
@@ -333,8 +335,8 @@ export class PoetryMap {
         pane: "riverPane",
         renderer: this.canvasRenderer,
         color: "#d9f4ef",
-        opacity: 0.78,
-        weight: 5,
+        opacity: 0.65,
+        weight: 3.5,
         lineCap: "round",
         smoothFactor: 2,
         interactive: false,
@@ -343,8 +345,8 @@ export class PoetryMap {
         pane: "riverPane",
         renderer: this.canvasRenderer,
         color: river.color,
-        opacity: 0.76,
-        weight: 2,
+        opacity: 0.7,
+        weight: 1.6,
         lineCap: "round",
         smoothFactor: 2,
         interactive: false,
@@ -374,7 +376,7 @@ export class PoetryMap {
     const badge = new L.Control({ position: "bottomright" });
     badge.onAdd = () => {
       const element = L.DomUtil.create("div", "student-map-badge");
-      element.innerHTML = "<b>离线研学地图</b><span>山川为意象示意</span>";
+      element.innerHTML = "<b>离线自然地形</b><span>Made with Natural Earth</span>";
       return element;
     };
     badge.addTo(this.map);
@@ -388,11 +390,11 @@ export class PoetryMap {
     const isRegion = regionProvinces.has(name);
     return {
       renderer: this.canvasRenderer,
-      color: isActive ? "#c45135" : isRegion ? "#568f78" : "rgba(81, 104, 86, 0.72)",
-      weight: isActive ? 3 : isRegion ? 2 : 1.15,
+      color: isActive ? "#bd4934" : isRegion ? "#376f62" : "rgba(66, 82, 66, 0.62)",
+      weight: isActive ? 3 : isRegion ? 2 : 1.05,
       opacity: name ? 1 : 0,
-      fillColor: isActive ? "#ffbd73" : isRegion ? "#dff0aa" : colorForProvince(name),
-      fillOpacity: isActive ? 0.98 : isRegion ? 0.96 : 0.9,
+      fillColor: isActive ? "#f08a4b" : isRegion ? "#8bc0a2" : "#fff7dc",
+      fillOpacity: isActive ? 0.3 : isRegion ? 0.16 : 0.045,
       lineCap: "round",
       lineJoin: "round",
     };

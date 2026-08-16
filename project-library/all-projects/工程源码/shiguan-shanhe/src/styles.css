@@ -2419,7 +2419,7 @@ body.scene-open {
   background:
     radial-gradient(circle at 17% 21%, rgba(255, 255, 255, 0.7) 0 2%, transparent 2.4%),
     radial-gradient(circle at 80% 17%, rgba(255, 255, 255, 0.58) 0 2.8%, transparent 3.2%),
-    linear-gradient(180deg, #bfe0dc 0%, #d6ebe1 42%, #e8efcf 100%);
+    linear-gradient(180deg, #83c4d0 0%, #abd8da 50%, #cce4da 100%);
   font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
   cursor: grab;
 }
@@ -2440,6 +2440,10 @@ body.scene-open {
 .student-poetry-map .leaflet-map-pane { z-index: 1; }
 .student-poetry-map.leaflet-container:active { cursor: grabbing; }
 .student-poetry-map .leaflet-overlay-pane canvas { filter: drop-shadow(0 7px 6px rgba(70, 83, 53, 0.14)); }
+.student-poetry-map .student-relief-image {
+  mix-blend-mode: multiply;
+  filter: saturate(0.92) contrast(0.94) brightness(1.05);
+}
 
 .student-map-badge {
   min-width: 112px;
@@ -2492,6 +2496,7 @@ body.scene-open {
   clip-path: polygon(0 100%, 27% 34%, 42% 66%, 65% 6%, 100% 100%);
   background: linear-gradient(135deg, #f9efc8 0 22%, #5f9b78 23% 62%, #3e806e 63%);
   filter: drop-shadow(0 3px 2px rgba(45, 81, 65, 0.16));
+  opacity: 0.48;
 }
 
 .student-terrain-note.is-water i {

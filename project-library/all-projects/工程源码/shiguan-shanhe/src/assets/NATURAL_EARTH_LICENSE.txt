@@ -1,0 +1,6 @@
+China relief base map cropped and color-adjusted from Natural Earth II with Shaded Relief.
+
+Source: https://www.naturalearthdata.com/downloads/50m-natural-earth-2/50m-natural-earth-ii-with-shaded-relief/
+Terms: https://www.naturalearthdata.com/about/terms-of-use/
+
+Natural Earth raster and vector map data is in the public domain.
