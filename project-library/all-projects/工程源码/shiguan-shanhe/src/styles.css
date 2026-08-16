@@ -1935,6 +1935,229 @@ body.scene-open {
   }
 }
 
+/* Network terrain atlas (Leaflet + OpenTopoMap) */
+.terrain-poetry-map.leaflet-container {
+  overflow: hidden;
+  color: #263d3a;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(242, 232, 205, 0.95), transparent 62%),
+    #c9c3a8;
+  font-family: "Noto Serif SC", "Songti SC", SimSun, serif;
+  cursor: grab;
+}
+
+.terrain-poetry-map.leaflet-container.leaflet-drag-target,
+.terrain-poetry-map.leaflet-container:active {
+  cursor: grabbing;
+}
+
+.terrain-poetry-map .leaflet-tile-pane {
+  opacity: 0;
+  transition: opacity 360ms ease;
+}
+
+.terrain-poetry-map.has-terrain-tiles .leaflet-tile-pane {
+  opacity: 0.82;
+}
+
+.terrain-poetry-map .leaflet-tile {
+  image-rendering: auto;
+}
+
+.terrain-poetry-map .leaflet-overlay-pane canvas {
+  mix-blend-mode: multiply;
+}
+
+.terrain-poetry-map .leaflet-control-attribution,
+.terrain-poetry-map .leaflet-control-scale-line {
+  color: rgba(44, 54, 47, 0.78);
+  border-color: rgba(48, 58, 49, 0.38);
+  background: rgba(239, 231, 210, 0.8);
+  backdrop-filter: blur(6px);
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 9px;
+}
+
+.terrain-poetry-map .leaflet-control-attribution a {
+  color: #7f382f;
+}
+
+.poem-leaflet-marker-shell,
+.journey-leaflet-label-shell,
+.journey-traveler-shell {
+  border: 0;
+  background: transparent;
+}
+
+.poem-leaflet-marker-shell {
+  width: 32px !important;
+  height: 32px !important;
+  margin: 0 !important;
+  outline: none;
+}
+
+.poem-leaflet-marker-shell:focus-visible {
+  border-radius: 50%;
+  outline: 3px solid rgba(169, 59, 46, 0.34);
+  outline-offset: 3px;
+}
+
+.poem-leaflet-marker {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: block;
+  cursor: pointer;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.poem-leaflet-marker i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.poem-leaflet-aura {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(111, 54, 42, 0.42);
+  background: rgba(246, 222, 178, 0.34);
+}
+
+.poem-leaflet-ring {
+  width: 17px;
+  height: 17px;
+  border: 2px solid #7e3229;
+  background: #f3ddb4;
+  box-shadow: 0 2px 8px rgba(42, 34, 25, 0.22);
+}
+
+.poem-leaflet-core {
+  width: 7px;
+  height: 7px;
+  background: #ad4033;
+}
+
+.poem-leaflet-marker b {
+  position: absolute;
+  z-index: 3;
+  left: 27px;
+  top: 1px;
+  min-width: max-content;
+  padding: 6px 9px 5px;
+  opacity: 0;
+  color: #f8e8c8;
+  border: 1px solid rgba(245, 220, 178, 0.24);
+  border-radius: 3px;
+  background: rgba(28, 49, 46, 0.94);
+  box-shadow: 0 8px 22px rgba(30, 34, 29, 0.18);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  line-height: 1.15;
+  pointer-events: none;
+  transform: translateX(-4px);
+  transition: opacity 140ms ease, transform 160ms ease;
+}
+
+.poem-leaflet-marker-shell:hover .poem-leaflet-marker b,
+.poem-leaflet-marker-shell:focus-visible .poem-leaflet-marker b,
+.poem-leaflet-marker-shell.is-active .poem-leaflet-marker b {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.poem-leaflet-marker-shell.is-active .poem-leaflet-aura {
+  border-color: rgba(248, 224, 181, 0.88);
+  background: rgba(169, 59, 46, 0.24);
+  animation: terrain-marker-pulse 1.8s ease-in-out infinite;
+}
+
+.poem-leaflet-marker-shell.is-active .poem-leaflet-ring {
+  border-color: #f3dfb8;
+  background: #a83c31;
+}
+
+.poem-leaflet-marker-shell.is-active .poem-leaflet-core {
+  background: #fff0cf;
+}
+
+.journey-leaflet-label {
+  min-width: max-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px 5px 6px;
+  color: #f5e4c5;
+  border: 1px solid rgba(242, 215, 173, 0.26);
+  border-radius: 3px;
+  background: rgba(32, 51, 48, 0.9);
+  box-shadow: 0 8px 20px rgba(35, 31, 23, 0.18);
+  font-size: 11px;
+  line-height: 1;
+  transition: color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.journey-leaflet-label i {
+  color: #d9ae7c;
+  font-family: Georgia, serif;
+  font-style: normal;
+  font-size: 9px;
+}
+
+.journey-leaflet-label-shell.is-active .journey-leaflet-label {
+  color: #fff1d3;
+  background: #9c392f;
+  transform: translateY(-2px);
+}
+
+.journey-leaflet-traveler {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(248, 224, 181, 0.72);
+  border-radius: 50%;
+  background: rgba(169, 59, 46, 0.23);
+  box-shadow: 0 0 0 7px rgba(169, 59, 46, 0.12);
+  animation: terrain-traveler-breathe 1.2s ease-in-out infinite;
+}
+
+.journey-leaflet-traveler i {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid #f6ddb1;
+  transform: translateX(1px);
+}
+
+@keyframes terrain-marker-pulse {
+  50% { transform: translate(-50%, -50%) scale(1.22); opacity: 0.58; }
+}
+
+@keyframes terrain-traveler-breathe {
+  50% { box-shadow: 0 0 0 11px rgba(169, 59, 46, 0.07); }
+}
+
+@media (max-width: 560px) {
+  .terrain-poetry-map .leaflet-control-attribution { max-width: 66%; }
+  .terrain-poetry-map .leaflet-control-scale { display: none; }
+  .poem-leaflet-marker b { font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terrain-poetry-map .leaflet-tile-pane,
+  .poem-leaflet-marker b {
+    transition: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

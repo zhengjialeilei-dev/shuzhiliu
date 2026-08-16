@@ -1,6 +1,6 @@
 import type { AtlasFilters, DynastyFilter, Poem, RegionId, ThemeFilter } from "../core/types";
 import { dynastyFilters, poems, regions, themeFilters } from "../data/poems";
-import { PoetryMap } from "../services/map";
+import { PoetryMap } from "../services/terrain-map";
 import { BrowserNarrator, type Narrator } from "../services/narration";
 
 export class PoetryAtlasApp {
