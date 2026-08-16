@@ -10,6 +10,7 @@ export class PoetryAtlasApp {
   private map?: PoetryMap;
   private scenePoem?: Poem;
   private narrating = false;
+  private sceneTimer?: number;
 
   constructor(
     private readonly root: HTMLElement,
@@ -32,7 +33,7 @@ export class PoetryAtlasApp {
         </header>
 
         <section class="atlas-workspace">
-          <nav class="region-rail" aria-label="诗歌区域">
+          <nav class="region-rail map-overlay" aria-label="诗歌区域">
             <p class="rail-label">诗域</p>
             ${regions.map((region, index) => `
               <button type="button" data-region="${region.id}" class="region-button${index === 0 ? " is-active" : ""}">
@@ -47,11 +48,19 @@ export class PoetryAtlasApp {
                 <p id="region-description">${regions[0].description}</p>
                 <b id="filter-summary">全部朝代 · 全部主题</b>
               </div>
-              <button type="button" class="route-toggle is-active" data-action="route" aria-pressed="true">
-                <span class="route-swatch" aria-hidden="true"></span><span data-route-label>隐藏诗路</span>
-              </button>
+              <div class="stage-actions">
+                <span class="map-gesture-hint">滚轮缩放 · 拖动地图 · 点击诗点进入</span>
+                <button type="button" class="route-toggle is-active" data-action="route" aria-pressed="true">
+                  <span class="route-swatch" aria-hidden="true"></span><span data-route-label>隐藏诗路</span>
+                </button>
+              </div>
             </div>
             <div id="map-host" class="map-host"></div>
+            <div class="map-controls" aria-label="地图缩放控制">
+              <button type="button" data-action="zoom-in" aria-label="放大地图">＋</button>
+              <button type="button" data-action="zoom-out" aria-label="缩小地图">−</button>
+              <button type="button" data-action="reset-map" class="reset-map">全图</button>
+            </div>
             <div id="journey-player" class="journey-player" aria-live="polite" hidden>
               <div class="journey-player-heading">
                 <span>诗人行旅</span>
@@ -73,18 +82,6 @@ export class PoetryAtlasApp {
             </div>
           </section>
 
-          <aside class="poem-inspector" aria-live="polite">
-            <div class="inspector-topline">
-              <span id="poem-location"></span>
-              <span id="poem-meta"></span>
-            </div>
-            <div id="poem-detail" class="poem-detail"></div>
-            <div class="route-note">
-              <span aria-hidden="true">↝</span>
-              <div><small>诗人行旅</small><b id="route-note"></b></div>
-            </div>
-            <p class="inspector-hint">点击地图上的诗名，可切换地点与诗境。</p>
-          </aside>
         </section>
 
         <footer class="filter-dock">
@@ -178,6 +175,9 @@ export class PoetryAtlasApp {
       this.routeVisible = !this.routeVisible;
       this.render();
     });
+    this.requireElement<HTMLButtonElement>('[data-action="zoom-in"]').addEventListener("click", () => this.map?.zoomIn());
+    this.requireElement<HTMLButtonElement>('[data-action="zoom-out"]').addEventListener("click", () => this.map?.zoomOut());
+    this.requireElement<HTMLButtonElement>('[data-action="reset-map"]').addEventListener("click", () => this.map?.resetView());
 
     const dialog = this.requireElement<HTMLDialogElement>("#scene-dialog");
     this.requireElement<HTMLButtonElement>('[data-action="close-scene"]').addEventListener("click", () => dialog.close());
@@ -207,6 +207,14 @@ export class PoetryAtlasApp {
     this.stopJourney();
     this.activePoemId = poemId;
     this.render();
+    const poem = poems.find((item) => item.id === poemId);
+    if (!poem) return;
+    this.map?.focusPoem(poem);
+    if (this.sceneTimer !== undefined) window.clearTimeout(this.sceneTimer);
+    this.sceneTimer = window.setTimeout(() => {
+      this.sceneTimer = undefined;
+      this.openScene(poem);
+    }, 520);
   }
 
   private reconcileSelection(): void {
@@ -233,7 +241,6 @@ export class PoetryAtlasApp {
     this.requireElement("#filter-summary").textContent = `${this.filters.dynasty === "全部" ? "全部朝代" : this.filters.dynasty + "代"} · ${this.filters.theme === "全部" ? "全部主题" : this.filters.theme}`;
 
     this.renderPoemList(visible);
-    this.renderPoemDetail(activePoem);
     this.map?.update({ visiblePoems: visible, activePoemId: activePoem?.id ?? "", activeRegion: region, routeVisible: this.routeVisible });
   }
 
@@ -250,34 +257,6 @@ export class PoetryAtlasApp {
     list.querySelectorAll<HTMLButtonElement>("[data-poem]").forEach((button) => {
       button.addEventListener("click", () => this.selectPoem(button.dataset.poem ?? ""));
     });
-  }
-
-  private renderPoemDetail(poem?: Poem): void {
-    const detail = this.requireElement("#poem-detail");
-    if (!poem) {
-      this.requireElement("#poem-location").textContent = "未找到诗歌";
-      this.requireElement("#poem-meta").textContent = "";
-      detail.innerHTML = '<div class="empty-detail"><b>山河暂静</b><p>调整筛选条件，重新点亮诗路。</p></div>';
-      this.requireElement("#route-note").textContent = "—";
-      return;
-    }
-    this.activePoemId = poem.id;
-    this.requireElement("#poem-location").textContent = poem.location.name;
-    this.requireElement("#poem-meta").textContent = `${poem.dynasty} · ${poem.theme}`;
-    detail.classList.remove("is-entering");
-    void detail.offsetWidth;
-    detail.classList.add("is-entering");
-    detail.innerHTML = `
-      <p class="poem-author">${poem.dynasty} · ${poem.author}</p>
-      <h2>${poem.title}</h2>
-      <blockquote>${poem.lines.map((line) => `<span>${line}</span>`).join("")}</blockquote>
-      <div class="context-copy"><small>地理诗解</small><p>${poem.context}</p></div>
-      <button type="button" class="enter-scene-button" data-action="open-scene">
-        <span>进入诗境</span><small>场景 · 来历 · 朗读</small><i aria-hidden="true">↗</i>
-      </button>`;
-    detail.querySelector<HTMLButtonElement>('[data-action="open-scene"]')
-      ?.addEventListener("click", () => this.openScene(poem));
-    this.requireElement("#route-note").textContent = poem.routeNote;
   }
 
   private openScene(poem: Poem): void {
@@ -331,6 +310,7 @@ export class PoetryAtlasApp {
     if (!poem || !this.map) return;
     const dialog = this.requireElement<HTMLDialogElement>("#scene-dialog");
     if (dialog.open) dialog.close();
+    this.map.resetView();
     this.requireElement<HTMLElement>(".map-stage").scrollIntoView({ behavior: "smooth", block: "start" });
 
     const player = this.requireElement<HTMLElement>("#journey-player");

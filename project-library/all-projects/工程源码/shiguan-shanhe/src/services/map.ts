@@ -21,6 +21,7 @@ export interface JourneyPlaybackEvents {
 
 export class PoetryMap {
   private readonly svg = svgElement("svg");
+  private readonly viewportLayer = svgElement("g");
   private readonly provinceLayer = svgElement("g");
   private readonly routeLayer = svgElement("g");
   private readonly journeyLayer = svgElement("g");
@@ -36,6 +37,14 @@ export class PoetryMap {
   private routeVisible = true;
   private journeyFrame?: number;
   private journeyActive = false;
+  private viewWidth = 1000;
+  private viewHeight = 680;
+  private viewScale = 1;
+  private viewX = 0;
+  private viewY = 0;
+  private pointerId?: number;
+  private pointerStart?: { x: number; y: number; viewX: number; viewY: number };
+  private wasDragging = false;
 
   constructor(
     private readonly host: HTMLElement,
@@ -64,8 +73,11 @@ export class PoetryMap {
     this.routeLayer.classList.add("route-layer");
     this.journeyLayer.classList.add("journey-layer");
     this.markerLayer.classList.add("marker-layer");
-    this.svg.append(this.provinceLayer, this.routeLayer, this.journeyLayer, this.markerLayer);
+    this.viewportLayer.classList.add("map-viewport");
+    this.viewportLayer.append(this.provinceLayer, this.routeLayer, this.journeyLayer, this.markerLayer);
+    this.svg.append(this.viewportLayer);
     this.host.append(this.svg);
+    this.bindNavigation();
 
     this.buildProvinces();
     this.buildMarkers();
@@ -90,6 +102,30 @@ export class PoetryMap {
   dispose(): void {
     this.stopJourney();
     this.resizeObserver.disconnect();
+  }
+
+  focusPoem(poem: Poem): void {
+    const point = this.projection(poem.location.coordinates);
+    if (!point) return;
+    const scale = this.viewWidth < 680 ? 2.15 : 2.75;
+    this.setTransform(
+      this.viewWidth * 0.5 - point[0] * scale,
+      this.viewHeight * 0.5 - point[1] * scale,
+      scale,
+      true
+    );
+  }
+
+  zoomIn(): void {
+    this.zoomAt(this.viewWidth / 2, this.viewHeight / 2, 1.35);
+  }
+
+  zoomOut(): void {
+    this.zoomAt(this.viewWidth / 2, this.viewHeight / 2, 1 / 1.35);
+  }
+
+  resetView(animate = true): void {
+    this.setTransform(0, 0, 1, animate);
   }
 
   playJourney(poem: Poem, events: JourneyPlaybackEvents): void {
@@ -191,16 +227,17 @@ export class PoetryMap {
       const group = svgElement("g");
       group.classList.add("poem-marker");
       group.dataset.poemId = poem.id;
-      group.setAttribute("role", "button");
-      group.setAttribute("tabindex", "0");
-      group.setAttribute("aria-label", `${poem.location.name}，《${poem.title}》，${poem.author}`);
       group.innerHTML = `
-        <circle class="marker-aura" r="15"></circle>
-        <circle class="marker-ring" r="8"></circle>
-        <circle class="marker-core" r="3.6"></circle>
-        <g class="marker-label" transform="translate(13 -14)">
-          <rect x="0" y="0" rx="4" ry="4"></rect>
-          <text x="9" y="17"></text>
+        <line class="marker-tether"></line>
+        <g class="marker-visual">
+          <circle class="marker-hit" r="17"></circle>
+          <circle class="marker-aura" r="15"></circle>
+          <circle class="marker-ring" r="8"></circle>
+          <circle class="marker-core" r="3.6"></circle>
+          <g class="marker-label" transform="translate(13 -14)">
+            <rect x="0" y="0" rx="4" ry="4"></rect>
+            <text x="9" y="17"></text>
+          </g>
         </g>`;
       const text = group.querySelector("text");
       const rect = group.querySelector("rect");
@@ -209,8 +246,14 @@ export class PoetryMap {
         rect.setAttribute("width", String(Math.max(68, poem.title.length * 15 + 18)));
         rect.setAttribute("height", "25");
       }
-      group.addEventListener("click", () => this.onPoemSelect(poem.id));
-      group.addEventListener("keydown", (event) => {
+      const hit = group.querySelector<SVGCircleElement>(".marker-hit");
+      hit?.setAttribute("role", "button");
+      hit?.setAttribute("tabindex", "0");
+      hit?.setAttribute("aria-label", `${poem.location.name}，《${poem.title}》，${poem.author}`);
+      hit?.addEventListener("click", () => {
+        if (!this.wasDragging) this.onPoemSelect(poem.id);
+      });
+      hit?.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           this.onPoemSelect(poem.id);
@@ -224,6 +267,8 @@ export class PoetryMap {
   private layout(): void {
     const width = Math.max(this.host.clientWidth, 520);
     const height = Math.max(this.host.clientHeight, 420);
+    this.viewWidth = width;
+    this.viewHeight = height;
     this.svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
     this.projection.fitExtent(
       [[42, 34], [width - 38, height - 38]],
@@ -237,12 +282,112 @@ export class PoetryMap {
       if (element) element.setAttribute("d", this.path(feature as ProvinceFeature) ?? "");
     });
 
-    this.poems.forEach((poem) => {
+    const placedPoints: [number, number][] = [];
+    this.poems.forEach((poem, poemIndex) => {
       const point = this.projection(poem.location.coordinates);
       const element = this.markerElements.get(poem.id);
-      if (point && element) element.setAttribute("transform", `translate(${point[0]} ${point[1]})`);
+      if (!point || !element) return;
+      let displayPoint: [number, number] = [point[0], point[1]];
+      let attempt = 0;
+      while (placedPoints.some((placed) => Math.hypot(placed[0] - displayPoint[0], placed[1] - displayPoint[1]) < 27) && attempt < 18) {
+        const angle = (poemIndex * 137.5 + attempt * 91) * Math.PI / 180;
+        const radius = 24 + Math.floor(attempt / 6) * 16;
+        displayPoint = [point[0] + Math.cos(angle) * radius, point[1] + Math.sin(angle) * radius];
+        attempt += 1;
+      }
+      placedPoints.push(displayPoint);
+      const dx = point[0] - displayPoint[0];
+      const dy = point[1] - displayPoint[1];
+      element.setAttribute("transform", `translate(${displayPoint[0]} ${displayPoint[1]})`);
+      const tether = element.querySelector<SVGLineElement>(".marker-tether");
+      if (tether) {
+        tether.setAttribute("x1", "0");
+        tether.setAttribute("y1", "0");
+        tether.setAttribute("x2", String(dx));
+        tether.setAttribute("y2", String(dy));
+        tether.classList.toggle("is-visible", attempt > 0);
+      }
     });
     this.paintState();
+    this.applyTransform(false);
+  }
+
+  private bindNavigation(): void {
+    this.svg.style.touchAction = "none";
+    this.svg.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      const point = this.eventPoint(event.clientX, event.clientY);
+      this.zoomAt(point.x, point.y, Math.exp(-event.deltaY * 0.0015));
+    }, { passive: false });
+
+    this.svg.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      this.pointerId = event.pointerId;
+      this.pointerStart = { x: event.clientX, y: event.clientY, viewX: this.viewX, viewY: this.viewY };
+      this.wasDragging = false;
+      this.svg.setPointerCapture(event.pointerId);
+      this.svg.classList.add("is-dragging");
+    });
+
+    this.svg.addEventListener("pointermove", (event) => {
+      if (this.pointerId !== event.pointerId || !this.pointerStart) return;
+      const rect = this.svg.getBoundingClientRect();
+      const dx = (event.clientX - this.pointerStart.x) * (this.viewWidth / rect.width);
+      const dy = (event.clientY - this.pointerStart.y) * (this.viewHeight / rect.height);
+      if (Math.hypot(dx, dy) > 4) this.wasDragging = true;
+      this.setTransform(this.pointerStart.viewX + dx, this.pointerStart.viewY + dy, this.viewScale, false);
+    });
+
+    const endPointer = (event: PointerEvent): void => {
+      if (this.pointerId !== event.pointerId) return;
+      this.pointerId = undefined;
+      this.pointerStart = undefined;
+      this.svg.classList.remove("is-dragging");
+      window.setTimeout(() => { this.wasDragging = false; }, 0);
+    };
+    this.svg.addEventListener("pointerup", endPointer);
+    this.svg.addEventListener("pointercancel", endPointer);
+    this.svg.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      const point = this.eventPoint(event.clientX, event.clientY);
+      this.zoomAt(point.x, point.y, 1.5);
+    });
+  }
+
+  private eventPoint(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = this.svg.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left) * (this.viewWidth / rect.width),
+      y: (clientY - rect.top) * (this.viewHeight / rect.height)
+    };
+  }
+
+  private zoomAt(x: number, y: number, factor: number): void {
+    const nextScale = Math.min(6, Math.max(1, this.viewScale * factor));
+    const ratio = nextScale / this.viewScale;
+    this.setTransform(x - (x - this.viewX) * ratio, y - (y - this.viewY) * ratio, nextScale, true);
+  }
+
+  private setTransform(x: number, y: number, scale: number, animate: boolean): void {
+    const padding = 44;
+    this.viewScale = Math.min(6, Math.max(1, scale));
+    if (this.viewScale === 1) {
+      this.viewX = 0;
+      this.viewY = 0;
+    } else {
+      this.viewX = Math.min(padding, Math.max(this.viewWidth * (1 - this.viewScale) - padding, x));
+      this.viewY = Math.min(padding, Math.max(this.viewHeight * (1 - this.viewScale) - padding, y));
+    }
+    this.applyTransform(animate);
+  }
+
+  private applyTransform(animate: boolean): void {
+    this.viewportLayer.classList.toggle("is-animating", animate);
+    this.viewportLayer.style.transform = `translate(${this.viewX}px, ${this.viewY}px) scale(${this.viewScale})`;
+    this.markerElements.forEach((element) => {
+      element.style.setProperty("--marker-scale", String(1 / Math.sqrt(this.viewScale)));
+    });
+    if (animate) window.setTimeout(() => this.viewportLayer.classList.remove("is-animating"), 520);
   }
 
   private paintState(): void {
