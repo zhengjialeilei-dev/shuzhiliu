@@ -1,6 +1,6 @@
 import type { AtlasFilters, DynastyFilter, Poem, RegionId, ThemeFilter } from "../core/types";
 import { dynastyFilters, poems, regions, themeFilters } from "../data/poems";
-import { PoetryMap } from "../services/terrain-map";
+import { PoetryMap } from "../services/student-map";
 import { BrowserNarrator, type Narrator } from "../services/narration";
 
 export class PoetryAtlasApp {
@@ -23,12 +23,12 @@ export class PoetryAtlasApp {
         <header class="atlas-header">
           <div class="brand-seal" aria-hidden="true"><span>诗</span></div>
           <div class="brand-copy">
-            <p>古诗地理互动长卷</p>
+            <p>小学生古诗研学地图</p>
             <h1>诗贯山河</h1>
           </div>
           <div class="header-note">
             <span id="visible-count">${poems.length}</span>
-            <small>首诗 · 正在山河间回响</small>
+            <small>首诗 · 等你沿着地图发现</small>
           </div>
         </header>
 
@@ -49,7 +49,7 @@ export class PoetryAtlasApp {
                 <b id="filter-summary">全部朝代 · 全部主题</b>
               </div>
               <div class="stage-actions">
-                <span class="map-gesture-hint">滚轮缩放 · 拖动地图 · 点击诗点进入</span>
+                <span class="map-gesture-hint">拖一拖 · 放大看 · 点击“诗”字出发</span>
                 <button type="button" class="route-toggle is-active" data-action="route" aria-pressed="true">
                   <span class="route-swatch" aria-hidden="true"></span><span data-route-label>隐藏诗路</span>
                 </button>

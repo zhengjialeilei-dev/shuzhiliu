@@ -2412,6 +2412,304 @@ body.scene-open {
   mask-image: linear-gradient(180deg, #000 0 92%, transparent);
 }
 
+/* Offline student atlas: local geography, picture-book colors and horseback travel. */
+.student-poetry-map.leaflet-container {
+  overflow: hidden;
+  color: #244e4b;
+  background:
+    radial-gradient(circle at 17% 21%, rgba(255, 255, 255, 0.7) 0 2%, transparent 2.4%),
+    radial-gradient(circle at 80% 17%, rgba(255, 255, 255, 0.58) 0 2.8%, transparent 3.2%),
+    linear-gradient(180deg, #bfe0dc 0%, #d6ebe1 42%, #e8efcf 100%);
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  cursor: grab;
+}
+
+.student-poetry-map.leaflet-container::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image:
+    radial-gradient(ellipse at 13% 79%, rgba(69, 137, 117, 0.23) 0 8%, transparent 8.5%),
+    radial-gradient(ellipse at 90% 72%, rgba(69, 137, 117, 0.2) 0 9%, transparent 9.5%),
+    repeating-linear-gradient(112deg, transparent 0 38px, rgba(255, 255, 255, 0.16) 39px 40px);
+}
+
+.student-poetry-map .leaflet-map-pane { z-index: 1; }
+.student-poetry-map.leaflet-container:active { cursor: grabbing; }
+.student-poetry-map .leaflet-overlay-pane canvas { filter: drop-shadow(0 7px 6px rgba(70, 83, 53, 0.14)); }
+
+.student-map-badge {
+  min-width: 112px;
+  padding: 8px 11px;
+  color: #35675d;
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  border-radius: 14px;
+  background: rgba(255, 249, 222, 0.9);
+  box-shadow: 0 5px 15px rgba(52, 91, 77, 0.15);
+  text-align: center;
+  pointer-events: none;
+}
+
+.student-map-badge b,
+.student-map-badge span { display: block; }
+.student-map-badge b { font-size: 11px; letter-spacing: 0.08em; }
+.student-map-badge span { margin-top: 2px; color: #7a7a58; font-size: 9px; }
+
+.student-river-label-shell,
+.student-terrain-note-shell { border: 0; background: transparent; }
+
+.student-river-label-shell span {
+  display: block;
+  width: max-content;
+  color: #247da5;
+  font-family: "KaiTi", "STKaiti", serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-shadow: 0 1px 0 #e9ffff, 0 0 5px #e9ffff;
+  transform: rotate(-8deg);
+}
+
+.student-terrain-note {
+  position: relative;
+  width: 74px;
+  height: 50px;
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  opacity: 0.76;
+}
+
+.student-terrain-note i {
+  position: relative;
+  width: 39px;
+  height: 22px;
+  display: block;
+  margin-bottom: -2px;
+  clip-path: polygon(0 100%, 27% 34%, 42% 66%, 65% 6%, 100% 100%);
+  background: linear-gradient(135deg, #f9efc8 0 22%, #5f9b78 23% 62%, #3e806e 63%);
+  filter: drop-shadow(0 3px 2px rgba(45, 81, 65, 0.16));
+}
+
+.student-terrain-note.is-water i {
+  height: 14px;
+  clip-path: none;
+  border-radius: 50%;
+  background: repeating-radial-gradient(ellipse at 50% 100%, transparent 0 5px, #4da5bd 6px 7px);
+}
+
+.student-terrain-note.is-forest i {
+  width: 42px;
+  height: 24px;
+  clip-path: polygon(0 100%, 13% 30%, 24% 100%, 42% 2%, 57% 100%, 78% 22%, 100% 100%);
+  background: #4f986d;
+}
+
+.student-terrain-note b {
+  width: max-content;
+  padding: 2px 6px;
+  color: #35675d;
+  border-radius: 8px;
+  background: rgba(255, 248, 214, 0.72);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.student-poem-marker-shell {
+  width: 36px !important;
+  height: 42px !important;
+  margin: 0 !important;
+}
+
+.student-poem-marker-shell .poem-leaflet-marker {
+  width: 36px;
+  height: 42px;
+  transform-origin: 50% 90%;
+  transition: transform 160ms ease;
+}
+
+.student-poem-marker-shell:hover .poem-leaflet-marker,
+.student-poem-marker-shell:focus-visible .poem-leaflet-marker { transform: translateY(-3px) scale(1.08); }
+.student-poem-marker-shell .poem-leaflet-aura { width: 35px; height: 35px; top: 47%; border: 0; background: rgba(255, 250, 213, 0.72); }
+.student-poem-marker-shell .poem-leaflet-ring {
+  width: 27px;
+  height: 31px;
+  top: 46%;
+  border: 3px solid #fff3cb;
+  border-radius: 13px 13px 13px 3px;
+  background: #ef6d46;
+  box-shadow: 0 4px 0 rgba(174, 77, 48, 0.22), 0 6px 12px rgba(61, 79, 60, 0.18);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.student-poem-marker-shell .poem-leaflet-marker em {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 17px;
+  color: #fff8dc;
+  font-family: "KaiTi", "STKaiti", serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+  transform: translate(-50%, -50%);
+}
+
+.student-poem-marker-shell .poem-leaflet-marker b {
+  left: 31px;
+  top: 3px;
+  color: #27645c;
+  border: 2px solid #fff2c7;
+  border-radius: 11px;
+  background: #fff9dd;
+  box-shadow: 0 5px 0 rgba(78, 118, 91, 0.13), 0 9px 18px rgba(50, 81, 63, 0.14);
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.student-poem-marker-shell.is-active .poem-leaflet-ring { border-color: #fff; background: #e85437; }
+.student-poem-marker-shell.is-active .poem-leaflet-aura { background: rgba(255, 230, 115, 0.68); }
+
+.student-journey-label-shell .journey-leaflet-label {
+  color: #31685d;
+  border: 2px solid #fff2ca;
+  border-radius: 12px;
+  background: #fff9dc;
+  box-shadow: 0 5px 0 rgba(65, 116, 89, 0.13);
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-weight: 700;
+}
+
+.student-journey-label-shell .journey-leaflet-label i {
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  border-radius: 50%;
+  background: #72a988;
+  font-family: inherit;
+  font-weight: 700;
+}
+
+.student-journey-label-shell.is-active .journey-leaflet-label { color: #7c351f; background: #ffe29b; }
+.student-journey-label-shell.is-active .journey-leaflet-label i { background: #e86842; }
+
+.student-rider-shell {
+  width: 88px !important;
+  height: 126px !important;
+  margin: 0 !important;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.student-rider {
+  position: relative;
+  width: 88px;
+  height: 126px;
+  display: block;
+  transform-origin: 50% 88%;
+  animation: student-rider-bob 0.42s ease-in-out infinite alternate;
+}
+
+.student-rider-sprite {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: block;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 400% 100%;
+  filter: drop-shadow(0 5px 3px rgba(58, 67, 45, 0.28));
+  animation: student-rider-cycle 0.72s linear infinite;
+}
+
+.student-rider b {
+  position: absolute;
+  z-index: 1;
+  left: 8px;
+  bottom: 12px;
+  width: 18px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(219, 154, 83, 0.46);
+  box-shadow: -9px 4px 0 rgba(219, 154, 83, 0.25), -17px 1px 0 rgba(219, 154, 83, 0.16);
+  animation: student-rider-dust 0.6s ease-out infinite;
+}
+
+.student-rider-shell.is-facing-left .student-rider { transform: scaleX(-1); }
+
+@keyframes student-rider-cycle {
+  0%, 24.9% { background-position: 0 0; }
+  25%, 49.9% { background-position: 33.333% 0; }
+  50%, 74.9% { background-position: 66.666% 0; }
+  75%, 100% { background-position: 100% 0; }
+}
+
+@keyframes student-rider-bob {
+  from { translate: 0 0; }
+  to { translate: 0 -3px; }
+}
+
+@keyframes student-rider-dust {
+  from { opacity: 0.78; transform: translateX(4px) scale(0.75); }
+  to { opacity: 0; transform: translateX(-12px) scale(1.3); }
+}
+
+/* Friendly classroom chrome around the full-canvas map. */
+.atlas-shell { background: #fff8df; }
+.atlas-header {
+  border-bottom-color: rgba(57, 118, 101, 0.18);
+  background: linear-gradient(90deg, #fff8df 0%, #f4f1c9 58%, #dcecd7 100%);
+}
+.brand-seal { border-radius: 15px 15px 15px 5px; background: #ef6d46; box-shadow: 0 5px 0 #d65034; transform: rotate(-3deg); }
+.brand-copy p { color: #3b8377; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-weight: 700; }
+.brand-copy h1 { color: #285c55; }
+.header-note span { color: #e45e3d; }
+.header-note small { color: #5b7d6d; }
+
+.region-rail.map-overlay {
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 17px;
+  background: rgba(255, 249, 220, 0.9);
+  box-shadow: 0 7px 0 rgba(74, 130, 101, 0.12), 0 16px 28px rgba(57, 104, 82, 0.12);
+}
+.region-rail.map-overlay .region-button { border-radius: 11px; }
+.region-rail.map-overlay .region-button.is-active { color: #fff; background: #3b8a78; box-shadow: inset 0 -3px 0 rgba(28, 100, 83, 0.24); }
+
+.stage-topline {
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-left: 6px solid #ef6d46;
+  border-radius: 14px;
+  background: rgba(255, 249, 219, 0.86);
+  box-shadow: 0 6px 0 rgba(73, 125, 99, 0.1);
+}
+.map-controls {
+  overflow: hidden;
+  border: 2px solid #fff4d0;
+  border-radius: 16px;
+  background: rgba(255, 249, 220, 0.94);
+  box-shadow: 0 7px 0 rgba(60, 119, 91, 0.14);
+}
+.map-controls button:hover { color: #fff; background: #3b8a78; }
+.poem-strip { border-top-color: rgba(61, 124, 99, 0.2); background: rgba(255, 249, 222, 0.94); }
+.poem-chip.is-active { background: #fff2c3; box-shadow: inset 0 4px 0 #ef6d46; }
+.filter-dock { background: #fff8df; border-top-color: rgba(61, 124, 99, 0.18); }
+.filter-button.is-active { color: #de5737; }
+.journey-player { border: 3px solid #fff0c0; border-radius: 18px; background: rgba(255, 249, 222, 0.96); box-shadow: 0 9px 0 rgba(64, 122, 94, 0.13), 0 20px 40px rgba(50, 92, 71, 0.15); }
+.journey-progress-track i { background: linear-gradient(90deg, #ef6d46, #f4b54d); }
+
+@media (max-width: 560px) {
+  .student-map-badge { display: none; }
+  .student-terrain-note { transform: scale(0.82); }
+  .student-rider-shell { transform: scale(0.82); transform-origin: 50% 100%; }
+}
+
 .scene-canvas[data-verse-length="long"] .scene-verse blockquote {
   padding-bottom: 28px;
   font-size: clamp(1.08rem, 1.9vw, 1.62rem);
