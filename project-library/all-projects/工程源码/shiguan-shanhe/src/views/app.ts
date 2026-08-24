@@ -50,7 +50,7 @@ export class PoetryAtlasApp {
                 <b id="filter-summary">全部朝代 · 全部主题</b>
               </div>
               <div class="stage-actions">
-                <span class="map-gesture-hint">拖一拖 · 放大看 · 点击“诗”字出发</span>
+                <span class="map-gesture-hint">点击诗点簇放大 · 点击“诗”字进入诗境</span>
                 <button type="button" class="route-toggle is-active" data-action="route" aria-pressed="true">
                   <span class="route-swatch" aria-hidden="true"></span><span data-route-label>隐藏诗路</span>
                 </button>
@@ -64,7 +64,7 @@ export class PoetryAtlasApp {
             </div>
             <div id="journey-player" class="journey-player" aria-live="polite" hidden>
               <div class="journey-player-heading">
-                <span>诗人行旅</span>
+                <span>路线演示</span>
                 <b id="journey-title"></b>
                 <button type="button" data-action="stop-journey">结束</button>
               </div>
@@ -136,7 +136,7 @@ export class PoetryAtlasApp {
             </div>
             <div class="scene-geography"><small>山河坐标</small><b id="scene-route"></b></div>
             <button type="button" class="journey-start-button" data-action="play-journey">
-              <span><small>沿地图出发</small><b>播放诗人行旅</b></span>
+              <span><small>沿地图出发</small><b>播放行走路线</b></span>
               <i aria-hidden="true">→</i>
             </button>
           </section>

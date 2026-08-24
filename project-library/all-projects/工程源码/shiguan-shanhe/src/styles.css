@@ -2814,9 +2814,11 @@ body.scene-open {
 }
 
 .student-map-badge b,
-.student-map-badge span { display: block; }
+.student-map-badge span,
+.student-map-badge small { display: block; }
 .student-map-badge b { font-size: 11px; letter-spacing: 0.08em; }
 .student-map-badge span { margin-top: 2px; color: #7a7a58; font-size: 9px; }
+.student-map-badge small { margin-top: 2px; color: #9a8664; font-size: 8px; }
 
 .student-river-label-shell,
 .student-terrain-note-shell { border: 0; background: transparent; }
@@ -2883,6 +2885,7 @@ body.scene-open {
   width: 36px !important;
   height: 42px !important;
   margin: 0 !important;
+  transition: opacity 180ms ease;
 }
 
 .student-poem-marker-shell .poem-leaflet-marker {
@@ -2935,6 +2938,47 @@ body.scene-open {
 .student-poem-marker-shell.is-active .poem-leaflet-ring { border-color: #fff; background: #e85437; }
 .student-poem-marker-shell.is-active .poem-leaflet-aura { background: rgba(255, 230, 115, 0.68); }
 
+.student-poem-cluster-shell {
+  width: 48px !important;
+  height: 48px !important;
+  margin: 0 !important;
+  border: 0;
+  background: transparent;
+}
+
+.student-poem-cluster {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-content: center;
+  color: #fff9dc;
+  border: 4px solid rgba(255, 249, 218, 0.94);
+  border-radius: 50% 50% 50% 16%;
+  background: #3b8a78;
+  box-shadow: 0 5px 0 rgba(39, 106, 87, 0.28), 0 0 0 7px rgba(255, 241, 179, 0.46), 0 12px 24px rgba(42, 91, 72, 0.25);
+  cursor: zoom-in;
+  transform: rotate(-7deg);
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.student-poem-cluster-shell:hover .student-poem-cluster,
+.student-poem-cluster-shell:focus-visible .student-poem-cluster {
+  background: #e86643;
+  transform: translateY(-3px) rotate(0deg) scale(1.08);
+}
+
+.student-poem-cluster b,
+.student-poem-cluster small {
+  display: block;
+  text-align: center;
+  line-height: 1;
+  transform: rotate(7deg);
+}
+
+.student-poem-cluster b { font-size: 16px; font-weight: 900; }
+.student-poem-cluster small { margin-top: 2px; font-size: 8px; font-weight: 800; letter-spacing: 0.08em; }
+
 .student-journey-label-shell .journey-leaflet-label {
   color: #31685d;
   border: 2px solid #fff2ca;
@@ -2957,69 +3001,67 @@ body.scene-open {
   font-weight: 700;
 }
 
+.student-journey-label-shell .journey-leaflet-label b {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.student-journey-label-shell .journey-leaflet-label em {
+  padding: 3px 5px;
+  color: #587e70;
+  border-radius: 7px;
+  background: #dcebcf;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
 .student-journey-label-shell.is-active .journey-leaflet-label { color: #7c351f; background: #ffe29b; }
 .student-journey-label-shell.is-active .journey-leaflet-label i { background: #e86842; }
+.student-journey-label-shell.is-active .journey-leaflet-label em { color: #fff8db; background: #e86842; }
 
-.student-rider-shell {
-  width: 88px !important;
-  height: 126px !important;
+.student-route-arrow-shell {
+  width: 34px !important;
+  height: 34px !important;
   margin: 0 !important;
   border: 0;
   background: transparent;
-  overflow: visible;
 }
 
-.student-rider {
-  position: relative;
-  width: 88px;
-  height: 126px;
-  display: block;
-  transform-origin: 50% 88%;
-  animation: student-rider-bob 0.42s ease-in-out infinite alternate;
-}
-
-.student-rider-sprite {
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-  display: block;
-  background-repeat: no-repeat;
-  background-position: 0 0;
-  background-size: 400% 100%;
-  filter: drop-shadow(0 5px 3px rgba(58, 67, 45, 0.28));
-  animation: student-rider-cycle 0.72s linear infinite;
-}
-
-.student-rider b {
-  position: absolute;
-  z-index: 1;
-  left: 8px;
-  bottom: 12px;
-  width: 18px;
-  height: 8px;
+.student-route-arrow {
+  --route-angle: 0deg;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #fff3c7;
   border-radius: 50%;
-  background: rgba(219, 154, 83, 0.46);
-  box-shadow: -9px 4px 0 rgba(219, 154, 83, 0.25), -17px 1px 0 rgba(219, 154, 83, 0.16);
-  animation: student-rider-dust 0.6s ease-out infinite;
+  background: #77aa91;
+  box-shadow: 0 4px 0 rgba(51, 115, 88, 0.24), 0 7px 16px rgba(43, 90, 71, 0.2);
+  transform: rotate(var(--route-angle));
+  transition: background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
 }
 
-.student-rider-shell.is-facing-left .student-rider { transform: scaleX(-1); }
-
-@keyframes student-rider-cycle {
-  0%, 24.9% { background-position: 0 0; }
-  25%, 49.9% { background-position: 33.333% 0; }
-  50%, 74.9% { background-position: 66.666% 0; }
-  75%, 100% { background-position: 100% 0; }
+.student-route-arrow i {
+  color: #fffbe8;
+  font-family: Arial, sans-serif;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
 }
 
-@keyframes student-rider-bob {
-  from { translate: 0 0; }
-  to { translate: 0 -3px; }
+.student-route-arrow-shell.is-visited .student-route-arrow { background: #e3683d; }
+.student-route-arrow-shell.is-active .student-route-arrow {
+  background: #e3683d;
+  box-shadow: 0 0 0 8px rgba(255, 218, 119, 0.42), 0 7px 18px rgba(102, 70, 39, 0.24);
+  animation: student-route-pulse 0.9s ease-in-out infinite alternate;
 }
 
-@keyframes student-rider-dust {
-  from { opacity: 0.78; transform: translateX(4px) scale(0.75); }
-  to { opacity: 0; transform: translateX(-12px) scale(1.3); }
+@keyframes student-route-pulse {
+  from { transform: rotate(var(--route-angle)) scale(0.96); }
+  to { transform: rotate(var(--route-angle)) scale(1.12); }
 }
 
 /* Friendly classroom chrome around the full-canvas map. */
@@ -3068,7 +3110,7 @@ body.scene-open {
 @media (max-width: 560px) {
   .student-map-badge { display: none; }
   .student-terrain-note { transform: scale(0.82); }
-  .student-rider-shell { transform: scale(0.82); transform-origin: 50% 100%; }
+  .student-route-arrow-shell { transform: scale(0.82); transform-origin: 50% 50%; }
 }
 
 .scene-canvas[data-verse-length="long"] .scene-verse blockquote {

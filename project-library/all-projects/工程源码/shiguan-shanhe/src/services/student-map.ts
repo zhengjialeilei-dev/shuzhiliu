@@ -5,7 +5,6 @@ import L, {
   type Polyline,
 } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import poetRiderSpriteUrl from "../assets/poet-rider-sprite.png?inline";
 import tangDynastyMapUrl from "../assets/tang-dynasty-map-ccby.png?inline";
 import type { JourneyStop, Poem, RegionOption } from "../core/types";
 
@@ -53,9 +52,11 @@ export class PoetryMap {
   private routeVisible = true;
   private routeLayer?: Polyline;
   private journeyLayers: Layer[] = [];
+  private clusterLayers: Marker[] = [];
   private journeyFrame?: number;
   private journeyActive = false;
   private resizeFrame?: number;
+  private densityFrame?: number;
 
   constructor(
     private readonly host: HTMLElement,
@@ -97,12 +98,14 @@ export class PoetryMap {
     this.buildMarkers();
     this.addOfflineBadge();
     this.resetView(false);
+    this.map.on("zoomend moveend", this.scheduleMarkerDensity);
 
     this.resizeObserver = new ResizeObserver(() => {
       if (this.resizeFrame !== undefined) cancelAnimationFrame(this.resizeFrame);
       this.resizeFrame = requestAnimationFrame(() => {
         this.resizeFrame = undefined;
         this.map.invalidateSize({ animate: false, pan: false });
+        this.scheduleMarkerDensity();
       });
     });
     this.resizeObserver.observe(this.host);
@@ -123,6 +126,7 @@ export class PoetryMap {
   dispose(): void {
     this.stopJourney();
     if (this.resizeFrame !== undefined) cancelAnimationFrame(this.resizeFrame);
+    if (this.densityFrame !== undefined) cancelAnimationFrame(this.densityFrame);
     this.resizeObserver.disconnect();
     this.map.remove();
   }
@@ -159,21 +163,52 @@ export class PoetryMap {
 
     this.journeyActive = true;
     this.drawRoute();
+    this.scheduleMarkerDensity();
     const stops = poem.journey.map((stop) => toTangLatLng(stop.coordinates));
     const totalDistance = stops.slice(1).reduce((sum, point, index) => sum + stops[index].distanceTo(point), 0);
-    if (totalDistance <= 0) return;
+    if (totalDistance <= 0) {
+      this.stopJourney();
+      return;
+    }
 
+    const guidePath = L.polyline(stops, {
+      pane: "journeyPane",
+      renderer: this.canvasRenderer,
+      color: "#fff0b8",
+      opacity: 0.88,
+      weight: 10,
+      lineCap: "round",
+      lineJoin: "round",
+      interactive: false,
+    }).addTo(this.map);
     const path = L.polyline([stops[0]], {
       pane: "journeyPane",
       renderer: this.canvasRenderer,
       color: "#e3683d",
       opacity: 0.96,
-      weight: 5,
+      weight: 6,
       lineCap: "round",
       lineJoin: "round",
-      dashArray: "3 10",
     }).addTo(this.map);
-    this.journeyLayers.push(path);
+    this.journeyLayers.push(guidePath, path);
+
+    const arrowMarkers = stops.slice(0, -1).map((from, index) => {
+      const to = stops[index + 1];
+      const midpoint = L.latLng((from.lat + to.lat) / 2, (from.lng + to.lng) / 2);
+      const angle = Math.atan2(-(to.lat - from.lat), to.lng - from.lng) * 180 / Math.PI;
+      const arrow = L.marker(midpoint, {
+        pane: "journeyPane",
+        interactive: false,
+        icon: L.divIcon({
+          className: "student-route-arrow-shell",
+          html: `<span class="student-route-arrow" style="--route-angle:${angle.toFixed(2)}deg"><i>→</i></span>`,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+        }),
+      }).addTo(this.map);
+      this.journeyLayers.push(arrow);
+      return arrow;
+    });
 
     const stopMarkers = poem.journey.map((stop, index) => {
       const circle = L.circleMarker(toTangLatLng(stop.coordinates), {
@@ -182,7 +217,7 @@ export class PoetryMap {
         radius: 8,
         color: "#fff4cf",
         weight: 3,
-        fillColor: "#e3683d",
+        fillColor: index === 0 ? "#e3683d" : "#76aa91",
         fillOpacity: 0.98,
       }).addTo(this.map);
       const label = L.marker(toTangLatLng(stop.coordinates), {
@@ -190,31 +225,14 @@ export class PoetryMap {
         interactive: false,
         icon: L.divIcon({
           className: "journey-leaflet-label-shell student-journey-label-shell",
-          html: `<span class="journey-leaflet-label"><i>${index + 1}</i>${escapeHtml(stop.label)}</span>`,
+          html: `<span class="journey-leaflet-label"><i>${index + 1}</i><b>${escapeHtml(stop.label)}</b><em>${index === 0 ? "起点" : index === poem.journey.length - 1 ? "终点" : "途经"}</em></span>`,
           iconAnchor: [-12, 26],
         }),
       }).addTo(this.map);
+      if (index === 0) label.getElement()?.classList.add("is-active");
       this.journeyLayers.push(circle, label);
       return { circle, label };
     });
-
-    const traveler = L.marker(stops[0], {
-      pane: "travelerPane",
-      interactive: false,
-      icon: L.divIcon({
-        className: "journey-traveler-shell student-rider-shell",
-        html: '<span class="student-rider"><i class="student-rider-sprite"></i><b aria-hidden="true"></b></span>',
-        iconSize: [88, 126],
-        iconAnchor: [44, 112],
-      }),
-    }).addTo(this.map);
-    const attachSprite = (): void => {
-      const sprite = traveler.getElement()?.querySelector<HTMLElement>(".student-rider-sprite");
-      if (sprite) sprite.style.backgroundImage = `url("${poetRiderSpriteUrl}")`;
-    };
-    attachSprite();
-    traveler.on("add", attachSprite);
-    this.journeyLayers.push(traveler);
 
     this.map.flyToBounds(L.latLngBounds(stops), {
       paddingTopLeft: [190, 120],
@@ -254,21 +272,25 @@ export class PoetryMap {
         from.lat + (to.lat - from.lat) * segmentProgress,
         from.lng + (to.lng - from.lng) * segmentProgress
       );
-      traveler.setLatLng(current);
-      traveler.getElement()?.classList.toggle("is-facing-left", to.lng < from.lng);
 
       if (time - lastRenderedAt > 32 || linearProgress === 1) {
         lastRenderedAt = time;
         path.setLatLngs([...stops.slice(0, segmentIndex + 1), current]);
       }
 
-      const stopIndex = Math.min(stops.length - 1, Math.floor(linearProgress * stops.length));
+      const stopIndex = linearProgress === 1
+        ? stops.length - 1
+        : Math.min(stops.length - 1, segmentIndex + (segmentProgress > 0.88 ? 1 : 0));
       if (stopIndex !== lastStopIndex) {
         lastStopIndex = stopIndex;
         stopMarkers.forEach(({ circle, label }, index) => {
           const visited = index <= stopIndex;
           circle.setStyle({ radius: index === stopIndex ? 10 : 8, fillColor: visited ? "#e3683d" : "#76aa91" });
           label.getElement()?.classList.toggle("is-active", index === stopIndex);
+        });
+        arrowMarkers.forEach((arrow, index) => {
+          arrow.getElement()?.classList.toggle("is-visited", index < segmentIndex);
+          arrow.getElement()?.classList.toggle("is-active", index === segmentIndex && linearProgress < 1);
         });
       }
       events.onProgress(linearProgress, stopIndex, poem.journey[stopIndex]);
@@ -290,10 +312,11 @@ export class PoetryMap {
     this.journeyLayers.forEach((layer) => layer.remove());
     this.journeyLayers = [];
     this.drawRoute();
+    this.scheduleMarkerDensity();
   }
 
   private createPanes(): void {
-    const paneLevels = { baseMapPane: 210, routePane: 420, poemMarkerPane: 510, journeyPane: 560, travelerPane: 610 } as const;
+    const paneLevels = { baseMapPane: 210, routePane: 420, poemMarkerPane: 510, clusterPane: 530, journeyPane: 560 } as const;
     Object.entries(paneLevels).forEach(([name, zIndex]) => {
       const pane = this.map.createPane(name);
       pane.style.zIndex = String(zIndex);
@@ -304,7 +327,7 @@ export class PoetryMap {
     const badge = new L.Control({ position: "bottomright" });
     badge.onAdd = () => {
       const element = L.DomUtil.create("div", "student-map-badge");
-      element.innerHTML = "<b>唐朝疆域图 · 离线</b><span>玖巧仔 · CC BY 3.0</span>";
+      element.innerHTML = "<b>唐朝疆域图 · 离线</b><span>诗点聚合 · 放大展开</span><small>玖巧仔 · CC BY 3.0</small>";
       return element;
     };
     badge.addTo(this.map);
@@ -346,25 +369,110 @@ export class PoetryMap {
       marker.getElement()?.classList.toggle("is-active", id === this.activePoemId);
     });
     this.drawRoute();
+    this.scheduleMarkerDensity();
   }
 
   private drawRoute(): void {
     this.routeLayer?.remove();
     this.routeLayer = undefined;
-    if (this.journeyActive || !this.routeVisible || this.visiblePoems.length < 2) return;
-    const routePoems = [...this.visiblePoems]
-      .sort((a, b) => a.location.coordinates[0] - b.location.coordinates[0])
-      .slice(0, 12);
-    this.routeLayer = L.polyline(routePoems.map((poem) => toTangLatLng(poem.location.coordinates)), {
+    if (this.journeyActive || !this.routeVisible) return;
+    const activePoem = this.visiblePoems.find((poem) => poem.id === this.activePoemId) ?? this.visiblePoems[0];
+    if (!activePoem || activePoem.journey.length < 2) return;
+    this.routeLayer = L.polyline(activePoem.journey.map((stop) => toTangLatLng(stop.coordinates)), {
       pane: "routePane",
       renderer: this.canvasRenderer,
       color: "#db6542",
-      opacity: 0.72,
-      weight: 2.2,
-      dashArray: "2 9",
+      opacity: 0.62,
+      weight: 2.6,
+      dashArray: "3 9",
       lineCap: "round",
       interactive: false,
       smoothFactor: 1.8,
     }).addTo(this.map);
+  }
+
+  private readonly scheduleMarkerDensity = (): void => {
+    if (this.densityFrame !== undefined) cancelAnimationFrame(this.densityFrame);
+    this.densityFrame = requestAnimationFrame(() => {
+      this.densityFrame = undefined;
+      this.paintMarkerDensity();
+    });
+  };
+
+  private paintMarkerDensity(): void {
+    this.clusterLayers.forEach((marker) => marker.remove());
+    this.clusterLayers = [];
+
+    if (this.journeyActive) {
+      this.markerElements.forEach((marker) => this.setMarkerAvailable(marker, false));
+      return;
+    }
+
+    const visiblePoems = this.visiblePoems.filter((poem) => this.map.hasLayer(this.markerElements.get(poem.id)!));
+    if (this.map.getZoom() >= 1.5) {
+      visiblePoems.forEach((poem) => this.setMarkerAvailable(this.markerElements.get(poem.id)!, true));
+      return;
+    }
+
+    const activePoem = visiblePoems.find((poem) => poem.id === this.activePoemId);
+    const threshold = this.map.getZoom() < 0 ? 62 : this.map.getZoom() < 0.75 ? 52 : 42;
+    const groups: Array<{ poems: Poem[]; point: L.Point }> = [];
+
+    visiblePoems.forEach((poem) => {
+      const marker = this.markerElements.get(poem.id)!;
+      if (poem.id === activePoem?.id) {
+        this.setMarkerAvailable(marker, true);
+        return;
+      }
+      const point = this.map.latLngToContainerPoint(toTangLatLng(poem.location.coordinates));
+      const group = groups.find((candidate) => candidate.point.distanceTo(point) < threshold);
+      if (!group) {
+        groups.push({ poems: [poem], point });
+        return;
+      }
+      group.poems.push(poem);
+      const count = group.poems.length;
+      group.point = L.point(
+        (group.point.x * (count - 1) + point.x) / count,
+        (group.point.y * (count - 1) + point.y) / count
+      );
+    });
+
+    groups.forEach((group) => {
+      if (group.poems.length === 1) {
+        this.setMarkerAvailable(this.markerElements.get(group.poems[0].id)!, true);
+        return;
+      }
+      group.poems.forEach((poem) => this.setMarkerAvailable(this.markerElements.get(poem.id)!, false));
+      const center = this.map.containerPointToLatLng(group.point);
+      const cluster = L.marker(center, {
+        pane: "clusterPane",
+        keyboard: true,
+        title: `${group.poems.length}个诗点，点击放大`,
+        icon: L.divIcon({
+          className: "student-poem-cluster-shell",
+          html: `<span class="student-poem-cluster"><b>${group.poems.length}</b><small>诗点</small></span>`,
+          iconSize: [48, 48],
+          iconAnchor: [24, 24],
+        }),
+      }).addTo(this.map);
+      cluster.on("click", () => {
+        const bounds = L.latLngBounds(group.poems.map((poem) => toTangLatLng(poem.location.coordinates)));
+        const isSinglePosition = bounds.getNorthEast().equals(bounds.getSouthWest());
+        if (isSinglePosition) this.map.flyTo(center, Math.min(2, this.map.getZoom() + 1.25), { duration: 0.5 });
+        else this.map.flyToBounds(bounds, { padding: [90, 90], maxZoom: 1.75, duration: 0.55 });
+      });
+      cluster.getElement()?.setAttribute("aria-label", `${group.poems.length}个诗点，点击放大查看`);
+      this.clusterLayers.push(cluster);
+    });
+  }
+
+  private setMarkerAvailable(marker: Marker, available: boolean): void {
+    marker.setOpacity(available ? 1 : 0);
+    const element = marker.getElement();
+    if (!element) return;
+    element.style.pointerEvents = available ? "" : "none";
+    element.setAttribute("aria-hidden", String(!available));
+    element.setAttribute("tabindex", available ? "0" : "-1");
   }
 }
