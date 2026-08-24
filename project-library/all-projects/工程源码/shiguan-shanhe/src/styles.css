@@ -2769,7 +2769,7 @@ body.scene-open {
   mask-image: linear-gradient(180deg, #000 0 92%, transparent);
 }
 
-/* Offline student atlas: local geography, picture-book colors and horseback travel. */
+/* Offline student atlas: vector geography, picture-book colors and clear journey routes. */
 .student-poetry-map.leaflet-container {
   overflow: hidden;
   color: #244e4b;
@@ -2798,7 +2798,7 @@ body.scene-open {
 .student-poetry-map.leaflet-container:active { cursor: grabbing; }
 .student-poetry-map .leaflet-overlay-pane canvas { filter: drop-shadow(0 7px 6px rgba(70, 83, 53, 0.14)); }
 .student-poetry-map .tang-history-image {
-  filter: saturate(0.92) contrast(0.98) brightness(1.02);
+  filter: saturate(0.96) contrast(0.99) brightness(1.015);
 }
 
 .student-map-badge {
@@ -2819,6 +2819,62 @@ body.scene-open {
 .student-map-badge b { font-size: 11px; letter-spacing: 0.08em; }
 .student-map-badge span { margin-top: 2px; color: #7a7a58; font-size: 9px; }
 .student-map-badge small { margin-top: 2px; color: #9a8664; font-size: 8px; }
+
+.student-landmark-label-shell {
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.student-landmark-label {
+  width: max-content;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #496b5c;
+  opacity: 0.82;
+  font-family: "KaiTi", "STKaiti", serif;
+  text-shadow: 0 1px 0 #fff9d8, 0 0 5px #fff9d8;
+}
+
+.student-landmark-label i {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border: 2px solid #fff4cd;
+  border-radius: 50%;
+  background: #4c8b75;
+  box-shadow: 0 2px 4px rgba(55, 84, 63, 0.18);
+}
+
+.student-landmark-label b {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.student-landmark-label-shell.is-capital .student-landmark-label {
+  color: #8b452d;
+  opacity: 0.94;
+}
+
+.student-landmark-label-shell.is-capital .student-landmark-label i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: #df6944;
+  transform: rotate(45deg);
+}
+
+.student-landmark-label-shell.is-capital .student-landmark-label b {
+  font-size: 14px;
+}
+
+.student-landmark-label-shell.is-frontier .student-landmark-label {
+  color: #736442;
+  opacity: 0.76;
+}
 
 .student-river-label-shell,
 .student-terrain-note-shell { border: 0; background: transparent; }
@@ -3110,6 +3166,8 @@ body.scene-open {
 @media (max-width: 560px) {
   .student-map-badge { display: none; }
   .student-terrain-note { transform: scale(0.82); }
+  .student-landmark-label-shell.is-city { opacity: 0.58; }
+  .student-landmark-label b { font-size: 10px; }
   .student-route-arrow-shell { transform: scale(0.82); transform-origin: 50% 50%; }
 }
 

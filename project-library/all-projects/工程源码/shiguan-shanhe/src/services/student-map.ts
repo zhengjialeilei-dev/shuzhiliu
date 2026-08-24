@@ -5,26 +5,39 @@ import L, {
   type Polyline,
 } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import tangDynastyMapUrl from "../assets/tang-dynasty-map-ccby.png?inline";
+import tangDynastyMapUrl from "../assets/tang-outline-contours-661.svg?inline";
 import type { JourneyStop, Poem, RegionOption } from "../core/types";
 
-const TANG_MAP_WIDTH = 1752;
-const TANG_MAP_HEIGHT = 1245;
+const TANG_MAP_WIDTH = 1288.373251824464;
+const TANG_MAP_HEIGHT = 756.9725373942604;
+const TANG_MAP_WEST = 61;
+const TANG_MAP_EAST = 130;
+const TANG_MAP_SOUTH = 16;
+const TANG_MAP_NORTH = 50;
 const TANG_MAP_BOUNDS = L.latLngBounds([0, 0], [TANG_MAP_HEIGHT, TANG_MAP_WIDTH]);
 const TANG_CORE_BOUNDS = L.latLngBounds(
-  [TANG_MAP_HEIGHT - 1080, 540],
-  [TANG_MAP_HEIGHT - 300, 1540]
+  toTangLatLng([76, 18]),
+  toTangLatLng([126, 46])
 );
 
-/**
- * Affine calibration from geographic coordinates to this historical map's pixels.
- * Control points: Dunhuang, Lanzhou, Chang'an, Beijing, Guangzhou and Hangzhou.
- */
+const HISTORIC_LANDMARKS = [
+  { label: "安西", coordinates: [80.27, 41.17], kind: "frontier" },
+  { label: "敦煌", coordinates: [94.66, 40.14], kind: "frontier" },
+  { label: "长安", coordinates: [108.95, 34.27], kind: "capital" },
+  { label: "洛阳", coordinates: [112.45, 34.62], kind: "capital" },
+  { label: "成都", coordinates: [104.07, 30.67], kind: "city" },
+  { label: "江陵", coordinates: [112.18, 30.35], kind: "city" },
+  { label: "金陵", coordinates: [118.79, 32.06], kind: "city" },
+  { label: "扬州", coordinates: [119.42, 32.39], kind: "city" },
+  { label: "杭州", coordinates: [120.15, 30.26], kind: "city" },
+] as const;
+
+/** Maps longitude and latitude into the source map's equirectangular SVG bounds. */
 function toTangLatLng(coordinates: readonly [number, number]): L.LatLng {
   const [longitude, latitude] = coordinates;
-  const x = 19.644801 * longitude + 0.53138 * latitude - 1013.11182;
-  const y = -2.160393 * longitude - 30.133224 * latitude + 1968.592459;
-  return L.latLng(TANG_MAP_HEIGHT - y, x);
+  const x = ((longitude - TANG_MAP_WEST) / (TANG_MAP_EAST - TANG_MAP_WEST)) * TANG_MAP_WIDTH;
+  const y = ((latitude - TANG_MAP_SOUTH) / (TANG_MAP_NORTH - TANG_MAP_SOUTH)) * TANG_MAP_HEIGHT;
+  return L.latLng(y, x);
 }
 
 function escapeHtml(value: string): string {
@@ -95,6 +108,7 @@ export class PoetryMap {
       className: "tang-history-image",
     }).addTo(this.map);
 
+    this.addHistoricLandmarks();
     this.buildMarkers();
     this.addOfflineBadge();
     this.resetView(false);
@@ -316,7 +330,7 @@ export class PoetryMap {
   }
 
   private createPanes(): void {
-    const paneLevels = { baseMapPane: 210, routePane: 420, poemMarkerPane: 510, clusterPane: 530, journeyPane: 560 } as const;
+    const paneLevels = { baseMapPane: 210, landmarkPane: 350, routePane: 420, poemMarkerPane: 510, clusterPane: 530, journeyPane: 560 } as const;
     Object.entries(paneLevels).forEach(([name, zIndex]) => {
       const pane = this.map.createPane(name);
       pane.style.zIndex = String(zIndex);
@@ -327,10 +341,26 @@ export class PoetryMap {
     const badge = new L.Control({ position: "bottomright" });
     badge.onAdd = () => {
       const element = L.DomUtil.create("div", "student-map-badge");
-      element.innerHTML = "<b>唐朝疆域图 · 离线</b><span>诗点聚合 · 放大展开</span><small>玖巧仔 · CC BY 3.0</small>";
+      element.innerHTML = "<b>唐帝国地形图 · 661</b><span>矢量离线 · 放大清晰</span><small>Kanguole · CC BY-SA 4.0 · 配色改编</small>";
       return element;
     };
     badge.addTo(this.map);
+  }
+
+  private addHistoricLandmarks(): void {
+    HISTORIC_LANDMARKS.forEach((landmark) => {
+      L.marker(toTangLatLng(landmark.coordinates), {
+        pane: "landmarkPane",
+        interactive: false,
+        keyboard: false,
+        icon: L.divIcon({
+          className: `student-landmark-label-shell is-${landmark.kind}`,
+          html: `<span class="student-landmark-label"><i></i><b>${landmark.label}</b></span>`,
+          iconSize: [68, 24],
+          iconAnchor: [-5, 12],
+        }),
+      }).addTo(this.map);
+    });
   }
 
   private buildMarkers(): void {
