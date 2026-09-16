@@ -53,7 +53,8 @@ const HtmlViewer = () => {
       }
     },
     enabled: shouldResolveResource,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: 'always',
     retry: 1,
   });
 
@@ -69,7 +70,9 @@ const HtmlViewer = () => {
       ? legacyUrl
       : null;
   const iframeUrl = currentPath
-    ? buildHtmlProxyUrl({ path: currentPath })
+    ? matchedResource
+      ? buildHtmlProxyUrl({ path: currentPath, version: matchedResource.version || 1 })
+      : null
     : directUrl
       ? buildHtmlProxyUrl({ url: directUrl, title })
       : legacyUrl

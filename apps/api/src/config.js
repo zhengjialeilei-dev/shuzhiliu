@@ -58,8 +58,7 @@ export const config = {
   resourceSeedFile:
     process.env.RESOURCE_SEED_FILE || path.join(rootDir, 'seed', 'resources.local.json'),
   allowSeedWithoutDb:
-    optionalBoolean('ALLOW_SEED_WITHOUT_DB', false) ||
-    fs.existsSync(process.env.RESOURCE_SEED_FILE || path.join(rootDir, 'seed', 'resources.local.json')),
+    optionalBoolean('ALLOW_SEED_WITHOUT_DB', false),
   publicAssetBaseUrl: process.env.PUBLIC_ASSET_BASE_URL || '',
   s3Endpoint: process.env.S3_ENDPOINT || '',
   s3Region: process.env.S3_REGION || 'ap-guangzhou',

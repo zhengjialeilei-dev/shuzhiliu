@@ -57,18 +57,6 @@ export async function cleanupResourceObjects(fileUrl, imageUrl, logger) {
   logCleanupFailures(results, logger, 'Failed to clean up one or more stored resource objects');
 }
 
-export async function cleanupReplacedResourceObjects(previous, current, logger) {
-  const operations = [];
-  if (previous.file_path && previous.file_path !== current.file_path) {
-    operations.push(deleteResourceFilesByUrl(previous.file_path));
-  }
-  if (previous.image_url && previous.image_url !== current.image_url) {
-    operations.push(deleteObjectByUrl(previous.image_url));
-  }
-  const results = await Promise.allSettled(operations);
-  logCleanupFailures(results, logger, 'Failed to clean up one or more replaced resource objects');
-}
-
 function logCleanupFailures(results, logger, message) {
   const failedCount = results.filter((result) => result.status === 'rejected').length;
   if (failedCount > 0) logger.warn({ failedCount }, message);

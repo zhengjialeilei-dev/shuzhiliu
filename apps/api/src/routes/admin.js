@@ -23,7 +23,6 @@ import {
 import { sanitizeFilename, uploadFile } from '../storage.js';
 import {
   cleanupObjects,
-  cleanupReplacedResourceObjects,
   cleanupResourceObjects,
   collectMultipartUpload,
   removeTempDirectory,
@@ -315,7 +314,8 @@ export async function registerAdminRoutes(app, { coverGenerator }) {
         );
         const updated = requireRow(result.rows[0], 'Resource');
 
-        await cleanupReplacedResourceObjects(previous, updated, app.log);
+        // The database revision trigger archives the previous metadata.
+        // Retain its immutable files for open classrooms and manual recovery.
         return normalizeResource(updated);
       } catch (error) {
         await cleanupObjects(uploadedUrls, app.log);

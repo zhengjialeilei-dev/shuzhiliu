@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS teaching_resources (
     zone IN ('standard', 'textbook', 'plan', 'courseware')
   ),
   CONSTRAINT chk_teaching_resources_file_type CHECK (
-    file_type IN ('pdf', 'doc', 'docx', 'ppt', 'pptx')
+    file_type IN ('pdf', 'doc', 'docx', 'ppt', 'pptx', 'link')
   ),
   CONSTRAINT chk_teaching_resources_version CHECK (version > 0)
 );

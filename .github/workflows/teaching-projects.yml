@@ -1,0 +1,40 @@
+name: Verify Teaching Projects
+
+on:
+  workflow_call:
+  pull_request:
+    paths:
+      - 'project-library/all-projects/工程源码/**'
+      - 'scripts/teaching/**'
+      - 'scripts/teaching-projects.*'
+      - '.github/workflows/teaching-projects.yml'
+      - 'package*.json'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            /*
+            !/apps/web/public/files/
+            !/project-library/*
+            /project-library/all-projects/
+            !/project-library/all-projects/*
+            /project-library/all-projects/工程源码/
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            project-library/all-projects/工程源码/*/package-lock.json
+      - run: npm ci
+      - name: Build every registered teaching project
+        run: npm run teaching:build -- --install
+      - name: Verify interaction and learning flows
+        run: npm run test:teaching

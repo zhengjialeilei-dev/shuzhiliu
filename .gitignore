@@ -16,6 +16,7 @@ apps/api/logs
 
 deploy/.env
 test-results
+.playwright-cli/
 deploy/__pycache__
 deploy/*.log
 deploy/local-*.png

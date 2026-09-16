@@ -1,9 +1,6 @@
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AlertTriangle, FolderOpen, Loader2, ScrollText, BookOpen, FileCheck, Presentation } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getTeachingResources } from '../lib/api';
-import { LOCAL_TEXTBOOK_RESOURCES, mergeLocalTextbooks } from '../lib/localTeachingResources';
-import { parseTextbookOrder } from '../lib/utils';
+import { useTeachingPages } from '../hooks/useResourcePages';
 import PageHeader from '../components/PageHeader';
 import ZoneCard from '../components/ZoneCard';
 import TeachingResourceCard from '../components/TeachingResourceCard';
@@ -58,26 +55,6 @@ const ZONES: ZoneInfo[] = [
   },
 ];
 
-const LOCAL_RESOURCES: TeachingResource[] = [
-  {
-    id: 'local-standard-1',
-    title: '数学课程标准',
-    description: '本地静态示例资源，可作为部署前的占位内容。',
-    zone: 'standard',
-    file_url: '/files/数学课标.pdf',
-    file_type: 'pdf',
-  },
-  {
-    id: 'local-standard-2',
-    title: '课程实施方案',
-    description: '本地静态示例资源，可作为部署前的占位内容。',
-    zone: 'standard',
-    file_url: '/files/课标方案.pdf',
-    file_type: 'pdf',
-  },
-  ...LOCAL_TEXTBOOK_RESOURCES,
-];
-
 const CN_GRADE_LABELS: Record<string, string> = {
   一: '一年级',
   二: '二年级',
@@ -119,38 +96,11 @@ const getDisplayDescription = (resource: TeachingResource) => {
   return '数学电子课本';
 };
 
-const fetchTeachingResources = async () => {
-  const remoteResources = await getTeachingResources();
-  return {
-    resources: remoteResources.length > 0 ? mergeLocalTextbooks(remoteResources) : LOCAL_RESOURCES,
-    usingFallback: remoteResources.length === 0,
-  };
-};
-
-const sortTeachingResources = (zone: string, list: TeachingResource[]) => {
-  if (zone !== 'textbook') return list;
-
-  return [...list].sort((a, b) => {
-    const left = parseTextbookOrder(a.title || a.description);
-    const right = parseTextbookOrder(b.title || b.description);
-
-    if (left.gradeNum !== right.gradeNum) return left.gradeNum - right.gradeNum;
-    if (left.term !== right.term) return left.term - right.term;
-
-    return (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN');
-  });
-};
-
 const TeachingZone = () => {
   const [activeZone, setActiveZone] = useState('standard');
   const [notice, setNotice] = useState<string | null>(null);
 
-  const { data, isLoading: loading, error: teachingError } = useQuery({
-    queryKey: ['teachingResources'],
-    queryFn: fetchTeachingResources,
-  });
-  const resources = data?.resources || LOCAL_RESOURCES;
-  const usingFallback = Boolean(teachingError) || (data?.usingFallback ?? false);
+  const { items: filteredResources, zones, loading, error, refresh, hasMore, loadingMore, loadMore } = useTeachingPages(activeZone);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -159,11 +109,6 @@ const TeachingZone = () => {
   }, [notice]);
 
   const activeZoneInfo = ZONES.find((zone) => zone.id === activeZone) || ZONES[0];
-
-  const filteredResources = useMemo(() => {
-    const list = resources.filter((resource) => resource.zone === activeZone);
-    return sortTeachingResources(activeZone, list);
-  }, [activeZone, resources]);
 
   const handleOpenFile = useCallback((url: string) => {
     const opened = window.open(url, '_blank', 'noopener,noreferrer');
@@ -183,10 +128,11 @@ const TeachingZone = () => {
         />
       </div>
 
-      {usingFallback ? (
+      {error ? (
         <div className="mb-5 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 sm:text-sm">
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-          <span>线上资源暂未连接，当前展示本地备用课本和课标文件。</span>
+          <span>资源加载失败，请稍后重试。{filteredResources.length ? '当前内容可能不是最新版本。' : ''}</span>
+          <button type="button" onClick={refresh} className="ml-auto underline">重试</button>
         </div>
       ) : null}
 
@@ -196,7 +142,7 @@ const TeachingZone = () => {
             key={zone.id}
             zone={zone}
             isActive={activeZone === zone.id}
-            resourceCount={resources.filter((resource) => resource.zone === zone.id).length}
+            resourceCount={zones[zone.id] ?? 0}
             onClick={() => setActiveZone(zone.id)}
           />
         ))}
@@ -220,7 +166,7 @@ const TeachingZone = () => {
             <div className="py-12 sm:py-16 text-center">
               <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-slate-300 mx-auto" />
             </div>
-          ) : filteredResources.length === 0 ? (
+          ) : error && filteredResources.length === 0 ? null : filteredResources.length === 0 ? (
             <div className="py-12 sm:py-16 text-center">
               <div
                 className={`w-16 h-16 sm:w-20 sm:h-20 ${activeZoneInfo.lightBg} rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4`}
@@ -245,6 +191,7 @@ const TeachingZone = () => {
               ))}
             </div>
           )}
+          {hasMore ? <div className="mt-6 text-center"><button type="button" onClick={loadMore} disabled={loadingMore} className="rounded-full border px-6 py-2 disabled:opacity-50">{loadingMore ? '加载中...' : '加载更多资料'}</button></div> : null}
         </div>
       </div>
     </div>

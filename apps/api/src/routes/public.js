@@ -13,8 +13,9 @@ import {
   normalizeResource,
   normalizeTeachingResource,
 } from '../utils/serializers.js';
-import { findHtmlResourceByPath, findHtmlResourceByUrl } from '../utils/resourcePaths.js';
-import { loadSeedResources, mergeResources } from '../utils/resourceSeed.js';
+import { loadSeedResources } from '../utils/resourceSeed.js';
+import { createResourceCatalog } from '../services/resourceCatalog.js';
+import { registerCatalogRoutes } from './catalog.js';
 
 const htmlProxyCache = new Map();
 let htmlProxyCacheBytes = 0;
@@ -196,26 +197,10 @@ function withTimeout(timeoutMs) {
   };
 }
 
-async function getPublicResources() {
-  let databaseResources = [];
-
-  try {
-    const result = await query('SELECT * FROM resources ORDER BY created_at DESC, id DESC');
-    databaseResources = result.rows.map(normalizeResource);
-  } catch {
-    databaseResources = [];
-  }
-
-  const seedResources = await loadSeedResources();
-  return mergeResources(databaseResources, seedResources);
-}
-
-async function resolveHtmlResource({ resourcePath, url }) {
-  const resources = (await getPublicResources()).filter((resource) => resource.resource_type === 'html');
-  return resourcePath ? findHtmlResourceByPath(resources, resourcePath) : findHtmlResourceByUrl(resources, url);
-}
-
 export async function registerPublicRoutes(app) {
+  const catalog = createResourceCatalog({ query, config, loadSeedResources });
+  const resolveHtmlResource = (params) => catalog.resolve(params);
+  registerCatalogRoutes(app, catalog);
   const htmlProxyAllowHosts = buildHtmlProxyAllowlist();
 
   app.get(
@@ -282,6 +267,7 @@ export async function registerPublicRoutes(app) {
     },
     async (request, reply) => {
       const { path: resourcePath, url } = request.query || {};
+      reply.header('Cache-Control', 'no-store');
       const hasPath = typeof resourcePath === 'string' && resourcePath.trim().length > 0;
       const hasUrl = typeof url === 'string' && url.trim().length > 0;
 
@@ -295,7 +281,6 @@ export async function registerPublicRoutes(app) {
         return reply.code(404).send({ error: 'Resource not found' });
       }
 
-      reply.header('Cache-Control', 'public, max-age=60');
       return reply.send(matchedResource);
     }
   );
@@ -312,8 +297,9 @@ export async function registerPublicRoutes(app) {
         },
       },
     },
-    async () => {
-      return getPublicResources();
+    async (_request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      return (await catalog.allResources()).map(normalizeResource);
     }
   );
 
@@ -329,15 +315,9 @@ export async function registerPublicRoutes(app) {
         },
       },
     },
-    async (request, reply) => {
-      try {
-        const result = await query('SELECT * FROM teaching_resources ORDER BY created_at DESC, id DESC');
-        return result.rows.map(normalizeTeachingResource);
-      } catch (error) {
-        request.log.warn({ err: error }, 'Teaching resources database unavailable; returning fallback signal');
-        reply.header('X-MathFlow-Data-Source', 'fallback');
-        return [];
-      }
+    async (_request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      return (await catalog.allTeaching()).map(normalizeTeachingResource);
     }
   );
 
@@ -353,6 +333,7 @@ export async function registerPublicRoutes(app) {
             path: { type: 'string', minLength: 1 },
             iframe: { type: 'string', enum: ['1'] },
             title: { type: 'string' },
+            v: { type: 'string', pattern: '^[1-9][0-9]{0,9}$' },
           },
         },
         response: {
@@ -362,6 +343,9 @@ export async function registerPublicRoutes(app) {
     },
     async (request, reply) => {
       const { url, path: resourcePath, iframe, title } = request.query || {};
+      // Short links always represent the current release. Keep the bounded
+      // server cache, but never let a browser/CDN freeze a mutable entry URL.
+      reply.header('Cache-Control', 'no-store');
       const isIframeRequest = iframe === '1';
       const hasUrl = typeof url === 'string' && url.trim().length > 0;
       const hasPath = typeof resourcePath === 'string' && resourcePath.trim().length > 0;
@@ -391,11 +375,10 @@ export async function registerPublicRoutes(app) {
         return reply.code(400).send({ error: 'URL not allowed' });
       }
 
-      const cacheKey = `${resourcePath || ''}|${rawTargetUrl}`;
+      const cacheKey = `${resourcePath || ''}|${rawTargetUrl}|${matchedResource?.version || 1}`;
       const cachedEntry = getCachedHtmlProxyEntry(cacheKey);
       if (cachedEntry) {
         reply.header('Content-Type', 'text/html; charset=utf-8');
-        reply.header('Cache-Control', 'public, max-age=600, stale-while-revalidate=86400');
         reply.header('X-HTML-Proxy-Cache', 'HIT');
         return reply.send(cachedEntry.html);
       }
@@ -452,7 +435,6 @@ export async function registerPublicRoutes(app) {
       const text = injectBaseHref(stripSlowExternalAssets(sourceHtml), targetUrl);
       setCachedHtmlProxyEntry(cacheKey, { html: text, byteLength: Buffer.byteLength(text) });
       reply.header('Content-Type', 'text/html; charset=utf-8');
-      reply.header('Cache-Control', 'public, max-age=600, stale-while-revalidate=86400');
       reply.header('X-HTML-Proxy-Cache', 'MISS');
       return reply.send(text);
     }

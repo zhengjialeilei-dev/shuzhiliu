@@ -1,4 +1,4 @@
-import type { AdminSession, HealthCheck, Resource, TeachingResource } from './types';
+import type { AdminSession, HealthCheck, Resource, TeachingResource, ResourcePage, ResourceFilters, TeachingResourcePage } from './types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -32,6 +32,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function getResources() {
   return request<Resource[]>('/api/resources');
+}
+
+export function getResourcePage(filters: ResourceFilters, page = 1, signal?: AbortSignal) {
+  const params = new URLSearchParams({ page: String(page), pageSize: '20' });
+  for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value);
+  return request<ResourcePage<Resource>>(`/api/resources/page?${params}`, { signal });
+}
+
+export function getTeachingResourcePage(zone: string, page = 1, signal?: AbortSignal) {
+  const params = new URLSearchParams({ zone, page: String(page), pageSize: '20' });
+  return request<TeachingResourcePage>(`/api/teaching-resources/page?${params}`, { signal });
 }
 
 export function getResolvedHtmlResource(params: { path?: string | null; url?: string | null }) {

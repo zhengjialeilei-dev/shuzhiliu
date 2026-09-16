@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { AlertCircle, Loader2, RefreshCw, Search } from 'lucide-react';
 import PageHeader from './PageHeader';
 import ResourceCard from './ResourceCard';
-import type { Resource } from '../lib/types';
+import { useResourcePages } from '../hooks/useResourcePages';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface ResourceGalleryPageProps {
   title: string;
@@ -10,10 +11,7 @@ interface ResourceGalleryPageProps {
   emptyText: string;
   accentColor: 'orange' | 'emerald';
   gradientColors: string;
-  resources: Resource[];
-  loading: boolean;
-  error?: string | null;
-  onRetry?: () => void;
+  section: 'games' | 'tools';
   searchPlaceholder: string;
 }
 
@@ -23,33 +21,13 @@ export default function ResourceGalleryPage({
   emptyText,
   accentColor,
   gradientColors,
-  resources,
-  loading,
-  error,
-  onRetry,
+  section,
   searchPlaceholder,
 }: ResourceGalleryPageProps) {
   const [search, setSearch] = useState('');
 
-  const filteredResources = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    if (!keyword) {
-      return resources;
-    }
-
-    return resources.filter((resource) => {
-      const haystacks = [resource.title, resource.description, resource.category, resource.grade];
-      return haystacks.some((value) => value.toLowerCase().includes(keyword));
-    });
-  }, [resources, search]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-      </div>
-    );
-  }
+  const q = useDebounce(search.trim(), 300);
+  const { items: filteredResources, loading, loadingMore, error, refresh: onRetry, hasMore, loadMore, source } = useResourcePages({ section, q });
 
   return (
     <div className="p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">
@@ -71,6 +49,7 @@ export default function ResourceGalleryPage({
         </div>
       </div>
 
+      {source === 'demo' ? <p role="status" className="mb-4 text-amber-700">当前为开发演示数据，不代表已发布资源。</p> : null}
       {error ? (
         <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <span className="flex min-w-0 items-center gap-2">
@@ -91,15 +70,20 @@ export default function ResourceGalleryPage({
       ) : null}
 
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+        {loading ? <p role="status" className="col-span-full py-8 text-center">正在加载资源…</p> : null}
         {filteredResources.map((resource, index) => (
           <ResourceCard key={resource.id} resource={resource} accentColor={accentColor} priority={index < 4} />
         ))}
-        {filteredResources.length === 0 && (
+        {!loading && !error && filteredResources.length === 0 && (
           <div className="col-span-full py-12 text-center text-gray-400 bg-white rounded-3xl border border-dashed border-gray-200">
             {emptyText}
           </div>
         )}
       </div>
+      {hasMore ? <div className="mt-8 text-center"><button type="button" onClick={loadMore} disabled={loadingMore} className="rounded-full border bg-white px-8 py-3 disabled:opacity-50">
+        {loadingMore ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
+        {loadingMore ? '加载中...' : '加载更多资源'}
+      </button></div> : null}
     </div>
   );
 }

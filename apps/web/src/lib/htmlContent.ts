@@ -4,6 +4,7 @@ type HtmlProxyParams = {
   url?: string | null;
   path?: string | null;
   title?: string | null;
+  version?: number;
 };
 
 export function buildHtmlProxyUrl(params: HtmlProxyParams) {
@@ -21,6 +22,10 @@ export function buildHtmlProxyUrl(params: HtmlProxyParams) {
 
   if (params.title) {
     searchParams.set('title', params.title);
+  }
+
+  if (params.version !== undefined) {
+    searchParams.set('v', String(params.version));
   }
 
   return buildApiUrl(`/api/html-proxy?${searchParams.toString()}`);

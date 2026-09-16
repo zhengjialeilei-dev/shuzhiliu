@@ -36,6 +36,8 @@ npm run build
 
 ## 上传作品
 
+独立教学工程的清单和检查方法见 [教学项目质量检查](scripts/teaching/README.md)。可使用 `npm run teaching:build` 构建全部已登记工程，使用 `npm run test:all` 同时检查主站和教学交互。教学检查通过是生产部署的前置条件，不代表作品会自动上架。
+
 日常新增内容不需要修改代码或重新部署。登录
 `https://sparkaiedu.com/admin/upload` 后直接上传：
 
@@ -75,6 +77,27 @@ npm run build
 - 当前 PostgreSQL 容器名是 `mathflow-postgres`
 
 生产发布只需将校验通过的代码推送到 `main`，不要直接手工上传到服务器目录。
+
+### 发布保护与版本保留
+
+发布流程会保留旧版前端脚本和 API 镜像，API 健康检查通过后才切换网站入口；普通命令失败时尝试恢复入口和 API，不自动恢复数据库。作品替换后保留旧文件，并通过迁移增加版本快照。
+
+具体恢复方法、保留策略和验证边界见 [发布安全说明](deploy/release-safety.md)。新增检查：
+
+```bash
+npm run test:release
+# 仅连接显式指定的独立测试库；CI 会提供该配置
+npm run test:revisions
+```
+
+本机没有专用测试库时，可运行 `npm run test:db`：使用已启动的本机 Docker，自动创建
+PostgreSQL 16 临时容器、运行真实 SQL/API 集成测试，最后只清理本轮容器和测试数据。
+它不读取应用的数据库配置，不接入已有容器，不启动或重置 Docker；缺少环境会明确失败。
+Windows 的 Ubuntu 24.04 WSL（需 WSL 内 Node.js 20+）可使用 `npm run test:db:wsl`：从已验签的软件源临时解包
+PostgreSQL，不安装系统服务，测试后停止数据库并删除本轮临时目录。
+两种方式均只监听本机，使用随机端口与随机密码。CI 继续使用独立数据库连接运行
+`npm run test:revisions`；未设置 `REVISION_TEST_DATABASE_URL` 时直接调用该命令仍会跳过，
+不可把跳过作为数据库验收通过。详情见 [数据库与资源目录说明](deploy/catalog-data.md)。
 
 ## GitHub Auto Deploy (Tencent Cloud)
 

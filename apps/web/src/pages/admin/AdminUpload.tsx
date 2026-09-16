@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowLeft, Edit3, ExternalLink, FileText, FolderOpen, Loader2, Lock, LogOut, Save, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   deleteResource,
   deleteTeachingResource,
@@ -38,6 +39,7 @@ type EditState =
 
 export default function AdminUpload() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [loadingSession, setLoadingSession] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -65,6 +67,11 @@ export default function AdminUpload() {
   const fetchLists = useCallback(async () => {
     setRefreshing(true);
     setError(null);
+    // Mutations call this refresh too; invalidate every filtered public view,
+    // including cached preview versions, even if the admin list refresh fails.
+    void queryClient.invalidateQueries({ queryKey: ['resource-pages'] });
+    void queryClient.invalidateQueries({ queryKey: ['teaching-pages'] });
+    void queryClient.invalidateQueries({ queryKey: ['html-resource-resolve'] });
     try {
       const [resourceList, teachingList] = await Promise.all([getResources(), getTeachingResources()]);
       setResources(resourceList);
@@ -74,7 +81,7 @@ export default function AdminUpload() {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     const run = async () => {

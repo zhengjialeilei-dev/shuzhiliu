@@ -11,9 +11,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  teaching-projects:
+    uses: ./.github/workflows/teaching-projects.yml
   deploy-web:
+    needs: teaching-projects
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    services:
+      postgres-test:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: mathflow_release_test
+          POSTGRES_USER: release_test
+          POSTGRES_PASSWORD: isolated-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U release_test -d mathflow_release_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Checkout
@@ -36,9 +53,12 @@ jobs:
         run: npm ci
 
       - name: Verify Project
+        env:
+          REVISION_TEST_DATABASE_URL: postgresql://release_test:isolated-ci-only@127.0.0.1:5432/mathflow_release_test
         run: |
           npm run lint
           npm test
+          npm run test:revisions
           npm run build
           npm audit --omit=dev --audit-level=high
 
@@ -53,7 +73,7 @@ jobs:
           tar --create --file="$ARCHIVE_TAR" \
             .dockerignore package.json package-lock.json \
             apps/api/Dockerfile apps/api/package.json apps/api/src apps/api/seed \
-            deploy/docker-compose.yml deploy/run_migrations.sh deploy/db
+            deploy/docker-compose.yml deploy/run_migrations.sh deploy/web_release.sh deploy/db deploy/check_release.mjs
           tar --append --file="$ARCHIVE_TAR" \
             --exclude='apps/web/dist/files' apps/web/dist
           gzip "$ARCHIVE_TAR"
@@ -108,6 +128,45 @@ jobs:
           SITE_ROOT=/opt/1panel/www/sites/sparkaiedu.com/index
           STAGING_DIR=$(mktemp -d /tmp/mathflow-web.XXXXXX)
           ARCHIVE_FILE=$(mktemp /tmp/mathflow-source.XXXXXX.tar.gz)
+          BACKUP_DIR="$LEGACY_ROOT/deploy/backups"
+          install -d -m 700 "$BACKUP_DIR"
+          RELEASE_BACKUP=$(mktemp -d "$BACKUP_DIR/release-$DEPLOY_SHA.XXXXXX")
+          WEB_ACTIVATION_STARTED=false
+          API_SWITCH_STARTED=false
+          PREVIOUS_API_IMAGE=$(docker inspect --format '{{.Image}}' mathflow-api)
+          ROLLBACK_IMAGE="mathflow-api-rollback:$(basename "$RELEASE_BACKUP")"
+          docker image tag "$PREVIOUS_API_IMAGE" "$ROLLBACK_IMAGE"
+          printf 'services:\n  api:\n    image: "%s"\n' "$ROLLBACK_IMAGE" > "$RELEASE_BACKUP/api-rollback.yml"
+          printf '%s\n' "$PREVIOUS_API_IMAGE" > "$RELEASE_BACKUP/api-image-id"
+
+          recover_release() {
+            local status=$?
+            trap - ERR
+            set +e
+            if [ "$WEB_ACTIVATION_STARTED" = true ]; then
+              rollback_web_release "$SITE_ROOT" "$RELEASE_BACKUP/web" \
+                || echo 'ERROR: could not restore previous website entry' >&2
+            fi
+            if [ "$API_SWITCH_STARTED" = true ]; then
+              if docker compose \
+                --project-directory "$SOURCE_ROOT/deploy" \
+                --env-file "$ENV_FILE" \
+                -f "$SOURCE_ROOT/deploy/docker-compose.yml" \
+                -f "$RELEASE_BACKUP/api-rollback.yml" \
+                up -d --no-build --pull never api; then
+                curl --fail --silent --show-error --max-time 5 \
+                  --retry 10 --retry-delay 2 --retry-all-errors \
+                  http://127.0.0.1:3001/api/health >/dev/null \
+                  || echo 'ERROR: previous API image restarted but health check failed' >&2
+              else
+                echo 'ERROR: could not restart previous API image' >&2
+              fi
+            fi
+            echo "Release failed. Recovery files: $RELEASE_BACKUP. Database is NOT automatically restored." >&2
+            exit "$status"
+          }
+          set -E
+          trap recover_release ERR
 
           cleanup() {
             rm -rf "$STAGING_DIR" "$NEXT_SOURCE_ROOT"
@@ -136,31 +195,26 @@ jobs:
 
           cp -a "$SOURCE_ROOT/apps/web/dist/." "$STAGING_DIR/"
           test -f "$STAGING_DIR/index.html"
-
-          find "$STAGING_DIR" -mindepth 1 -maxdepth 1 ! -name index.html \
-            -exec cp -a {} "$SITE_ROOT/" \;
-          cp "$STAGING_DIR/index.html" "$SITE_ROOT/index.html"
-
-          if [ -d "$SITE_ROOT/assets" ] && [ -d "$STAGING_DIR/assets" ]; then
-            find "$SITE_ROOT/assets" -maxdepth 1 -type f | while read -r asset; do
-              test -f "$STAGING_DIR/assets/$(basename "$asset")" || rm -f "$asset"
-            done
-          fi
-
-          BACKUP_DIR="$LEGACY_ROOT/deploy/backups"
-          install -d -m 700 "$BACKUP_DIR"
+          source "$SOURCE_ROOT/deploy/web_release.sh"
           docker exec mathflow-postgres sh -c \
             'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' \
-            > "$BACKUP_DIR/mathflow-before-$DEPLOY_SHA.dump"
+            > "$RELEASE_BACKUP/database.dump"
+          test -s "$RELEASE_BACKUP/database.dump"
+          # Build before migrations/switching so a failed build keeps serving
+          # the existing application. Migrations must be backward compatible.
+          docker compose \
+            --project-directory "$SOURCE_ROOT/deploy" \
+            --env-file "$ENV_FILE" \
+            -f "$SOURCE_ROOT/deploy/docker-compose.yml" build api
           POSTGRES_CONTAINER=mathflow-postgres sh "$SOURCE_ROOT/deploy/run_migrations.sh" \
             "$SOURCE_ROOT/deploy/db/migrations"
-          find "$BACKUP_DIR" -type f -name 'mathflow-before-*.dump' -mtime +14 -delete
 
+          API_SWITCH_STARTED=true
           docker compose \
             --project-directory "$SOURCE_ROOT/deploy" \
             --env-file "$ENV_FILE" \
             -f "$SOURCE_ROOT/deploy/docker-compose.yml" \
-            up -d --build api
+            up -d --no-build api
 
           API_READY=false
           for attempt in $(seq 1 30); do
@@ -173,6 +227,15 @@ jobs:
           done
           test "$API_READY" = true
 
+          # HTTP 200 alone does not prove the database/storage or new catalog
+          # endpoints work. Fail here before activating the new frontend.
+          docker exec -i -e RELEASE_BASE_URL=http://127.0.0.1:3001 \
+            mathflow-api node --input-type=module < "$SOURCE_ROOT/deploy/check_release.mjs"
+
+          prepare_web_release "$STAGING_DIR" "$SITE_ROOT" "$RELEASE_BACKUP/web"
+          WEB_ACTIVATION_STARTED=true
+          activate_web_release "$SITE_ROOT" "$RELEASE_BACKUP/web"
+
           docker exec 1Panel-openresty-z1xG openresty -s reload \
             || docker exec 1Panel-openresty-z1xG nginx -s reload
 
@@ -180,7 +243,14 @@ jobs:
             --retry 5 --retry-delay 2 --retry-all-errors https://sparkaiedu.com/
           curl --http1.1 --fail --silent --show-error --max-time 30 \
             --retry 5 --retry-delay 2 --retry-all-errors https://sparkaiedu.com/api/health
-          rm -rf "$PREVIOUS_SOURCE_ROOT"
+          EXPECTED_INDEX_SHA256=$(sha256sum "$STAGING_DIR/index.html" | cut -d ' ' -f 1)
+          docker exec -i -e RELEASE_BASE_URL=https://sparkaiedu.com \
+            -e RELEASE_CHECK_WEB=true -e RELEASE_EXPECTED_INDEX_SHA256="$EXPECTED_INDEX_SHA256" \
+            mathflow-api node --input-type=module < "$SOURCE_ROOT/deploy/check_release.mjs"
+          # Keep recovery metadata and old hashed assets. Retention/GC must be
+          # a separate operation, never part of the live release transaction.
+          trap - ERR
+          echo "Release ready. Recovery files: $RELEASE_BACKUP"
           SCRIPT
           } > "$RUNNER_TEMP/deploy.sh"
 

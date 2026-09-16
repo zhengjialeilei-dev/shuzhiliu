@@ -69,10 +69,10 @@ describe('HtmlViewer', () => {
       routePath: '/zhijing/:slug',
     });
 
-    const iframe = await screen.findByTitle('数学应用');
+    const iframe = await screen.findByTitle('魔法药水浓度模拟器');
     expect(iframe).toHaveAttribute(
       'src',
-      '/api/html-proxy?iframe=1&path=%2Fzhijing%2Fpotion-percentages'
+      '/api/html-proxy?iframe=1&path=%2Fzhijing%2Fpotion-percentages&v=1'
     );
   });
 
@@ -81,6 +81,7 @@ describe('HtmlViewer', () => {
       ok: true,
       json: async () => ({
         id: '2',
+        version: 3,
         title: '利率',
         category: '数与代数',
         grade: '六年级',
@@ -99,10 +100,10 @@ describe('HtmlViewer', () => {
       routePath: '/:slug',
     });
 
-    const iframe = await screen.findByTitle('数学应用');
+    const iframe = await screen.findByTitle('利率');
     expect(iframe).toHaveAttribute(
       'src',
-      '/api/html-proxy?iframe=1&path=%2Fll'
+      '/api/html-proxy?iframe=1&path=%2Fll&v=3'
     );
   });
 

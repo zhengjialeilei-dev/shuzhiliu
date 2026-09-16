@@ -1,15 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { useResources } from '../hooks/useResources';
+import { useResourcePages } from '../hooks/useResourcePages';
 import { useDebounce } from '../hooks/useDebounce';
 import { useSearchHistory } from '../hooks/useSearchHistory';
-import { useFilteredResources } from '../hooks/useFilteredResources';
 import PageHeader from '../components/PageHeader';
 import SearchBar from '../components/SearchBar';
 import FilterTabs from '../components/FilterTabs';
 import ResourceCard from '../components/ResourceCard';
-import { GAME_CATEGORY, TOOL_CATEGORY } from '../lib/resourceCategories';
 
 const CATEGORIES = [
   { id: 'all', label: '全部' },
@@ -32,13 +30,18 @@ const GRADES = [
 ];
 
 const Home = () => {
-  const { allResources, loading, error, refresh } = useResources();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeCategory, setActiveCategory] = useState(searchParams.get('cat') || 'all');
   const [activeGrade, setActiveGrade] = useState(searchParams.get('grade') || '');
   const [search, setSearch] = useState(searchParams.get('q') || '');
 
   const debouncedSearch = useDebounce(search.trim(), 300);
+  const { items: paginatedApps, total: totalCount, loading, loadingMore, error, refresh, hasMore, loadMore, source } = useResourcePages({
+    section: 'ai',
+    category: activeCategory === 'all' ? undefined : CATEGORIES.find((item) => item.id === activeCategory)?.label,
+    grade: GRADES.find((item) => item.id === activeGrade)?.label,
+    q: debouncedSearch,
+  });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const {
     history,
@@ -64,23 +67,6 @@ const Home = () => {
     setSearchParams(params, { replace: true });
   }, [activeCategory, activeGrade, debouncedSearch, setSearchParams]);
 
-  const interactiveApps = useMemo(
-    () =>
-      allResources.filter(
-        (app) => app.category !== TOOL_CATEGORY && app.category !== GAME_CATEGORY && (app.route_path || app.file_path)
-      ),
-    [allResources]
-  );
-
-  const { paginatedApps, hasMore, loadMore, totalCount } = useFilteredResources({
-    resources: interactiveApps,
-    activeCategory,
-    activeGrade,
-    debouncedSearch,
-    categories: CATEGORIES,
-    grades: GRADES,
-  });
-
   const handleHistoryClick = useCallback(
     (query: string) => {
       setSearch(query);
@@ -102,14 +88,6 @@ const Home = () => {
     setSearch('');
     searchInputRef.current?.focus();
   }, []);
-
-  if (loading && allResources.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-      </div>
-    );
-  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">
@@ -134,11 +112,12 @@ const Home = () => {
         </div>
       </div>
 
+      {source === 'demo' ? <p role="status" className="mb-4 text-amber-700">当前为开发演示数据，不代表已发布资源。</p> : null}
       {error ? (
         <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <span className="flex min-w-0 items-center gap-2">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">资源更新失败，当前内容可能不是最新版本。</span>
+            <span className="truncate">{paginatedApps.length ? '资源更新失败，当前内容可能不是最新版本。' : '资源加载失败，请稍后重试。'}</span>
           </span>
           <button
             type="button"
@@ -151,7 +130,7 @@ const Home = () => {
         </div>
       ) : null}
 
-      {debouncedSearch && (
+      {debouncedSearch && !loading && !error && (
         <div className="mb-6 flex items-center gap-2 text-sm">
           <span className="text-gray-500">
             搜索 "<span className="text-orange-600 font-medium">{debouncedSearch}</span>" 找到{' '}
@@ -181,6 +160,7 @@ const Home = () => {
           AI 教学应用
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+          {loading ? <p role="status" className="col-span-full py-8 text-center">正在加载资源…</p> : null}
           {paginatedApps.map((app, index) => (
             <ResourceCard
               key={app.id}
@@ -190,7 +170,7 @@ const Home = () => {
               priority={index < 4}
             />
           ))}
-          {paginatedApps.length === 0 && (
+          {!loading && !error && paginatedApps.length === 0 && (
             <div className="col-span-full py-12 text-center text-gray-400 bg-white rounded-3xl border border-dashed border-gray-200">
               {debouncedSearch ? (
                 <div>
@@ -208,11 +188,11 @@ const Home = () => {
           <div className="flex justify-center mt-8 pb-12">
             <button
               onClick={loadMore}
-              disabled={loading}
+              disabled={loadingMore}
               className="px-8 py-3 bg-white text-slate-600 font-medium rounded-full shadow-sm border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-2 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {loading ? '加载中...' : '加载更多资源'}
+              {loadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {loadingMore ? '加载中...' : '加载更多资源'}
             </button>
           </div>
         )}

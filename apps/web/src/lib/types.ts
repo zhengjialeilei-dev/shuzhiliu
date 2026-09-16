@@ -4,4 +4,7 @@ export type {
   Resource,
   TeachingResource,
   UploadSection,
+  ResourcePage,
+  ResourceFilters,
+  TeachingResourcePage,
 } from '@mathflow/shared';

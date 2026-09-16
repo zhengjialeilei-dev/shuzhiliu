@@ -245,13 +245,15 @@ test('html proxy resolves html resources directly from route paths and serves ca
   const realQuery = pool.query.bind(pool);
   const realFetch = global.fetch;
   let fetchCalls = 0;
+  let resourceVersion = 1;
 
   pool.query = async (text) => {
-    if (text === 'SELECT * FROM resources ORDER BY created_at DESC, id DESC') {
+    if (text.includes('route_path = $1')) {
       return {
         rows: [
           {
             id: 'html-path-1',
+            version: resourceVersion,
             title: '环绕轨迹比较台',
             category: '图形与几何',
             grade: '通用',
@@ -266,7 +268,7 @@ test('html proxy resolves html resources directly from route paths and serves ca
       };
     }
 
-    return realQuery(text);
+    throw new Error(`Unexpected query: ${text}`);
   };
 
   global.fetch = async () => {
@@ -290,6 +292,7 @@ test('html proxy resolves html resources directly from route paths and serves ca
     });
 
     assert.equal(firstResponse.statusCode, 200);
+    assert.equal(firstResponse.headers['cache-control'], 'no-store');
     assert.equal(firstResponse.headers['x-html-proxy-cache'], 'MISS');
     assert.match(firstResponse.body, /<base href="https:\/\/cdn\.example\.com\/collections\/demo\/" \/>/);
 
@@ -304,7 +307,23 @@ test('html proxy resolves html resources directly from route paths and serves ca
 
     assert.equal(secondResponse.statusCode, 200);
     assert.equal(secondResponse.headers['x-html-proxy-cache'], 'HIT');
+    assert.equal(secondResponse.headers['cache-control'], 'no-store');
     assert.equal(fetchCalls, 1);
+
+    resourceVersion = 2;
+    const updatedResponse = await app.inject({
+      method: 'GET', url: '/api/html-proxy',
+      query: { path: '/lab/yuanrao', iframe: '1', v: '2' },
+    });
+    assert.equal(updatedResponse.statusCode, 200);
+    assert.equal(updatedResponse.headers['x-html-proxy-cache'], 'MISS');
+    assert.equal(fetchCalls, 2);
+
+    const resolvedResponse = await app.inject({
+      method: 'GET', url: '/api/resources/resolve', query: { path: '/lab/yuanrao' },
+    });
+    assert.equal(resolvedResponse.headers['cache-control'], 'no-store');
+    assert.equal(resolvedResponse.json().version, 2);
   } finally {
     pool.query = realQuery;
     global.fetch = realFetch;
@@ -383,7 +402,8 @@ test('resource resolve matches generated html slugs without returning the full l
   config.nodeEnv = 'test';
   const realQuery = pool.query.bind(pool);
   pool.query = async (text, params) => {
-    if (text === 'SELECT * FROM resources ORDER BY created_at DESC, id DESC') {
+    if (text.includes('route_path = $1')) return { rows: [] };
+    if (text.includes('route_path IS NULL') || (text === 'SELECT * FROM resources WHERE id = $1' && params[0] === 'html-1')) {
       return {
         rows: [
           {
@@ -427,46 +447,22 @@ test('resource resolve matches generated html slugs without returning the full l
 
 test('resource resolve treats SQL-like path input as plain data', async () => {
   config.nodeEnv = 'test';
-  const realQuery = pool.query.bind(pool);
+  const realQuery = pool.query;
   const seenQueries = [];
-
   pool.query = async (text, params) => {
     seenQueries.push({ text, params });
-    if (text === 'SELECT * FROM resources ORDER BY created_at DESC, id DESC') {
-      return {
-        rows: [
-          {
-            id: 'html-safe-1',
-            title: 'Safe Resource',
-            category: 'AI搴旂敤',
-            grade: '閫氱敤',
-            image_url: 'https://example.com/safe.png',
-            description: 'Safe demo',
-            file_path: 'https://cdn.example.com/collections/demo/safe.html',
-            route_path: '/safe-resource',
-            resource_type: 'html',
-            created_at: new Date().toISOString(),
-          },
-        ],
-      };
-    }
-
-    return realQuery(text, params);
+    return { rows: [] };
   };
-
   const app = await buildApp();
-
   try {
     const response = await app.inject({
-      method: 'GET',
-      url: '/api/resources/resolve',
-      query: {
-        path: "' OR 1=1--",
-      },
+      method: 'GET', url: '/api/resources/resolve', query: { path: "' OR 1=1--" },
     });
-
     assert.equal(response.statusCode, 404);
-    assert.deepEqual(seenQueries, [{ text: 'SELECT * FROM resources ORDER BY created_at DESC, id DESC', params: [] }]);
+    assert.equal(seenQueries.length, 1);
+    assert.match(seenQueries[0].text, /route_path = \$1/);
+    assert.doesNotMatch(seenQueries[0].text, /OR 1=1/);
+    assert.deepEqual(seenQueries[0].params, ["/' OR 1=1--"]);
   } finally {
     pool.query = realQuery;
     await app.close();
@@ -477,7 +473,7 @@ test('resource resolve supports legacy file urls for html resources', async () =
   config.nodeEnv = 'test';
   const realQuery = pool.query.bind(pool);
   pool.query = async (text, params) => {
-    if (text === 'SELECT * FROM resources ORDER BY created_at DESC, id DESC') {
+    if (text.includes('file_path = $1') && params[0] === 'https://cdn.example.com/collections/ai-apps/interest-calculator.html') {
       return {
         rows: [
           {
@@ -512,14 +508,14 @@ test('resource resolve supports legacy file urls for html resources', async () =
 
     assert.equal(response.statusCode, 200);
     assert.equal(response.json().route_path, '/ll');
-    assert.equal(response.headers['cache-control'], 'public, max-age=60');
+    assert.equal(response.headers['cache-control'], 'no-store');
   } finally {
     pool.query = realQuery;
     await app.close();
   }
 });
 
-test('teaching resources return a fallback signal when the database is unavailable', async () => {
+test('teaching resources return 503 when the database is unavailable', async () => {
   config.nodeEnv = 'test';
   const realQuery = pool.query;
   pool.query = async (text) => {
@@ -536,11 +532,55 @@ test('teaching resources return a fallback signal when the database is unavailab
       url: '/api/teaching-resources',
     });
 
-    assert.equal(response.statusCode, 200);
-    assert.deepEqual(response.json(), []);
-    assert.equal(response.headers['x-mathflow-data-source'], 'fallback');
+    assert.equal(response.statusCode, 503);
+    assert.match(response.json().error, /资源服务暂时不可用/);
+    assert.equal(response.headers['cache-control'], 'no-store');
   } finally {
     pool.query = realQuery;
+    await app.close();
+  }
+});
+
+test('catalog routes validate pagination, normalize records, and expose failures', async () => {
+  const realQuery = pool.query;
+  const previousDemo = config.allowSeedWithoutDb;
+  config.allowSeedWithoutDb = false;
+  let fail = false;
+  const queries = [];
+  pool.query = async (sql, args) => {
+    queries.push({ sql, args });
+    if (fail) throw new Error('test outage');
+    return { rows: [{ items: sql.includes('teaching_resources') ? [] : [{
+      id: 'test', title: '示例', category: '其他', grade: '通用', image_url: '/cover.png',
+      description: '示例', file_path: '/demo.html', resource_type: 'html',
+      created_at: '2026-09-17T00:00:00Z', private_field: 'must-not-leak',
+    }], total: 1, zones: { textbook: 1 } }] };
+  };
+  const app = await buildApp();
+  try {
+    for (const url of ['/api/resources/page?page=0', '/api/resources/page?pageSize=51', '/api/resources/page?section=invalid', '/api/teaching-resources/page?zone=invalid', `/api/resources/page?q=${'a'.repeat(101)}`]) {
+      assert.equal((await app.inject({ url })).statusCode, 400);
+    }
+    assert.equal(queries.length, 0);
+    const response = await app.inject({ url: '/api/resources/page?section=games' });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers['cache-control'], 'no-store');
+    assert.deepEqual(queries[0].args, [20, 0]);
+    assert.match(queries[0].sql, /category = '互动游戏'/);
+    assert.equal(response.json().items[0].version, 1);
+    assert.equal(response.json().items[0].private_field, undefined);
+    const teaching = await app.inject({ url: '/api/teaching-resources/page?zone=textbook' });
+    assert.equal(teaching.statusCode, 200);
+    assert.equal(teaching.json().zones.textbook, 1);
+    fail = true;
+    for (const url of ['/api/resources/page', '/api/teaching-resources/page']) {
+      const unavailable = await app.inject({ url });
+      assert.equal(unavailable.statusCode, 503);
+      assert.match(unavailable.json().error, /资源服务暂时不可用/);
+    }
+  } finally {
+    pool.query = realQuery;
+    config.allowSeedWithoutDb = previousDemo;
     await app.close();
   }
 });
@@ -953,7 +993,7 @@ test('upload route generates a cover when no cover file is provided', async () =
   }
 });
 
-test('resource replacement keeps the route and removes old files after the database update', async () => {
+test('resource replacement keeps the route and retains old files for open classrooms', async () => {
   config.nodeEnv = 'test';
   config.storageDriver = 'local';
   const originalUploadDir = config.uploadDir;
@@ -1036,8 +1076,8 @@ test('resource replacement keeps the route and removes old files after the datab
     const resource = response.json();
     assert.equal(databaseUpdated, true);
     assert.equal(resource.route_path, '/works/stable-link');
-    await assert.rejects(fs.access(path.join(uploadDir, 'apps', 'old.html')));
-    await assert.rejects(fs.access(path.join(uploadDir, 'images', 'old.png')));
+    assert.equal(await fs.readFile(path.join(uploadDir, 'apps', 'old.html'), 'utf8'), 'OLD-WORK');
+    assert.equal(await fs.readFile(path.join(uploadDir, 'images', 'old.png'), 'utf8'), 'OLD-COVER');
     const newWorkPath = path.join(uploadDir, decodeURIComponent(resource.file_path.replace(/^\/uploads\//, '')));
     const newCoverPath = path.join(uploadDir, decodeURIComponent(resource.image_url.replace(/^\/uploads\//, '')));
     assert.equal(await fs.readFile(newWorkPath, 'utf8'), 'NEW-WORK');

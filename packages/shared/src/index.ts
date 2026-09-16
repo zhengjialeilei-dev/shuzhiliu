@@ -54,3 +54,23 @@ export interface AdminSession {
 }
 
 export type UploadSection = 'ai' | 'games' | 'tools' | 'teaching';
+
+export interface ResourcePage<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+  source: 'database' | 'demo';
+}
+
+export interface ResourceFilters {
+  section?: 'all' | 'ai' | 'games' | 'tools';
+  category?: string;
+  grade?: string;
+  q?: string;
+}
+
+export interface TeachingResourcePage extends ResourcePage<TeachingResource> {
+  zones: Record<string, number>;
+}

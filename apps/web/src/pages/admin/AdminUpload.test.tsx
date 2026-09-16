@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
 import { renderWithProviders } from '../../test/render';
 import AdminUpload from './AdminUpload';
 
@@ -20,6 +21,7 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock('../../lib/api', () => apiMocks);
 
 describe('AdminUpload', () => {
+  afterEach(() => vi.restoreAllMocks());
   beforeEach(() => {
     vi.clearAllMocks();
     apiMocks.getAdminSession.mockResolvedValue({ authenticated: true });
@@ -30,12 +32,14 @@ describe('AdminUpload', () => {
   });
 
   it('submits a math HTML work and refreshes the resource lists', async () => {
+    const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries');
     renderWithProviders(<AdminUpload />, {
       initialEntries: ['/admin/upload'],
       routePath: '/admin/upload',
     });
 
     expect(await screen.findByRole('heading', { name: /上传.*AI 应用/ })).toBeInTheDocument();
+    invalidate.mockClear();
     fireEvent.change(screen.getByLabelText('标题'), { target: { value: '分数实验室' } });
     fireEvent.change(screen.getByLabelText('描述'), { target: { value: '小学数学分数互动练习' } });
     fireEvent.change(screen.getByLabelText('作品短链接（可选）'), {
@@ -63,6 +67,9 @@ describe('AdminUpload', () => {
     expect(screen.getByLabelText('标题')).toHaveValue('');
     expect(apiMocks.getResources).toHaveBeenCalledTimes(2);
     expect(apiMocks.getTeachingResources).toHaveBeenCalledTimes(2);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['resource-pages'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['teaching-pages'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['html-resource-resolve'] });
   });
 
   it('submits a math textbook PDF to the textbook zone', async () => {

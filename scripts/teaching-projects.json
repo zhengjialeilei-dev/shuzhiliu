@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "projects": [
+    { "id": "shiguan-shanhe", "title": "诗贯山河", "subject": "语文", "directory": "shiguan-shanhe", "entry": "dist/index.html", "verification": "build" },
+    { "id": "menghui-fanhua", "title": "梦回繁华", "subject": "语文", "directory": "menghui-fanhua", "entry": "dist/index.html", "verification": "build" },
+    { "id": "podium-unfolding", "title": "领奖台展开工坊", "subject": "数学", "directory": "podium-unfolding", "entry": "dist/index.html", "verification": "build" },
+    { "id": "wenyan-detective", "title": "文言文案件推理馆", "subject": "语文", "directory": "wenyan-detective", "entry": "dist/index.html", "verification": "interaction" },
+    { "id": "physics-accident-bureau", "title": "物理事故调查局", "subject": "物理", "directory": "physics-accident-bureau", "entry": "dist/index.html", "verification": "interaction" },
+    { "id": "math-city-builder", "title": "数学城市建造师", "subject": "数学", "directory": "math-city-builder", "entry": "dist/index.html", "verification": "interaction" },
+    { "id": "climate-control-2050", "title": "地球气候控制台", "subject": "科学", "directory": "climate-control-2050", "entry": "dist/index.html", "verification": "interaction" }
+  ]
+}
