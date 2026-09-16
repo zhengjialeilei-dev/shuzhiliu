@@ -40,7 +40,7 @@ export default function ProgressiveImage({
         setShouldLoad(true);
         observer.disconnect();
       },
-      { rootMargin: '500px 0px' }
+      { rootMargin: '150px 0px' }
     );
 
     observer.observe(image);
@@ -65,6 +65,7 @@ export default function ProgressiveImage({
         src={shouldLoad ? src : undefined}
         alt={alt}
         loading={priority ? 'eager' : 'lazy'}
+        fetchPriority={priority ? 'high' : 'auto'}
         decoding="async"
         onLoad={() => setLoaded(true)}
         onError={() => setFailed(true)}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AlertCircle, Loader2, RefreshCw, Search } from 'lucide-react';
 import PageHeader from './PageHeader';
 import ResourceCard from './ResourceCard';
+import ResourceGridSkeleton from './ResourceGridSkeleton';
 import { useResourcePages } from '../hooks/useResourcePages';
 import { useDebounce } from '../hooks/useDebounce';
 
@@ -70,9 +71,9 @@ export default function ResourceGalleryPage({
       ) : null}
 
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-        {loading ? <p role="status" className="col-span-full py-8 text-center">正在加载资源…</p> : null}
+        {loading ? <ResourceGridSkeleton /> : null}
         {filteredResources.map((resource, index) => (
-          <ResourceCard key={resource.id} resource={resource} accentColor={accentColor} priority={index < 4} />
+          <ResourceCard key={resource.id} resource={resource} accentColor={accentColor} priority={index < 2} />
         ))}
         {!loading && !error && filteredResources.length === 0 && (
           <div className="col-span-full py-12 text-center text-gray-400 bg-white rounded-3xl border border-dashed border-gray-200">

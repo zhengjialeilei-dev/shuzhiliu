@@ -8,8 +8,8 @@ export function useResourcePages(filters: ResourceFilters) {
     initialPageParam: 1,
     queryFn: ({ pageParam, signal }) => getResourcePage(filters, pageParam, signal),
     getNextPageParam: (page) => page.hasMore ? page.page + 1 : undefined,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 30_000,
+    refetchOnMount: true,
   });
   // Offset pagination is a live view; deduplicate if new uploads shift a page.
   const items = [...new Map(query.data?.pages.flatMap((page) => page.items).map((item) => [item.id, item]) ?? []).values()];
@@ -29,8 +29,8 @@ export function useTeachingPages(zone: string) {
     initialPageParam: 1,
     queryFn: ({ pageParam, signal }) => getTeachingResourcePage(zone, pageParam, signal),
     getNextPageParam: (page) => page.hasMore ? page.page + 1 : undefined,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 30_000,
+    refetchOnMount: true,
   });
   return {
     items: [...new Map(query.data?.pages.flatMap((page) => page.items).map((item) => [item.id, item]) ?? []).values()],

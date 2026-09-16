@@ -8,6 +8,7 @@ import PageHeader from '../components/PageHeader';
 import SearchBar from '../components/SearchBar';
 import FilterTabs from '../components/FilterTabs';
 import ResourceCard from '../components/ResourceCard';
+import ResourceGridSkeleton from '../components/ResourceGridSkeleton';
 
 const CATEGORIES = [
   { id: 'all', label: '全部' },
@@ -160,14 +161,14 @@ const Home = () => {
           AI 教学应用
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-          {loading ? <p role="status" className="col-span-full py-8 text-center">正在加载资源…</p> : null}
+          {loading ? <ResourceGridSkeleton /> : null}
           {paginatedApps.map((app, index) => (
             <ResourceCard
               key={app.id}
               resource={app}
               searchQuery={debouncedSearch || undefined}
               accentColor="orange"
-              priority={index < 4}
+              priority={index < 2}
             />
           ))}
           {!loading && !error && paginatedApps.length === 0 && (

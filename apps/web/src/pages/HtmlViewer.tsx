@@ -36,7 +36,7 @@ const HtmlViewer = () => {
 
   const shouldResolveResource = Boolean(currentPath || legacyUrl);
 
-  const { data: matchedResource, isLoading: isResolvingResource } = useQuery<Resource | null>({
+  const { data: matchedResource, isLoading: isResolvingResource, error: resolveError, refetch } = useQuery<Resource | null>({
     queryKey: ['html-resource-resolve', currentPath ?? '', legacyUrl ?? ''],
     queryFn: async () => {
       try {
@@ -102,8 +102,9 @@ const HtmlViewer = () => {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
         <div className="max-w-md rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-          <p className="mb-2 text-lg font-semibold text-slate-800">没有找到对应的教学应用</p>
-          <p className="mb-4 text-sm text-slate-500">这个链接可能已经失效，或者资源还没有发布。</p>
+          <p className="mb-2 text-lg font-semibold text-slate-800">{resolveError ? '暂时无法打开教学应用' : '没有找到对应的教学应用'}</p>
+          <p className="mb-4 text-sm text-slate-500">{resolveError ? '请检查网络后重试，你无需重新寻找这个作品。' : '这个链接可能已经失效，或者资源还没有发布。'}</p>
+          {resolveError ? <button onClick={() => void refetch()} className="mr-3 rounded-lg bg-emerald-600 px-4 py-2 text-white">重新尝试</button> : null}
           <button onClick={() => navigate('/')} className="rounded-lg bg-slate-900 px-4 py-2 text-white">
             返回首页
           </button>

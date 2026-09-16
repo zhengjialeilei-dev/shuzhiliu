@@ -10,6 +10,7 @@ describe('ProgressiveImage', () => {
   it('loads priority images immediately', () => {
     render(<ProgressiveImage src="/cover.png" alt="首屏封面" priority />);
     expect(screen.getByRole('img', { name: '首屏封面' })).toHaveAttribute('src', '/cover.png');
+    expect(screen.getByRole('img', { name: '首屏封面' })).toHaveAttribute('fetchpriority', 'high');
   });
 
   it('defers off-screen images until they approach the viewport', () => {
@@ -18,8 +19,9 @@ describe('ProgressiveImage', () => {
     const disconnect = vi.fn();
 
     class MockIntersectionObserver {
-      constructor(callback: (entries: IntersectionObserverEntry[]) => void) {
+      constructor(callback: (entries: IntersectionObserverEntry[]) => void, options: IntersectionObserverInit) {
         notifyIntersection = callback;
+        expect(options.rootMargin).toBe('150px 0px');
       }
 
       observe = observe;
@@ -27,7 +29,7 @@ describe('ProgressiveImage', () => {
       unobserve = vi.fn();
       takeRecords = vi.fn(() => []);
       root = null;
-      rootMargin = '500px 0px';
+      rootMargin = '150px 0px';
       thresholds = [0];
     }
 

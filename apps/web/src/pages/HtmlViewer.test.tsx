@@ -36,6 +36,16 @@ describe('HtmlViewer', () => {
     expect(iframe).not.toHaveAttribute('sandbox', expect.stringContaining('allow-same-origin'));
   });
 
+  it('distinguishes network failure from missing content and offers retry', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('Failed to fetch'));
+    renderWithProviders(<HtmlViewer />, { initialEntries: ['/works/demo'], routePath: '/works/:slug' });
+    expect(await screen.findByText('暂时无法打开教学应用', {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.queryByText('没有找到对应的教学应用')).not.toBeInTheDocument();
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ id: '1', title: '恢复的作品', version: 1, route_path: '/works/demo' }) } as Response);
+    fireEvent.click(screen.getByRole('button', { name: '重新尝试' }));
+    expect(await screen.findByTitle('恢复的作品')).toBeInTheDocument();
+  });
+
   it('shows empty-url state', () => {
     renderWithProviders(<HtmlViewer />, {
       initialEntries: ['/view'],
