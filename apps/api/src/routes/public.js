@@ -16,6 +16,8 @@ import {
 import { loadSeedResources } from '../utils/resourceSeed.js';
 import { createResourceCatalog } from '../services/resourceCatalog.js';
 import { registerCatalogRoutes } from './catalog.js';
+import { bundleLocation, bundlePreviewBase } from '../services/bundlePreview.js';
+import { registerBundleAssetRoutes } from './bundleAssets.js';
 
 const htmlProxyCache = new Map();
 let htmlProxyCacheBytes = 0;
@@ -103,16 +105,16 @@ async function readResponseText(response, maxBytes) {
   return new TextDecoder().decode(content);
 }
 
-function injectBaseHref(rawHtml, sourceUrl) {
+function injectBaseHref(rawHtml, sourceUrl, previewBase = null) {
   try {
     const parsed = new URL(sourceUrl);
     parsed.pathname = parsed.pathname.replace(/\/[^/]*$/, '/');
     parsed.search = '';
     parsed.hash = '';
-    const base = `<base href="${parsed.toString()}" />`;
+    const base = `<base href="${previewBase || parsed.toString()}" />`;
 
     if (/<base\s/i.test(rawHtml)) {
-      return rawHtml;
+      return previewBase ? rawHtml.replace(/<base\b[^>]*>/gi, '').replace(/<head([^>]*)>/i, `<head$1>${base}`) : rawHtml;
     }
 
     if (/<head[^>]*>/i.test(rawHtml)) {
@@ -202,6 +204,11 @@ export async function registerPublicRoutes(app) {
   const resolveHtmlResource = (params) => catalog.resolve(params);
   registerCatalogRoutes(app, catalog);
   const htmlProxyAllowHosts = buildHtmlProxyAllowlist();
+  const apiOrigin = config.apiBaseUrl || `http://127.0.0.1:${config.port}`;
+  registerBundleAssetRoutes(app, {
+    apiOrigin, allowHosts: htmlProxyAllowHosts, timeoutMs: config.htmlProxyTimeoutMs,
+    findResource: async (id) => (await query("SELECT * FROM resources WHERE id = $1 AND resource_type = 'html'", [id])).rows[0] || null,
+  });
 
   app.get(
     '/api/health',
@@ -375,6 +382,10 @@ export async function registerPublicRoutes(app) {
         return reply.code(400).send({ error: 'URL not allowed' });
       }
 
+      if (!matchedResource && bundleLocation(rawTargetUrl, apiOrigin)) {
+        matchedResource = await resolveHtmlResource({ url: rawTargetUrl });
+      }
+
       const cacheKey = `${resourcePath || ''}|${rawTargetUrl}|${matchedResource?.version || 1}`;
       const cachedEntry = getCachedHtmlProxyEntry(cacheKey);
       if (cachedEntry) {
@@ -432,7 +443,7 @@ export async function registerPublicRoutes(app) {
         throw error;
       }
 
-      const text = injectBaseHref(stripSlowExternalAssets(sourceHtml), targetUrl);
+      const text = injectBaseHref(stripSlowExternalAssets(sourceHtml), targetUrl, bundlePreviewBase(matchedResource, apiOrigin));
       setCachedHtmlProxyEntry(cacheKey, { html: text, byteLength: Buffer.byteLength(text) });
       reply.header('Content-Type', 'text/html; charset=utf-8');
       reply.header('X-HTML-Proxy-Cache', 'MISS');

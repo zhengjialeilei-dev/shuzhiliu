@@ -57,3 +57,22 @@ test('preview must match the listed resource identity and version', async () => 
   });
   await assert.rejects(run(fetchImpl), /different resource\/version/);
 });
+
+test('bundle preview gate checks script/style MIME and sandbox CORS, not just resource identity', async () => {
+  const row = { id: 'bundle', title: 'Test', category: '其他', resource_type: 'html', file_path: 'https://cdn.example/apps/bundles/test/index.html', route_path: '/works/test', version: 1 };
+  const prefix = '/api/preview-assets/bundle/1/';
+  function bundleFetch(corsHeader) {
+    const inner = fixture((url) => {
+      if (url.pathname === '/api/resources/page' && url.searchParams.get('section') === 'ai') return Response.json({ items: [row], total: 1, page: 1, pageSize: 1, hasMore: false, source: 'database' });
+      if (url.pathname === '/api/resources/resolve') return Response.json(row);
+      if (url.pathname === '/api/html-proxy') return new Response(`<head><base href="${prefix}"><script type="module" src="./assets/app.js"></script><link rel="stylesheet" href="./assets/app.css"></head>`, { headers: { 'content-type': 'text/html' } });
+      if (url.pathname.startsWith(prefix)) return new Response('/* asset */', { headers: { 'content-type': url.pathname.endsWith('.css') ? 'text/css' : 'text/javascript', ...(corsHeader ? { 'access-control-allow-origin': corsHeader } : {}) } });
+    });
+    return async (url, init) => {
+      if (new URL(url).pathname.startsWith(prefix)) assert.equal(init.headers.Origin, 'null');
+      return inner(url);
+    };
+  }
+  assert.ok((await run(bundleFetch('*'))).includes('sandbox bundle scripts and styles'));
+  await assert.rejects(run(bundleFetch(null)), /sandbox loading/);
+});

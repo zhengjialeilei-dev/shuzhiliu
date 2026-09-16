@@ -10,9 +10,9 @@ export async function checkRelease({ baseUrl, checkWeb = false, expectedIndexHas
   const base = new URL(baseUrl);
   check(['http:', 'https:'].includes(base.protocol) && !base.username && !base.password, 'Expected a credential-free HTTP(S) base URL');
   const checks = [];
-  async function request(path, type) {
+  async function request(path, type, headers = {}) {
     const response = await fetchImpl(new URL(path, base), {
-      signal: AbortSignal.timeout(10000), redirect: 'error', headers: { 'Cache-Control': 'no-cache' },
+      signal: AbortSignal.timeout(10000), redirect: 'error', headers: { 'Cache-Control': 'no-cache', ...headers },
     });
     check(response.ok, `${path}: HTTP ${response.status}`);
     check(type.test(response.headers.get('content-type') || ''), `${path}: unexpected content type`);
@@ -60,6 +60,25 @@ export async function checkRelease({ baseUrl, checkWeb = false, expectedIndexHas
     const resolved = await json(`/api/resources/resolve?${params}`);
     check(resolved.id === preview.id && resolved.version === preview.version, 'Preview resolves to a different resource/version');
     checks.push('preview identity');
+    if (preview.file_path.includes('/apps/bundles/')) {
+      const html = await (await request(`/api/html-proxy?iframe=1&${params}&v=${preview.version || 1}`, /text\/html/i)).text();
+      const prefix = `/api/preview-assets/${preview.id}/${preview.version || 1}/`;
+      const assetBase = new URL((html.match(/<base\b[^>]*href=["']([^"']+)["']/i) || [])[1] || '', base);
+      check(assetBase.origin === base.origin && assetBase.pathname.startsWith(prefix), 'Bundle preview is missing its isolated asset gateway');
+      let scripts = 0;
+      for (const tag of html.match(/<(?:script|link)\b[^>]*>/gi) || []) {
+        const script = /^<script/i.test(tag) && /type=["']module["']/.test(tag);
+        const stylesheet = /^<link/i.test(tag) && /rel=["']stylesheet["']/.test(tag);
+        if (!script && !stylesheet) continue;
+        const target = new URL((tag.match(/(?:src|href)=["']([^"']+)["']/) || [])[1] || '', assetBase);
+        check(target.origin === base.origin && target.pathname.startsWith(prefix), 'Bundle entry asset bypasses its isolated gateway');
+        const asset = await request(target.pathname, script ? /(?:javascript|ecmascript)/i : /text\/css/i, { Origin: 'null' });
+        check(asset.headers.get('access-control-allow-origin') === '*' && !asset.headers.has('access-control-allow-credentials'), 'Bundle entry asset does not support credential-free sandbox loading');
+        if (script) scripts++;
+      }
+      check(scripts > 0, 'Bundle preview has no module entry');
+      checks.push('sandbox bundle scripts and styles');
+    }
   }
   if (checkWeb) {
     check(/^[a-f0-9]{64}$/.test(expectedIndexHash || ''), 'Expected built index SHA-256 is required for web verification');

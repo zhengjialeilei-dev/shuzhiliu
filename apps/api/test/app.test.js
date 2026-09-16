@@ -331,6 +331,26 @@ test('html proxy resolves html resources directly from route paths and serves ca
   }
 });
 
+test('registered bundle previews use the scoped asset base for path and direct URL entry', async () => {
+  const realQuery = pool.query.bind(pool);
+  const realFetch = global.fetch;
+  const row = { id: '8a9ee6ca-e5d1-43e4-ba12-6f71581cf2fa', version: 1, resource_type: 'html',
+    file_path: 'https://cdn.example.com/apps/bundles/menghui/index.html', route_path: '/works/test-bundle' };
+  config.htmlProxyAllowlist = ['cdn.example.com'];
+  pool.query = async () => ({ rows: [row] });
+  global.fetch = async () => new Response('<html><head><base href="https://old.example/"><script type="module" src="./assets/app.js"></script></head><body></body></html>');
+  const app = await buildApp();
+  try {
+    for (const query of [{ path: row.route_path }, { url: row.file_path }]) {
+      const response = await app.inject({ url: '/api/html-proxy', query });
+      assert.equal(response.statusCode, 200);
+      assert.match(response.body, new RegExp(`<base href="/api/preview-assets/${row.id}/1/"`));
+      assert.doesNotMatch(response.body, /old.example/);
+      assert.match(response.body, /src="\.\/assets\/app.js"/);
+    }
+  } finally { pool.query = realQuery; global.fetch = realFetch; await app.close(); }
+});
+
 test('html proxy returns html fallback document for iframe timeout', async () => {
   config.nodeEnv = 'test';
   config.htmlProxyAllowlist = ['cdn.example.com'];
