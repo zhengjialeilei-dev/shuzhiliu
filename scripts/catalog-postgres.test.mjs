@@ -7,6 +7,66 @@ import { createResourceCatalog } from '../apps/api/src/services/resourceCatalog.
 
 // Never read the production or application DB environment as a fallback.
 const connectionString = process.env.REVISION_TEST_DATABASE_URL;
+
+const titleMigration = await readFile(new URL('../deploy/db/migrations/20260930_plain_resource_titles.sql', import.meta.url), 'utf8');
+const titleChanges = [...titleMigration.matchAll(/\('([a-f0-9-]+)'::uuid, '([^']+)', '([^']+)'\)/g)]
+  .map(([, id, oldTitle, newTitle]) => ({ id, oldTitle, newTitle }));
+
+test('plain resource titles are concise, distinct and explicitly scoped', () => {
+  assert.equal(titleChanges.length, 94);
+  assert.equal(new Set(titleChanges.map((r) => r.id)).size, 94);
+  assert.equal(new Set(titleChanges.map((r) => r.newTitle)).size, 94);
+  for (const { oldTitle, newTitle } of titleChanges) {
+    assert.notEqual(newTitle, oldTitle);
+    assert.ok(newTitle.length <= 14, newTitle);
+    assert.doesNotMatch(newTitle, /观察台|推演台|训练场|工具台/);
+  }
+});
+
+test('title migration preserves content, archives revisions and respects manual renames and deletions', {
+  skip: !connectionString && 'Set REVISION_TEST_DATABASE_URL to an isolated PostgreSQL test database',
+}, async () => {
+  const client = new pg.Client({ connectionString, connectionTimeoutMillis: 5000 });
+  const schema = `titles_test_${randomBytes(8).toString('hex')}`;
+  await client.connect();
+  try {
+    await client.query(`CREATE SCHEMA ${schema}`);
+    await client.query(`SET search_path TO ${schema}, public`);
+    await client.query(await readFile(new URL('../deploy/db/init/01-schema.sql', import.meta.url), 'utf8'));
+    await client.query(await readFile(new URL('../deploy/db/migrations/20260916_preserve_resource_revisions.sql', import.meta.url), 'utf8'));
+    // Leave one absent and one manually renamed: neither should be overwritten.
+    for (const [index, row] of titleChanges.slice(0, -1).entries()) {
+      await client.query(`INSERT INTO resources(id,title,category,grade,image_url,description,file_path,route_path)
+        VALUES ($1,$2,'其他','通用','/cover.png','Original description','/lesson.html',$3)`,
+      [row.id, index === 0 ? '用户自定标题' : row.oldTitle, `/lesson-${index}`]);
+    }
+    const before = (await client.query('SELECT * FROM resources ORDER BY id')).rows;
+    await client.query(titleMigration);
+    const after = (await client.query('SELECT * FROM resources ORDER BY id')).rows;
+    assert.equal(after.length, 93);
+    for (const [index, row] of after.entries()) {
+      const original = before[index];
+      const changed = original.title !== '用户自定标题';
+      const expectedTitle = changed ? titleChanges.find((r) => r.id === row.id).newTitle : original.title;
+      assert.equal(row.title, expectedTitle);
+      assert.equal(row.version, original.version + Number(changed));
+      assert.deepEqual({ ...row, title: original.title, version: original.version, updated_at: original.updated_at }, original);
+    }
+    const revisions = (await client.query('SELECT * FROM resource_revisions')).rows;
+    assert.equal(revisions.length, 92);
+    for (const revision of revisions) {
+      assert.equal(revision.snapshot.title, titleChanges.find((r) => r.id === revision.resource_id).oldTitle);
+    }
+    await client.query(titleMigration);
+    assert.deepEqual((await client.query('SELECT * FROM resources ORDER BY id')).rows, after);
+    assert.equal((await client.query('SELECT COUNT(*)::int AS count FROM resource_revisions')).rows[0].count, 92);
+  } finally {
+    await client.query('ROLLBACK');
+    await client.query('SET search_path TO public');
+    await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+    await client.end();
+  }
+});
 test('catalog SQL paginates, searches, resolves paths and does not resurrect deleted entries', {
   skip: !connectionString && 'Set REVISION_TEST_DATABASE_URL to an isolated PostgreSQL test database',
 }, async () => {
