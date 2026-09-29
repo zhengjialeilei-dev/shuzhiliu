@@ -3,6 +3,16 @@
 -- Existing triggers archive the old row and advance version/update metadata.
 BEGIN;
 
+-- Two existing games use legacy combined grades. The NOT VALID constraint
+-- tolerated those existing rows but rejects even title-only updates to them.
+-- Accept these established labels without rewriting grade metadata. Keep all
+-- other grade validation; the admin API's stricter new-input policy is unchanged.
+ALTER TABLE resources DROP CONSTRAINT chk_resources_grade;
+ALTER TABLE resources ADD CONSTRAINT chk_resources_grade CHECK (
+  grade IN ('一年级', '二年级', '三年级', '四年级', '五年级', '六年级',
+            '通用', '拓展', '一二年级', '五六年级')
+) NOT VALID;
+
 UPDATE resources AS resource
 SET title = changes.new_title
 FROM (VALUES
@@ -105,4 +115,3 @@ WHERE resource.id = changes.id
   AND resource.title = changes.old_title;
 
 COMMIT;
-

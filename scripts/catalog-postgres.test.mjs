@@ -34,12 +34,17 @@ test('title migration preserves content, archives revisions and respects manual 
     await client.query(`SET search_path TO ${schema}, public`);
     await client.query(await readFile(new URL('../deploy/db/init/01-schema.sql', import.meta.url), 'utf8'));
     await client.query(await readFile(new URL('../deploy/db/migrations/20260916_preserve_resource_revisions.sql', import.meta.url), 'utf8'));
+    // Reproduce legacy rows predating the NOT VALID grade constraint.
+    await client.query('ALTER TABLE resources DROP CONSTRAINT chk_resources_grade');
     // Leave one absent and one manually renamed: neither should be overwritten.
     for (const [index, row] of titleChanges.slice(0, -1).entries()) {
       await client.query(`INSERT INTO resources(id,title,category,grade,image_url,description,file_path,route_path)
-        VALUES ($1,$2,'其他','通用','/cover.png','Original description','/lesson.html',$3)`,
-      [row.id, index === 0 ? '用户自定标题' : row.oldTitle, `/lesson-${index}`]);
+        VALUES ($1,$2,'其他',$4,'/cover.png','Original description','/lesson.html',$3)`,
+      [row.id, index === 0 ? '用户自定标题' : row.oldTitle, `/lesson-${index}`,
+        row.oldTitle === '高年级找零训练场' ? '五六年级' : row.oldTitle === '低年级找零训练场' ? '一二年级' : '通用']);
     }
+    await client.query(`ALTER TABLE resources ADD CONSTRAINT chk_resources_grade
+      CHECK (grade IN ('一年级','二年级','三年级','四年级','五年级','六年级','通用','拓展')) NOT VALID`);
     const before = (await client.query('SELECT * FROM resources ORDER BY id')).rows;
     await client.query(titleMigration);
     const after = (await client.query('SELECT * FROM resources ORDER BY id')).rows;
@@ -60,6 +65,7 @@ test('title migration preserves content, archives revisions and respects manual 
     await client.query(titleMigration);
     assert.deepEqual((await client.query('SELECT * FROM resources ORDER BY id')).rows, after);
     assert.equal((await client.query('SELECT COUNT(*)::int AS count FROM resource_revisions')).rows[0].count, 92);
+    await assert.rejects(client.query("UPDATE resources SET grade = 'invalid-grade'"), { code: '23514' });
   } finally {
     await client.query('ROLLBACK');
     await client.query('SET search_path TO public');
