@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -18,7 +18,6 @@ const Home = lazy(() => import('./pages/Home'));
 const Empowerment = lazy(() => import('./pages/Empowerment'));
 const InteractiveGames = lazy(() => import('./pages/InteractiveGames'));
 const TeachingZone = lazy(() => import('./pages/TeachingZone'));
-const Recommend = lazy(() => import('./pages/Recommend'));
 const HtmlViewer = lazy(() => import('./pages/HtmlViewer'));
 
 const RandomPicker = lazy(() => import('./pages/tools/RandomPicker'));
@@ -47,7 +46,7 @@ function App() {
                 <Route path="games" element={<InteractiveGames />} />
                 <Route path="empower" element={<Empowerment />} />
                 <Route path="teaching-zone" element={<TeachingZone />} />
-                <Route path="recommend" element={<Recommend />} />
+                <Route path="recommend" element={<Navigate to="/" replace />} />
               </Route>
               <Route path="/tools/random-picker" element={<RandomPicker />} />
               <Route path="/tools/timer" element={<ClassroomTimer />} />
