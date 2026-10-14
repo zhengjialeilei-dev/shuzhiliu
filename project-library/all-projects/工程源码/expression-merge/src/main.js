@@ -1,10 +1,13 @@
 import './style.css';
 import { evaluate, formatExpression, references, mergeExpression, expanded } from './engine.js';
 import { questions } from './questions.js';
+import { expressionMarkup, mergePresentation } from './presentation.js';
+import { canAnimateMerge, playMerge } from './merge-animation.js';
 
 const root = document.querySelector('#app');
 let index = 0, selected = null, history = [], expressions, moves = 0;
 let drag = null, ghost = null, dragFrame = null, suppressClickUntil = 0;
+let busy = false, mergeHighlight = null;
 const finished = new Set();
 const escape = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -13,7 +16,7 @@ root.innerHTML = `
     <header class="header"><div><p class="eyebrow">数与代数 / 运算顺序</p><h1>算式合并练习</h1></div><button class="plain" data-action="reset">↻ 重新练习</button></header>
     <nav class="lesson-nav" aria-label="选择练习"><button class="plain" data-action="previous" aria-label="上一题">←</button><label for="question">选择练习</label><select id="question" aria-label="选择练习">${questions.map((q, i) => `<option value="${i}">${i + 1}. ${q.title}</option>`).join('')}</select><span id="count"></span><button class="plain" data-action="next" aria-label="下一题">→</button></nav>
     <section class="intro"><div><span class="eyebrow" id="focus"></span><h2 id="lesson-title"></h2><p>把前一步的<strong>算式</strong>，放进后一步对应的<strong>结果</strong>里。</p></div><span class="lesson-number" id="number" aria-hidden="true"></span></section>
-    <div class="instruction"><span class="instruction-dot"></span><p id="drag-help">按住算式，向下拖到对应的虚线数字框，松手即可合并。也可点选后再点数字框。</p></div>
+    <div class="instruction"><span class="instruction-dot"></span><p id="drag-help">把算式拖到对应的数字框，松手后观察“替换 → 加括号”。也可点选后再点数字框。</p></div>
     <section id="steps" class="steps vertical-steps" aria-label="分步算式与合并区域"></section>
     <section class="feedback" aria-label="操作反馈"><div><p class="feedback-label" id="feedback-label">现在试一试</p><p id="message" role="status" aria-live="polite"></p></div><div class="tools"><button class="plain" data-action="undo" id="undo">撤销一步</button><button class="plain" data-action="hint">给我提示</button></div></section>
     <section id="success" class="success" hidden><span class="success-mark" aria-hidden="true">✓</span><div><h2>合并完成，结果没变！</h2><p id="reason"></p></div><button class="primary" data-action="next" id="next-success">下一题 →</button></section>
@@ -30,10 +33,10 @@ function setMessage(text, tone = '') {
 }
 
 function expressionHtml(node, target) {
-  return formatExpression(node, question().steps, (leaf, path) => {
+  return expressionMarkup(node, question().steps, (leaf, path) => {
     const value = evaluate(leaf, question().steps);
     return `<button class="slot${selected === leaf.step ? ' matching' : ''}" data-target="${target}" data-path="${path}" data-ref="${leaf.step}" aria-label="第${target + 1}步的${value}，来自第${leaf.step + 1}步">${value}</button>`;
-  });
+  }, mergeHighlight?.target === target ? mergeHighlight : null);
 }
 
 function render() {
@@ -77,17 +80,44 @@ function choose(source) {
   root.querySelector(`[data-source="${source}"]`)?.focus({ preventScroll: true });
 }
 
-function merge(source, target, path) {
+function setBusy(value) {
+  busy = value;
+  root.setAttribute('aria-busy', String(value));
+  root.querySelectorAll('button,select').forEach((element) => { element.disabled = value; });
+  if (!value) document.querySelector('#undo').disabled = history.length === 0;
+}
+
+function merge(source, target, path, dragOrigin) {
+  if (busy) return;
   const result = mergeExpression(expressions, source, target, path);
   if (!result.ok) { setMessage(result.message, 'error'); return; }
-  history.push({ expressions: structuredClone(expressions), moves });
-  expressions = result.expressions; moves++; selected = null;
-  render();
-  setMessage(complete() ? '所有中间结果都已替换，读一读这个综合算式吧。' : result.message, 'success');
-  root.querySelector(`article:nth-child(${target + 1})`)?.animate?.([{ opacity: 0.5 }, { opacity: 1 }], { duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 240 });
+  const presentation = mergePresentation(expressions[target], result.expressions[target], expressions[source], question().steps, path);
+  const sourceText = formatExpression(expressions[source], question().steps);
+  let committed = false;
+  const commit = () => {
+    if (committed) return;
+    committed = true;
+    history.push({ expressions: structuredClone(expressions), moves });
+    expressions = result.expressions; moves++; selected = null;
+    mergeHighlight = { ...presentation, target };
+    render();
+    if (busy) { setBusy(true); document.querySelector('#success').hidden = true; }
+  };
+  const finish = () => {
+    commit(); mergeHighlight = null; render(); setBusy(false);
+    setMessage(`${presentation.explanation} ${complete() ? '合并完成，结果没变！' : '可以继续合并。'}`, 'success');
+  };
+  if (!canAnimateMerge()) { finish(); return; }
+  const slot = root.querySelector(`[data-target="${target}"][data-path="${path}"]`);
+  const origin = dragOrigin || root.querySelector(`[data-drag-source="${source}"]`).getBoundingClientRect();
+  setBusy(true);
+  playMerge({ slot, sourceText, origin, commit, presentation,
+    getCard: () => root.querySelector(`article:nth-child(${target + 1})`), onPhase: setMessage,
+  }).catch(() => { /* Preserve the valid merge if the browser interrupts an effect. */ }).finally(finish);
 }
 
 root.addEventListener('click', (event) => {
+  if (busy) return;
   if (event.detail > 0 && performance.now() < suppressClickUntil) return;
   const source = event.target.closest('[data-source]');
   if (source) return choose(Number(source.dataset.source));
@@ -111,9 +141,9 @@ root.addEventListener('click', (event) => {
   }
 });
 
-document.querySelector('#question').addEventListener('change', (event) => loadQuestion(Number(event.target.value)));
+document.querySelector('#question').addEventListener('change', (event) => { if (!busy) loadQuestion(Number(event.target.value)); });
 root.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') { cancelDrag(); selected = null; render(); setMessage('已取消选择。'); }
+  if (event.key === 'Escape' && !busy) { cancelDrag(); selected = null; render(); setMessage('已取消选择。'); }
 });
 
 function cancelDrag() {
@@ -139,6 +169,7 @@ function dragTick() {
 }
 
 root.addEventListener('pointerdown', (event) => {
+  if (busy) return;
   // A fresh gesture is never the synthetic click following the previous drag.
   suppressClickUntil = 0;
   const handle = event.target.closest('[data-source],[data-drag-source]');
@@ -169,10 +200,11 @@ root.addEventListener('pointerup', (event) => {
   if (!drag || drag.pointer !== event.pointerId) return;
   const { active, source } = drag;
   const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-target]');
+  const origin = ghost?.getBoundingClientRect();
   cancelDrag();
   if (!active) return;
   suppressClickUntil = performance.now() + 200;
-  if (target) merge(source, Number(target.dataset.target), target.dataset.path);
+  if (target) merge(source, Number(target.dataset.target), target.dataset.path, origin);
   else setMessage('把算式拖到虚线框里的对应结果上；也可以用点选方式完成。');
 });
 root.addEventListener('pointercancel', cancelDrag);

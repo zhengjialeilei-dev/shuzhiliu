@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "typecheck": "node --check src/main.js && node --check src/engine.js && node --check src/questions.js",
+    "typecheck": "node --check src/main.js && node --check src/engine.js && node --check src/questions.js && node --check src/presentation.js && node --check src/merge-animation.js",
     "build": "npm run typecheck && vite build && node scripts/inline-build.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },

@@ -20,3 +20,14 @@
 .vertical-steps .use{cursor:grab}
 .vertical-steps .final-step{border-left:3px solid var(--blue)}
 @media(max-width:600px){.vertical-steps .step{grid-template-columns:1fr auto;gap:4px 8px;padding:10px 14px}.vertical-steps .use,.vertical-steps .destination-label{grid-column:2}.vertical-steps .math{grid-column:1/-1;grid-row:2;font-size:27px}.vertical-steps .step-note{grid-column:1/-1;grid-row:3}.intro{margin:14px 0 6px}.intro p{display:none}.lesson-number{font-size:42px}.instruction{padding:10px 0}.steps.vertical-steps{gap:20px}.vertical-steps .step:not(:last-child)::after{bottom:-21px;height:20px;line-height:20px}}
+/* Teaching sequence: approach -> substitution -> necessary grouping. */
+.merge-flying{position:fixed;z-index:1100;pointer-events:none;max-width:calc(100vw - 16px);padding:8px 14px;border-radius:8px;border:1px solid #acc8ed;background:#e5f0ff;color:#173e77;font:28px/1.4 "Cambria Math","Times New Roman",serif;box-shadow:0 7px 22px #173e771c;overflow-wrap:anywhere}
+.merge-target{box-shadow:0 0 0 5px #265fba22!important;background:#dceaff!important}
+.merge-inserted{border-radius:5px;background:#e4efff;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.merge-bracket{display:inline-block;color:#9a4d0d;font-weight:700;background:#fff0ce;border-radius:3px}
+.vertical-steps .merge-caption{grid-column:1/-1;grid-row:3;margin:10px 0 0;padding-top:10px;border-top:1px solid #c7d8ec;font:600 14px/1.6 "Microsoft YaHei",sans-serif;color:#214e89}
+[data-merge-phase=replace] .merge-bracket{opacity:0}
+[data-merge-phase] .equals{visibility:hidden}
+#app[aria-busy=true] .math{cursor:wait}
+#app[aria-busy=true] button:disabled{opacity:.65}
+@media(max-width:600px){.vertical-steps .merge-caption{grid-row:4;font-size:13px}.merge-flying{font-size:23px}}

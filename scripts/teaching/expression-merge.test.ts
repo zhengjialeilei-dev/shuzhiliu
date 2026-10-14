@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { evaluate, expanded, formatExpression, mergeExpression, references, num, op } from '../../project-library/all-projects/工程源码/expression-merge/src/engine.js';
 import { questions } from '../../project-library/all-projects/工程源码/expression-merge/src/questions.js';
+import { expressionMarkup, mergePresentation } from '../../project-library/all-projects/工程源码/expression-merge/src/presentation.js';
 
 describe('expression merge engine', () => {
   it('keeps all ten answers correct when merging forwards or from the final step', () => {
@@ -80,6 +81,68 @@ describe('classroom interaction', () => {
     click('[data-action="hint"]');
     expect(document.querySelectorAll('.matching')).toHaveLength(1);
     click('.matching');
-    expect(document.querySelector('#message')?.textContent).toContain('已把');
+    expect(document.querySelector('#message')?.textContent).toContain('可以继续合并');
+  });
+  it('unlocks controls and preserves one valid merge if an animation cannot run', async () => {
+    const select = document.querySelector('#question') as HTMLSelectElement;
+    select.value = '0'; select.dispatchEvent(new Event('change'));
+    const animation = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+    const scroll = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+    Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: () => { throw new Error('Animation interrupted'); } });
+    Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: () => {} });
+    try {
+      click('[data-source="0"]'); click('[data-target="1"][data-path="L"]');
+      expect(select.disabled).toBe(true);
+      await vi.waitFor(() => expect(select.disabled).toBe(false));
+      expect(document.querySelector('[aria-label="第2步表达式"]')?.textContent).toBe('(42 - 30) × 6 = 72');
+      expect(document.querySelectorAll('.merge-flying,.merge-caption')).toHaveLength(0);
+      click('[data-action="undo"]');
+      expect(document.querySelectorAll('[data-target="1"]')).toHaveLength(1);
+      expect((document.querySelector('#undo') as HTMLButtonElement).disabled).toBe(true);
+    } finally {
+      if (animation) Object.defineProperty(Element.prototype, 'animate', animation); else delete Element.prototype.animate;
+      if (scroll) Object.defineProperty(Element.prototype, 'scrollIntoView', scroll); else delete Element.prototype.scrollIntoView;
+    }
+  });
+});
+
+describe('merge teaching presentation', () => {
+  it('renders the same mathematics as the plain formatter for all exercises', () => {
+    const element = document.createElement('div');
+    for (const q of questions) for (const step of q.steps) {
+      const full = expanded(step, q.steps);
+      element.innerHTML = expressionMarkup(full, q.steps);
+      expect(element.textContent).toBe(formatExpression(full, q.steps));
+    }
+  });
+  it('distinguishes new round brackets, new square brackets, and existing inner brackets', () => {
+    const q = questions[0];
+    const first = mergeExpression(q.steps, 0, 1, 'L').expressions;
+    const round = mergePresentation(q.steps[1], first[1], q.steps[0], q.steps, 'L');
+    expect(round.newBrackets).toEqual(['L']);
+    expect(round.explanation).toContain('小括号');
+    const second = mergeExpression(first, 1, 2, 'R').expressions;
+    const square = mergePresentation(first[2], second[2], first[1], q.steps, 'R');
+    expect(square.newBrackets).toEqual(['R']);
+    expect(square.explanation).toContain('中括号');
+    const element = document.createElement('div');
+    element.innerHTML = expressionMarkup(second[2], q.steps, null, square);
+    expect([...element.querySelectorAll('.merge-bracket')].map(e => e.textContent)).toEqual(['[', ']']);
+    expect(element.textContent).toBe('360 ÷ [(42 - 30) × 6]');
+  });
+  it('teaches the changed outer bracket when merging in reverse order', () => {
+    const q = questions[0];
+    const first = mergeExpression(q.steps, 1, 2, 'R').expressions;
+    const second = mergeExpression(first, 0, 2, 'RL').expressions;
+    const presentation = mergePresentation(first[2], second[2], first[0], q.steps, 'RL');
+    expect(presentation.newBrackets.sort()).toEqual(['R', 'RL']);
+    expect(presentation.explanation).toContain('外层改用中括号');
+  });
+  it('does not invent brackets when the normal operation order is sufficient', () => {
+    const q = questions[1];
+    const next = mergeExpression(q.steps, 0, 1, 'R').expressions;
+    const presentation = mergePresentation(q.steps[1], next[1], q.steps[0], q.steps, 'R');
+    expect(presentation.newBrackets).toEqual([]);
+    expect(presentation.explanation).toContain('不需要添加括号');
   });
 });
