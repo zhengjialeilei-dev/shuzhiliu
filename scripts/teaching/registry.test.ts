@@ -2,9 +2,9 @@
 import { expect, it } from 'vitest';
 import { loadProjects } from '../teaching-projects.mjs';
 
-it('registers every buildable project and identifies the four interaction-tested projects', async () => {
+it('registers every buildable project and identifies the interaction-tested projects', async () => {
   const projects = await loadProjects();
-  expect(projects.length).toBeGreaterThanOrEqual(7);
+  expect(projects.length).toBeGreaterThanOrEqual(8);
   expect(projects.filter((project) => project.verification === 'interaction').map((project) => project.id).sort())
-    .toEqual(['climate-control-2050', 'math-city-builder', 'physics-accident-bureau', 'wenyan-detective']);
+    .toEqual(['climate-control-2050', 'expression-merge', 'math-city-builder', 'physics-accident-bureau', 'wenyan-detective']);
 });

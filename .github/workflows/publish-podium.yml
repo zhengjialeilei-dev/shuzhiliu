@@ -1,8 +1,16 @@
-name: Publish Podium Project
+name: Publish Teaching Project
 
 on:
   workflow_dispatch:
     inputs:
+      project:
+        description: Reviewed teaching project to publish
+        required: true
+        type: choice
+        default: podium-unfolding
+        options:
+          - podium-unfolding
+          - expression-merge
       expected_version:
         description: Current reviewed resource version (prevents overwriting newer edits)
         required: true
@@ -12,13 +20,15 @@ permissions:
   contents: read
 
 concurrency:
-  group: publish-podium
+  group: publish-teaching-project
   cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      TEACHING_PROJECT: ${{ inputs.project }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,12 +45,18 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-      - name: Build and verify podium
+      - name: Build and verify selected project
         run: |
+          set -euo pipefail
+          case "$TEACHING_PROJECT" in
+            podium-unfolding) TEST=podium-layout ;;
+            expression-merge) TEST=expression-merge ;;
+            *) echo 'Project is not approved'; exit 1 ;;
+          esac
           npm ci
-          npm ci --prefix 'project-library/all-projects/工程源码/podium-unfolding'
-          npm run build --prefix 'project-library/all-projects/工程源码/podium-unfolding'
-          npm run test:teaching -- --run scripts/teaching/podium-layout.test.ts
+          npm ci --prefix "project-library/all-projects/工程源码/$TEACHING_PROJECT"
+          npm run build --prefix "project-library/all-projects/工程源码/$TEACHING_PROJECT"
+          npm run test:teaching -- --run "scripts/teaching/$TEST.test.ts"
       - name: Publish reviewed resource through Tencent TAT
         env:
           Tencent_SecretId: ${{ secrets.TENCENT_SECRET_ID }}
@@ -49,12 +65,12 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$EXPECTED_VERSION" =~ ^[1-9][0-9]*$ ]]
-          BUILD='project-library/all-projects/工程源码/podium-unfolding/dist/index.html'
+          BUILD="project-library/all-projects/工程源码/$TEACHING_PROJECT/dist/index.html"
           FILE_HASH=$(sha256sum "$BUILD" | cut -d ' ' -f 1)
           {
             printf "python3 - '%s' '%s' <<'PYTHON'\n" \
               '/opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu/deploy/.env' \
-              "deployments/podium/$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.html"
+              "deployments/$TEACHING_PROJECT/$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.html"
             cat .github/scripts/presign_cos_transfer.py
             printf '\nPYTHON\n'
           } > "$RUNNER_TEMP/podium-transfer.sh"
@@ -74,9 +90,9 @@ jobs:
             printf 'chmod 600 "$BACKUP"\n'
             printf '%s\n' 'docker exec mathflow-postgres sh -c '\''pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc'\'' > "$BACKUP"'
             printf 'test -s "$BACKUP"\n'
-            printf "docker exec -i -e PODIUM_SOURCE_URL='%s' -e PODIUM_SHA='%s' -e PODIUM_FILE_HASH='%s' -e PODIUM_EXPECTED_VERSION='%s' mathflow-api node --input-type=module <<'NODE'\n" "$GET_URL" "$GITHUB_SHA" "$FILE_HASH" "$EXPECTED_VERSION"
+            printf "docker exec -i -e PODIUM_SOURCE_URL='%s' -e PODIUM_SHA='%s' -e PODIUM_FILE_HASH='%s' -e PODIUM_EXPECTED_VERSION='%s' -e TEACHING_PROJECT='%s' mathflow-api node --input-type=module <<'NODE'\n" "$GET_URL" "$GITHUB_SHA" "$FILE_HASH" "$EXPECTED_VERSION" "$TEACHING_PROJECT"
             cat .github/scripts/publish_podium.mjs
             printf '\nNODE\n'
-            printf 'echo "Podium release backup: $BACKUP"\n'
+            printf 'echo "Teaching project release backup: $BACKUP"\n'
           } > "$RUNNER_TEMP/publish-podium.sh"
           python .github/scripts/run_tat_command.py --command-file "$RUNNER_TEMP/publish-podium.sh" --name publish-podium --timeout 900

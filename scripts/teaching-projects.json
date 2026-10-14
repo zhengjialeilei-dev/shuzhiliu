@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "projects": [
+    { "id": "expression-merge", "title": "算式合并练习", "subject": "数学", "directory": "expression-merge", "entry": "dist/index.html", "verification": "interaction" },
     { "id": "shiguan-shanhe", "title": "诗贯山河", "subject": "语文", "directory": "shiguan-shanhe", "entry": "dist/index.html", "verification": "build" },
     { "id": "menghui-fanhua", "title": "梦回繁华", "subject": "语文", "directory": "menghui-fanhua", "entry": "dist/index.html", "verification": "build" },
     { "id": "podium-unfolding", "title": "领奖台展开工坊", "subject": "数学", "directory": "podium-unfolding", "entry": "dist/index.html", "verification": "build" },
