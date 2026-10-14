@@ -15,7 +15,6 @@ interface TeachingResourceCardProps {
   resource: TeachingResource;
   zoneInfo: ZoneInfo;
   displayDescription: string;
-  onClick: () => void;
 }
 
 const GRADE_SHORT_LABELS: Record<string, string> = {
@@ -66,14 +65,15 @@ const TeachingResourceCard: React.FC<TeachingResourceCardProps> = ({
   resource,
   zoneInfo,
   displayDescription,
-  onClick,
 }) => {
   const textbookBadge = getTextbookBadge(resource);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <a
+      href={resource.file_url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`在新标签页打开：${resource.title}`}
       className={`group w-full cursor-pointer p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:p-5 rounded-xl sm:rounded-2xl border-2 ${zoneInfo.borderColor} ${zoneInfo.hoverBg} ${zoneInfo.textColor} transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5`}
     >
       <div className="flex items-start gap-3 sm:gap-4">
@@ -83,15 +83,15 @@ const TeachingResourceCard: React.FC<TeachingResourceCardProps> = ({
           {getFileIcon(resource.file_type)}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5 sm:mb-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-0.5 sm:mb-1 min-w-0">
             {textbookBadge ? (
               <span className="flex-shrink-0 text-[10px] sm:text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
                 {textbookBadge}
               </span>
             ) : null}
-            <h4 className="font-bold text-slate-800 text-sm sm:text-base group-hover:text-slate-900 truncate">
+            <h3 title={resource.title} className="font-bold text-slate-800 text-sm sm:text-base group-hover:text-slate-900 break-words">
               {resource.title}
-            </h4>
+            </h3>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 line-clamp-2 mb-2 sm:mb-3">
             {displayDescription}
@@ -106,7 +106,7 @@ const TeachingResourceCard: React.FC<TeachingResourceCardProps> = ({
           </div>
         </div>
       </div>
-    </button>
+    </a>
   );
 };
 

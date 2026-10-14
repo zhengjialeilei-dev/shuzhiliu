@@ -9,6 +9,7 @@ interface SearchBarProps {
   searchHistory?: string[];
   showHistory?: boolean;
   onFocus?: () => void;
+  onDismissHistory?: () => void;
   onHistoryClick?: (query: string) => void;
   onHistoryRemove?: (e: React.MouseEvent, query: string) => void;
   onHistoryClear?: () => void;
@@ -24,6 +25,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   searchHistory = [],
   showHistory = false,
   onFocus,
+  onDismissHistory,
   onHistoryClick,
   onHistoryRemove,
   onHistoryClear,
@@ -34,11 +36,13 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const inputRef = externalInputRef || internalInputRef;
 
   return (
-    <div className="relative group flex-1">
+    <div className="relative group flex-1" onKeyDown={(event) => { if (event.key === 'Escape') onDismissHistory?.(); }}>
       <input
         ref={inputRef}
         type="text"
         placeholder={placeholder}
+        aria-label={placeholder}
+        maxLength={100}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={onFocus}
@@ -48,9 +52,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
       {value && (
         <button
           type="button"
-          onClick={onClear}
+          onClick={() => { onClear(); inputRef.current?.focus(); }}
           aria-label="清除搜索"
-          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+          className="absolute right-1 top-1/2 -translate-y-1/2 p-3 hover:bg-gray-100 rounded-full transition-colors"
         >
           <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
         </button>
@@ -80,15 +84,14 @@ const SearchBar: React.FC<SearchBarProps> = ({
             {searchHistory.map((query, index) => (
               <div
                 key={index}
-                onClick={() => onHistoryClick?.(query)}
-                className="flex items-center justify-between px-4 py-2.5 hover:bg-orange-50 cursor-pointer group/item transition-colors"
+                className="flex items-center justify-between px-2 hover:bg-orange-50 group/item transition-colors"
               >
-                <span className="text-sm text-gray-600">{query}</span>
+                <button type="button" onClick={() => onHistoryClick?.(query)} className="min-h-11 min-w-0 flex-1 break-words px-2 py-2.5 text-left text-sm text-gray-600">{query}</button>
                 <button
                   type="button"
                   onClick={(e) => onHistoryRemove?.(e, query)}
                   aria-label={`删除搜索记录：${query}`}
-                  className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-orange-100 rounded transition-all"
+                  className="p-3 hover:bg-orange-100 rounded transition-all"
                 >
                   <X className="w-3 h-3 text-gray-400" />
                 </button>

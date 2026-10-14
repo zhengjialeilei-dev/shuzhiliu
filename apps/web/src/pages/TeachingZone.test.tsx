@@ -23,9 +23,20 @@ describe('TeachingZone', () => {
     } : empty);
     renderWithProviders(<TeachingZone />);
     fireEvent.click(screen.getByRole('button', { name: /课件/i }));
-    fireEvent.click(await screen.findByText('精品课件示例'));
+    const link = await screen.findByRole('link', { name: '在新标签页打开：精品课件示例' });
     expect(api).toHaveBeenCalledWith('courseware', 1, expect.any(AbortSignal));
-    expect(window.open).toHaveBeenCalledWith('https://example.com/courseware.pdf', '_blank', 'noopener,noreferrer');
+    expect(link).toHaveAttribute('href', 'https://example.com/courseware.pdf');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(window.open).not.toHaveBeenCalled();
+    expect(screen.queryByText(/浏览器拦截/)).not.toBeInTheDocument();
+  });
+
+  it('restores the selected zone from a shared or reloaded URL', async () => {
+    api.mockResolvedValue(empty);
+    renderWithProviders(<TeachingZone />, { initialEntries: ['/teaching-zone?zone=textbook'] });
+    await waitFor(() => expect(api).toHaveBeenCalledWith('textbook', 1, expect.any(AbortSignal)));
+    expect(screen.getByRole('heading', { name: '课本资源' })).toBeInTheDocument();
   });
 
   it('does not resurrect hardcoded textbooks when the database is empty', async () => {

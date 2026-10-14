@@ -1,7 +1,11 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { useToolReturnPath } from '../../hooks/useToolReturnPath';
 import { ArrowLeft, Crown, RotateCcw, Plus, Minus, Trophy } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useSessionState } from '../../hooks/useSessionState';
+
+const validScores = (value: unknown): value is number[] => Array.isArray(value) && value.length === 6 && value.every((score) => Number.isSafeInteger(score) && score >= 0 && score <= 1000000);
 
 interface Group {
   id: number;
@@ -31,7 +35,9 @@ const INITIAL_GROUPS: Group[] = Array.from({ length: 6 }, (_, index) => ({
 }));
 
 const GroupScoreboard = () => {
-  const [groups, setGroups] = useState<Group[]>(INITIAL_GROUPS);
+  const returnPath = useToolReturnPath();
+  const [scores, setScores] = useSessionState('mathflow_group_scores', [0, 0, 0, 0, 0, 0], validScores);
+  const groups = useMemo(() => INITIAL_GROUPS.map((group, index) => ({ ...group, score: scores[index] })), [scores]);
 
   const sortedGroups = useMemo(() => {
     return [...groups].sort((a, b) => {
@@ -43,51 +49,50 @@ const GroupScoreboard = () => {
   }, [groups]);
 
   const updateScore = useCallback((id: number, delta: number) => {
-    setGroups((prevGroups) =>
-      prevGroups.map((group) =>
-        group.id === id ? { ...group, score: Math.max(0, group.score + delta) } : group
-      )
-    );
-  }, []);
+    setScores((previous) => previous.map((score, index) => index + 1 === id ? Math.min(1000000, Math.max(0, score + delta)) : score));
+  }, [setScores]);
 
   const resetScores = useCallback(() => {
     if (window.confirm('确定要清空所有小组比分吗？')) {
-      setGroups((prevGroups) => prevGroups.map((group) => ({ ...group, score: 0 })));
+      setScores([0, 0, 0, 0, 0, 0]);
     }
-  }, []);
+  }, [setScores]);
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
           <Link
-            to="/empower"
+            to={returnPath}
+            aria-label="返回列表"
             className="inline-flex min-h-11 items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-800"
           >
             <ArrowLeft className="h-4 w-4" />
-            返回列表
+            <span className="sm:hidden">返回</span><span className="hidden sm:inline">返回列表</span>
           </Link>
 
-          <div className="flex items-center gap-2 text-base font-bold text-slate-800 sm:text-xl">
+          <h1 className="flex items-center gap-2 whitespace-nowrap text-sm font-bold text-slate-800 sm:text-xl">
             <Trophy className="h-5 w-5 text-yellow-500 sm:h-6 sm:w-6" />
             小组积分榜
-          </div>
+          </h1>
 
           <button
             onClick={resetScores}
+            aria-label="清空比分"
             className="inline-flex min-h-11 items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-red-500 transition-colors hover:bg-red-50"
           >
             <RotateCcw className="h-4 w-4" />
-            清空比分
+            <span className="sm:hidden">清空</span><span className="hidden sm:inline">清空比分</span>
           </button>
         </div>
       </div>
 
       <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {sortedGroups.map((group, index) => {
-            const isFirst = index === 0 && group.score > 0;
-            const rank = index + 1;
+        <p className="mb-6 text-sm text-slate-500">比分仅在本标签页暂存，刷新后保留；同分并列。</p>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {sortedGroups.map((group) => {
+            const rank = sortedGroups.findIndex((item) => item.score === group.score) + 1;
+            const isFirst = rank === 1 && group.score > 0;
 
             return (
               <div
@@ -118,9 +123,9 @@ const GroupScoreboard = () => {
                   >
                     #{rank}
                   </div>
-                  <h3 className={clsx('flex-1 text-center text-lg font-bold sm:text-xl', group.textColor)}>
+                  <h2 className={clsx('flex-1 text-center text-lg font-bold sm:text-xl', group.textColor)}>
                     {group.name}
-                  </h3>
+                  </h2>
                   <div className="w-8" />
                 </div>
 

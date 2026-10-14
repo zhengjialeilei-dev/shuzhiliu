@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useToolReturnPath } from '../../hooks/useToolReturnPath';
 import { ArrowLeft, Settings, X, Play, RotateCcw } from 'lucide-react';
 import { clsx } from 'clsx';
+import Modal from '../../components/Modal';
+import { useSessionState } from '../../hooks/useSessionState';
+
+const validNames = (value: unknown): value is string[] => Array.isArray(value) && value.length > 0 && value.length <= 5000 && value.every((item) => typeof item === 'string' && item.trim().length > 0 && item.length <= 100);
 
 const DEFAULT_NAMES = [
   '张三',
@@ -23,11 +28,12 @@ const DEFAULT_NAMES = [
 ];
 
 const RandomPicker = () => {
-  const [names, setNames] = useState<string[]>(DEFAULT_NAMES);
+  const returnPath = useToolReturnPath();
+  const [names, setNames] = useSessionState('mathflow_picker_names', DEFAULT_NAMES, validNames);
   const [currentName, setCurrentName] = useState<string>('准备就绪');
   const [isRolling, setIsRolling] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [inputNames, setInputNames] = useState(DEFAULT_NAMES.join('，'));
+  const [inputNames, setInputNames] = useState(names.join('，'));
   const [winner, setWinner] = useState<string | null>(null);
 
   const timerRef = useRef<number | null>(null);
@@ -44,7 +50,7 @@ const RandomPicker = () => {
       .map((item) => item.trim())
       .filter((item) => item.length > 0);
 
-    if (newNames.length > 0) {
+    if (validNames(newNames)) {
       setNames(newNames);
       setShowSettings(false);
       setCurrentName('准备就绪');
@@ -97,7 +103,7 @@ const RandomPicker = () => {
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 pb-8 pt-5 sm:px-6 sm:pt-6">
         <div className="mb-5 flex items-start justify-between gap-3 sm:mb-8">
           <Link
-            to="/empower"
+            to={returnPath}
             className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-medium text-white/90 backdrop-blur-md transition-colors hover:bg-white/15"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -105,7 +111,8 @@ const RandomPicker = () => {
           </Link>
 
           <button
-            onClick={() => setShowSettings(true)}
+            onClick={() => { setInputNames(names.join('，')); setShowSettings(true); }}
+            disabled={isRolling}
             className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-medium text-white/90 backdrop-blur-md transition-colors hover:bg-white/15"
           >
             <Settings className="h-4 w-4" />
@@ -137,7 +144,7 @@ const RandomPicker = () => {
             </div>
 
             <div className="flex min-h-[180px] w-full items-center justify-center rounded-[1.75rem] bg-slate-50 px-4 py-6 sm:min-h-[240px] sm:px-8">
-              <h1
+              <h1 aria-live={isRolling ? 'off' : 'polite'}
                 className={clsx(
                   'w-full break-words text-center font-black leading-none tracking-tight',
                   winner
@@ -182,15 +189,15 @@ const RandomPicker = () => {
       </div>
 
       {showSettings ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/50 backdrop-blur-sm sm:items-center sm:justify-center">
-          <div className="w-full rounded-t-[2rem] bg-white p-5 text-slate-800 shadow-2xl sm:max-w-xl sm:rounded-[2rem] sm:p-8">
+        <Modal labelledBy="picker-settings-title" onClose={() => setShowSettings(false)}>
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold sm:text-2xl">设置名单</h2>
+                <h2 id="picker-settings-title" className="text-xl font-bold sm:text-2xl">设置名单</h2>
                 <p className="mt-1 text-sm text-slate-500">用逗号、顿号或换行分隔姓名</p>
               </div>
               <button
                 onClick={() => setShowSettings(false)}
+                aria-label="关闭名单设置"
                 className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100"
               >
                 <X className="h-6 w-6" />
@@ -202,12 +209,15 @@ const RandomPicker = () => {
             </label>
             <textarea
               id="random-picker-names"
+              data-initial-focus
               value={inputNames}
               onChange={(e) => setInputNames(e.target.value)}
               className="h-48 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-base leading-relaxed text-slate-700 outline-none transition focus:border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-200"
               placeholder="例如：张三，李四，王五"
             />
-            <div className="mt-3 text-right text-sm text-slate-400">当前共 {nameCount} 人</div>
+            <div className="mt-3 text-right text-sm text-slate-500">当前共 {nameCount} 人 · 名单仅在本标签页暂存</div>
+            {nameCount === 0 ? <p role="status" className="mt-2 text-sm text-amber-700">请至少输入一个姓名。</p> : null}
+            {nameCount > 5000 || inputNames.split(/[,\n，、]/).some((item) => item.trim().length > 100) ? <p role="status" className="mt-2 text-sm text-amber-700">最多支持 5000 人，每个姓名不超过 100 字。</p> : null}
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
@@ -218,13 +228,13 @@ const RandomPicker = () => {
               </button>
               <button
                 onClick={handleNamesUpdate}
-                className="min-h-12 flex-1 rounded-2xl bg-fuchsia-600 px-5 py-3 font-semibold text-white shadow-lg shadow-fuchsia-500/30 transition-colors hover:bg-fuchsia-700"
+                disabled={!validNames(inputNames.split(/[,\n，、]/).map((item) => item.trim()).filter(Boolean))}
+                className="min-h-12 flex-1 rounded-2xl bg-fuchsia-600 px-5 py-3 font-semibold text-white shadow-lg shadow-fuchsia-500/30 transition-colors hover:bg-fuchsia-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 保存并生效
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       ) : null}
     </div>
   );

@@ -61,3 +61,9 @@ body {
 .safe-area-pt {
   padding-top: env(safe-area-inset-top, 0px);
 }
+
+/* Keep keyboard focus visible and respect reduced-motion preferences. */
+:focus-visible { outline: 3px solid #0d9488; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

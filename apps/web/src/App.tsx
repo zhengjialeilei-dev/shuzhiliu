@@ -14,6 +14,7 @@ const queryClient = new QueryClient({
   },
 });
 
+const NotFound = lazy(() => import('./pages/NotFound'));
 const Home = lazy(() => import('./pages/Home'));
 const Empowerment = lazy(() => import('./pages/Empowerment'));
 const InteractiveGames = lazy(() => import('./pages/InteractiveGames'));
@@ -58,6 +59,7 @@ function App() {
               <Route path="/admin/upload" element={<AdminUpload />} />
               <Route path="/test-connection" element={<TestConnection />} />
               <Route path="/:slug" element={<HtmlViewer />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>

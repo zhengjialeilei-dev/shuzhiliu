@@ -230,6 +230,7 @@ test('html proxy injects base href and strips google font imports for iframe req
     assert.equal(response.statusCode, 200);
     assert.match(response.body, /<base href="https:\/\/cdn\.example\.com\/collections\/demo\/" \/>/);
     assert.doesNotMatch(response.body, /fonts\.googleapis\.com/);
+    assert.match(response.body, /<head><script data-mathflow-preview-storage>/);
   } finally {
     global.fetch = realFetch;
     await app.close();

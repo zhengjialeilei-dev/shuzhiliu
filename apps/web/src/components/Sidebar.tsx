@@ -57,8 +57,8 @@ const Sidebar = () => {
 
   return (
     <>
-      <div className="hidden md:flex w-72 h-[calc(100vh-2rem)] sticky top-4 flex-col bg-white/60 backdrop-blur-2xl rounded-[2rem] shadow-2xl shadow-slate-200/50 z-50 transition-all duration-300 ml-2">
-        <div className="pt-10 pb-8 px-8 flex items-center gap-4">
+      <div className="hidden md:flex shrink-0 w-60 lg:w-72 h-[calc(100vh-2rem)] sticky top-4 flex-col bg-white/60 backdrop-blur-2xl rounded-[2rem] shadow-2xl shadow-slate-200/50 z-50 transition-all duration-300 ml-2">
+        <div className="pt-10 pb-8 px-6 lg:px-8 flex items-center gap-4">
           <div className="relative group">
             <div className="absolute inset-0 bg-emerald-500 rounded-2xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-500 animate-pulse" />
             <button
@@ -71,16 +71,16 @@ const Sidebar = () => {
             </button>
           </div>
           <div className="flex flex-col">
-            <h1 className="text-2xl font-sans font-bold text-slate-800 tracking-tight leading-none group-hover:text-emerald-700 transition-colors">
+            <p className="text-2xl font-sans font-bold text-slate-800 tracking-tight leading-none group-hover:text-emerald-700 transition-colors">
               MathFlow
-            </h1>
+            </p>
             <span className="text-xs font-medium text-slate-400 tracking-[0.2em] mt-1.5 ml-0.5">
               数智流
             </span>
           </div>
         </div>
 
-        <nav className="flex-1 px-6 py-6 space-y-3">
+        <nav aria-label="主要导航" className="flex-1 px-6 py-6 space-y-3">
           {MENU_ITEMS.map((item, index) => {
             const isActive = location.pathname === item.path;
             const isHinting = showHint === item.path;
@@ -88,6 +88,7 @@ const Sidebar = () => {
               <Link
                 key={index}
                 to={item.path}
+                aria-current={isActive ? 'page' : undefined}
                 onClick={(e) => handleNavClick(e, item)}
                 className={clsx(
                   'group relative flex items-center px-5 py-4 rounded-2xl transition-all duration-500 ease-out overflow-hidden',
@@ -155,7 +156,7 @@ const Sidebar = () => {
               <Hexagon className="w-5 h-5 stroke-[2.5]" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-800">MathFlow</h1>
+              <p className="text-lg font-bold text-slate-800">MathFlow</p>
               <span className="text-[10px] text-slate-400 tracking-wider">数智流</span>
             </div>
           </button>
@@ -170,6 +171,7 @@ const Sidebar = () => {
               <Link
                 key={index}
                 to={item.path}
+                aria-current={isActive ? 'page' : undefined}
                 onClick={(e) => handleNavClick(e, item)}
                 className={clsx(
                   'flex min-w-0 flex-1 flex-col items-center rounded-xl px-1 py-2 transition-all',

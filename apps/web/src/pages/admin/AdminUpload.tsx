@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowLeft, Edit3, ExternalLink, FileText, FolderOpen, Loader2, Lock, LogOut, Save, Trash2, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   deleteResource,
@@ -272,9 +272,9 @@ export default function AdminUpload() {
               <Lock className="w-8 h-8 text-slate-400" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">管理员登录</h2>
+          <h1 className="text-2xl font-bold text-center text-slate-800 mb-2">管理员登录</h1>
           <p className="text-center text-slate-400 mb-8 text-sm">
-            当前通过后端会话认证管理资源，不再依赖前端弱口令兜底。
+            登录后可上传、整理和更新教学资源。
           </p>
           <form onSubmit={handleLogin} className="space-y-4">
             <input
@@ -283,6 +283,8 @@ export default function AdminUpload() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-800 focus:outline-none"
               placeholder="管理员密码"
+              aria-label="管理员密码"
+              autoComplete="current-password"
               autoFocus
             />
             {error && <MessageBar tone="error" message={error} />}
@@ -294,6 +296,7 @@ export default function AdminUpload() {
               {submitting ? '登录中...' : '进入后台'}
             </button>
           </form>
+          <Link to="/" className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-xl text-sm text-slate-600 hover:bg-slate-50"><ArrowLeft className="h-4 w-4" />返回首页</Link>
         </div>
       </div>
     );

@@ -24,6 +24,8 @@ interface ZoneCardProps {
 const ZoneCard: React.FC<ZoneCardProps> = ({ zone, isActive, resourceCount, onClick }) => {
   return (
     <button
+      type="button"
+      aria-pressed={isActive}
       onClick={onClick}
       className={`relative p-4 sm:p-6 rounded-2xl sm:rounded-3xl transition-all duration-500 text-left overflow-hidden group ${
         isActive

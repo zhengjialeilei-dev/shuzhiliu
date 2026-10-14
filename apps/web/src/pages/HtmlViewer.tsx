@@ -92,7 +92,7 @@ const HtmlViewer = () => {
 
   if (currentPath && isResolvingResource && !matchedResource && !iframeUrl) {
     return (
-      <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-slate-100">
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-slate-100">
         <HtmlViewerSkeleton />
       </div>
     );
@@ -127,22 +127,15 @@ const HtmlViewer = () => {
   }
 
   return (
-    <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-slate-100">
-      <button
-        onClick={handleBack}
-        className="absolute left-3 top-3 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-white/60 bg-white/90 shadow-lg backdrop-blur-md transition-all duration-300 hover:bg-white sm:left-4 sm:top-4 sm:h-12 sm:w-12"
-        title="返回"
-      >
-        <ArrowLeft className="h-5 w-5 text-slate-700" />
-      </button>
-
-      <div className="pointer-events-none absolute left-14 right-3 top-3 z-40 sm:left-20 sm:right-4 sm:top-4">
-        <div className="inline-flex max-w-full rounded-full border border-white/60 bg-white/90 px-4 py-2 text-xs font-medium text-slate-600 shadow-lg backdrop-blur-md sm:text-sm">
-          <span className="truncate">{title}</span>
-        </div>
-      </div>
-
-      <div className="relative h-full w-full flex-1 overflow-hidden">
+    <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-slate-100">
+      <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-3 py-2">
+        <button onClick={handleBack} aria-label="返回" title="返回"
+          className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-slate-700 hover:bg-slate-100">
+          <ArrowLeft className="h-5 w-5" />返回
+        </button>
+        <h1 className="min-w-0 truncate text-sm font-semibold text-slate-700">{title}</h1>
+      </header>
+      <div className="relative min-h-0 w-full flex-1 overflow-hidden">
         {isFrameLoading ? <HtmlViewerSkeleton /> : null}
 
         <iframe

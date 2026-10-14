@@ -1,10 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, FolderOpen, Loader2, ScrollText, BookOpen, FileCheck, Presentation } from 'lucide-react';
 import { useTeachingPages } from '../hooks/useResourcePages';
 import PageHeader from '../components/PageHeader';
 import ZoneCard from '../components/ZoneCard';
 import TeachingResourceCard from '../components/TeachingResourceCard';
-import ToastNotice from '../components/ToastNotice';
 import type { ZoneInfo } from '../components/ZoneCard';
 import type { TeachingResource } from '../lib/types';
 
@@ -97,29 +96,16 @@ const getDisplayDescription = (resource: TeachingResource) => {
 };
 
 const TeachingZone = () => {
-  const [activeZone, setActiveZone] = useState('standard');
-  const [notice, setNotice] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeZone = ZONES.find((zone) => zone.id === searchParams.get('zone'))?.id || 'standard';
+  const setActiveZone = (zone: string) => setSearchParams({ zone }, { replace: true });
 
   const { items: filteredResources, zones, loading, error, refresh, hasMore, loadingMore, loadMore } = useTeachingPages(activeZone);
 
-  useEffect(() => {
-    if (!notice) return undefined;
-    const timer = window.setTimeout(() => setNotice(null), 2500);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
-
   const activeZoneInfo = ZONES.find((zone) => zone.id === activeZone) || ZONES[0];
-
-  const handleOpenFile = useCallback((url: string) => {
-    const opened = window.open(url, '_blank', 'noopener,noreferrer');
-    if (!opened) {
-      setNotice('浏览器拦截了新窗口，请允许本站打开文件。');
-    }
-  }, []);
 
   return (
     <div className="p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">
-      {notice ? <ToastNotice message={notice} /> : null}
       <div className="mb-6 sm:mb-10">
         <PageHeader
           title="教学专区"
@@ -176,17 +162,16 @@ const TeachingZone = () => {
               <h3 className="text-base sm:text-lg font-semibold text-slate-700 mb-2">
                 暂无{activeZoneInfo.label}资料
               </h3>
-              <p className="text-xs sm:text-sm text-slate-400">请到后台上传对应资源。</p>
+              <p className="text-xs sm:text-sm text-slate-400">资料整理中，可先查看其他栏目。</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
               {filteredResources.map((resource) => (
                 <TeachingResourceCard
                   key={resource.id}
                   resource={resource}
                   zoneInfo={activeZoneInfo}
                   displayDescription={getDisplayDescription(resource)}
-                  onClick={() => handleOpenFile(resource.file_url)}
                 />
               ))}
             </div>

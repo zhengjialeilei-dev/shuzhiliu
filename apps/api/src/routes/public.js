@@ -18,6 +18,7 @@ import { createResourceCatalog } from '../services/resourceCatalog.js';
 import { registerCatalogRoutes } from './catalog.js';
 import { bundleLocation, bundlePreviewBase } from '../services/bundlePreview.js';
 import { registerBundleAssetRoutes } from './bundleAssets.js';
+import { withSandboxStorage } from '../utils/sandboxStorage.js';
 
 const htmlProxyCache = new Map();
 let htmlProxyCacheBytes = 0;
@@ -443,7 +444,7 @@ export async function registerPublicRoutes(app) {
         throw error;
       }
 
-      const text = injectBaseHref(stripSlowExternalAssets(sourceHtml), targetUrl, bundlePreviewBase(matchedResource, apiOrigin));
+      const text = withSandboxStorage(injectBaseHref(stripSlowExternalAssets(sourceHtml), targetUrl, bundlePreviewBase(matchedResource, apiOrigin)));
       setCachedHtmlProxyEntry(cacheKey, { html: text, byteLength: Buffer.byteLength(text) });
       reply.header('Content-Type', 'text/html; charset=utf-8');
       reply.header('X-HTML-Proxy-Cache', 'MISS');

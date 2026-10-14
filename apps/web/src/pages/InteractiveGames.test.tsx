@@ -1,4 +1,5 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { Route, Routes, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import InteractiveGames from './InteractiveGames';
 import { renderWithProviders } from '../test/render';
@@ -19,5 +20,22 @@ describe('InteractiveGames', () => {
     expect(screen.getByRole('heading', { name: '互动游戏' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: /趣味数独/ })).toBeInTheDocument();
     expect(getResourcePage).toHaveBeenCalledWith({ section: 'games', q: '' }, 1, expect.any(AbortSignal));
+  });
+
+  it('retains search after opening a game and returning', async () => {
+    function Game() {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate(-1)}>返回游戏列表</button>;
+    }
+    renderWithProviders(<Routes>
+      <Route path="/games" element={<InteractiveGames />} />
+      <Route path="/sd" element={<Game />} />
+    </Routes>, { initialEntries: ['/games'] });
+    fireEvent.change(screen.getByRole('textbox', { name: '搜索游戏...' }), { target: { value: '数独' } });
+    await waitFor(() => expect(getResourcePage).toHaveBeenLastCalledWith({ section: 'games', q: '数独' }, 1, expect.any(AbortSignal)));
+    fireEvent.click(await screen.findByRole('link', { name: /趣味数独/ }));
+    fireEvent.click(screen.getByRole('button', { name: '返回游戏列表' }));
+    expect(screen.getByRole('textbox', { name: '搜索游戏...' })).toHaveValue('数独');
+    expect(await screen.findByRole('link', { name: /趣味数独/ })).toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { AlertCircle, Loader2, RefreshCw, Search } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import SearchBar from './SearchBar';
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import PageHeader from './PageHeader';
 import ResourceCard from './ResourceCard';
 import ResourceGridSkeleton from './ResourceGridSkeleton';
@@ -25,7 +26,13 @@ export default function ResourceGalleryPage({
   section,
   searchPlaceholder,
 }: ResourceGalleryPageProps) {
-  const [search, setSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = (searchParams.get('q') || '').slice(0, 100);
+  const setSearch = (value: string) => setSearchParams((previous) => {
+    const next = new URLSearchParams(previous);
+    if (value) next.set('q', value.slice(0, 100)); else next.delete('q');
+    return next;
+  }, { replace: true });
 
   const q = useDebounce(search.trim(), 300);
   const { items: filteredResources, loading, loadingMore, error, refresh: onRetry, hasMore, loadMore, source } = useResourcePages({ section, q });
@@ -36,16 +43,7 @@ export default function ResourceGalleryPage({
         <PageHeader title={title} subtitle={subtitle} gradientColors={gradientColors} />
 
         <div className="bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-white/50 shadow-sm w-full">
-          <div className="relative group flex-1">
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={searchPlaceholder}
-              className="pl-10 pr-4 py-2.5 sm:py-3 bg-white rounded-xl border-none ring-1 ring-gray-100 w-full focus:ring-2 focus:ring-emerald-400 focus:outline-none transition-all duration-300 placeholder-gray-400 text-sm"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
-          </div>
+          <SearchBar value={search} onChange={setSearch} onClear={() => setSearch('')} placeholder={searchPlaceholder} />
 
         </div>
       </div>
@@ -70,14 +68,15 @@ export default function ResourceGalleryPage({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+      <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-6">
         {loading ? <ResourceGridSkeleton /> : null}
         {filteredResources.map((resource, index) => (
-          <ResourceCard key={resource.id} resource={resource} accentColor={accentColor} priority={index < 2} />
+          <ResourceCard key={resource.id} resource={resource} searchQuery={q} accentColor={accentColor} priority={index < 2} />
         ))}
         {!loading && !error && filteredResources.length === 0 && (
           <div className="col-span-full py-12 text-center text-gray-400 bg-white rounded-3xl border border-dashed border-gray-200">
-            {emptyText}
+            <p>{q ? '没有找到匹配的资源，试试其他关键词。' : emptyText}</p>
+            {search ? <button type="button" onClick={() => setSearch('')} className="mt-4 min-h-11 rounded-xl bg-emerald-50 px-5 text-emerald-700">清除搜索</button> : null}
           </div>
         )}
       </div>

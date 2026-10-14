@@ -4,14 +4,17 @@ const MAX_HISTORY_ITEMS = 10;
 export function getSearchHistory(): string[] {
   try {
     const history = localStorage.getItem(SEARCH_HISTORY_KEY);
-    return history ? JSON.parse(history) : [];
+    const parsed: unknown = history ? JSON.parse(history) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0 && item.length <= 100).slice(0, MAX_HISTORY_ITEMS)
+      : [];
   } catch {
     return [];
   }
 }
 
 export function addSearchHistory(query: string) {
-  const normalized = query.trim();
+  const normalized = query.trim().slice(0, 100);
   if (!normalized) return;
 
   try {

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useResourcePages } from '../hooks/useResourcePages';
@@ -32,9 +32,17 @@ const GRADES = [
 
 const Home = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeCategory, setActiveCategory] = useState(searchParams.get('cat') || 'all');
-  const [activeGrade, setActiveGrade] = useState(searchParams.get('grade') || '');
-  const [search, setSearch] = useState(searchParams.get('q') || '');
+  const activeCategory = CATEGORIES.find((item) => item.id === searchParams.get('cat'))?.id || 'all';
+  const activeGrade = GRADES.find((item) => item.id === searchParams.get('grade'))?.id || '';
+  const search = (searchParams.get('q') || '').slice(0, 100);
+  const updateParam = useCallback((key: string, value: string) => {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      if (value) next.set(key, value); else next.delete(key);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+  const setSearch = useCallback((value: string) => updateParam('q', value.slice(0, 100)), [updateParam]);
 
   const debouncedSearch = useDebounce(search.trim(), 300);
   const { items: paginatedApps, total: totalCount, loading, loadingMore, error, refresh, hasMore, loadMore, source } = useResourcePages({
@@ -60,21 +68,13 @@ const Home = () => {
     }
   }, [addHistory, debouncedSearch]);
 
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (activeCategory !== 'all') params.set('cat', activeCategory);
-    if (activeGrade) params.set('grade', activeGrade);
-    if (debouncedSearch) params.set('q', debouncedSearch);
-    setSearchParams(params, { replace: true });
-  }, [activeCategory, activeGrade, debouncedSearch, setSearchParams]);
-
   const handleHistoryClick = useCallback(
     (query: string) => {
       setSearch(query);
       setShowHistory(false);
       searchInputRef.current?.focus();
     },
-    [setShowHistory]
+    [setSearch, setShowHistory]
   );
 
   const handleRemoveHistoryItem = useCallback(
@@ -88,7 +88,7 @@ const Home = () => {
   const handleClearSearch = useCallback(() => {
     setSearch('');
     searchInputRef.current?.focus();
-  }, []);
+  }, [setSearch]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">
@@ -104,6 +104,7 @@ const Home = () => {
             searchHistory={history}
             showHistory={showHistory}
             onFocus={() => setShowHistory(true)}
+            onDismissHistory={() => setShowHistory(false)}
             onHistoryClick={handleHistoryClick}
             onHistoryRemove={handleRemoveHistoryItem}
             onHistoryClear={clearHistory}
@@ -149,10 +150,10 @@ const Home = () => {
       <FilterTabs
         categories={CATEGORIES}
         activeCategory={activeCategory}
-        onCategoryChange={setActiveCategory}
+        onCategoryChange={(value) => updateParam('cat', value === 'all' ? '' : value)}
         grades={GRADES}
         activeGrade={activeGrade}
-        onGradeChange={setActiveGrade}
+        onGradeChange={(value) => updateParam('grade', value)}
       />
 
       <div className="mb-8 sm:mb-12">
@@ -160,7 +161,7 @@ const Home = () => {
           <span className="w-1.5 h-5 sm:h-6 bg-purple-500 rounded-full block" />
           AI 教学应用
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+        <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-6">
           {loading ? <ResourceGridSkeleton /> : null}
           {paginatedApps.map((app, index) => (
             <ResourceCard
@@ -179,8 +180,9 @@ const Home = () => {
                   <p className="text-sm">试试其他关键词，或使用拼音首字母搜索。</p>
                 </div>
               ) : (
-                '暂无资源，敬请期待。'
+                <p>当前筛选下暂无资源。</p>
               )}
+              <button type="button" onClick={() => setSearchParams({}, { replace: true })} className="mt-4 min-h-11 rounded-xl bg-orange-50 px-5 text-orange-700 hover:bg-orange-100">清除筛选，查看全部资源</button>
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import type { Resource } from '../lib/types';
 import { getResourcePath } from '../lib/resourceRoutes';
 import { formatCategoryLabel } from '../lib/displayLabels';
@@ -32,6 +32,7 @@ const ResourceCardMemo: React.FC<ResourceCardProps> = ({
   accentColor = 'orange',
   priority = false,
 }) => {
+  const location = useLocation();
   const accent = ACCENT_CONFIG[accentColor];
 
   const to = useMemo(() => getResourcePath(resource), [resource]);
@@ -39,6 +40,7 @@ const ResourceCardMemo: React.FC<ResourceCardProps> = ({
   return (
     <Link
       to={to}
+      state={{ returnTo: location.pathname + location.search }}
       className={`group relative flex flex-col overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl sm:rounded-2xl ${accent.hoverShadow}`}
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
@@ -52,21 +54,21 @@ const ResourceCardMemo: React.FC<ResourceCardProps> = ({
 
         <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
           <span
-            className={`rounded border bg-white/90 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md sm:rounded-md sm:px-2 sm:py-1 sm:text-[10px] ${accent.categoryBadge}`}
+            className={`rounded border bg-white/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md sm:rounded-md sm:px-2 sm:py-1 sm:text-[10px] ${accent.categoryBadge}`}
           >
             {formatCategoryLabel(resource.category)}
           </span>
         </div>
 
         <div className="absolute right-2 top-2 sm:right-3 sm:top-3">
-          <span className="rounded border border-purple-100 bg-white/90 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-purple-600 shadow-sm backdrop-blur-md sm:rounded-md sm:px-2 sm:py-1 sm:text-[10px]">
+          <span className="rounded border border-purple-100 bg-white/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-600 shadow-sm backdrop-blur-md sm:rounded-md sm:px-2 sm:py-1 sm:text-[10px]">
             {resource.grade}
           </span>
         </div>
       </div>
 
       <div className="flex flex-col gap-0.5 p-3 sm:gap-1 sm:p-4">
-        <h3 className={`line-clamp-1 text-sm font-bold text-gray-800 transition-colors sm:text-base ${accent.hoverText}`}>
+        <h3 title={resource.title} className={`line-clamp-2 text-sm font-bold text-gray-800 transition-colors sm:text-base ${accent.hoverText}`}>
           {searchQuery ? <HighlightText text={resource.title} query={searchQuery} /> : resource.title}
         </h3>
         <p className="hidden line-clamp-1 text-[10px] text-gray-500 sm:block sm:text-xs">

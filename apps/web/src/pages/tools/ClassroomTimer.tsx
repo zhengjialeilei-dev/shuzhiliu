@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { useToolReturnPath } from '../../hooks/useToolReturnPath';
+import { useTimerAlarm } from '../../hooks/useTimerAlarm';
 import { ArrowLeft, Play, Pause, RotateCcw, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -16,6 +18,7 @@ const RADIUS = 108;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 const ClassroomTimer = () => {
+  const returnPath = useToolReturnPath();
   const [totalTime, setTotalTime] = useState(300);
   const [timeLeft, setTimeLeft] = useState(300);
   const [isRunning, setIsRunning] = useState(false);
@@ -23,7 +26,8 @@ const ClassroomTimer = () => {
   const [customMinutes, setCustomMinutes] = useState('');
   const [customSeconds, setCustomSeconds] = useState('');
 
-  const timerRef = useRef<number | null>(null);
+  const deadline = useRef(0);
+  const { prepare: prepareAlarm, ring } = useTimerAlarm();
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -32,24 +36,26 @@ const ClassroomTimer = () => {
   };
 
   useEffect(() => {
-    if (isRunning && timeLeft > 0) {
-      timerRef.current = window.setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            setIsRunning(false);
-            setIsFinished(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+    if (!isRunning) return;
+    let finished = false;
+    const sync = () => {
+      if (finished) return;
+      const remaining = Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining === 0) {
+        finished = true;
+        setIsRunning(false);
+        setIsFinished(true);
+        ring();
+      }
     };
-  }, [isRunning, timeLeft]);
+    const interval = window.setInterval(sync, 250);
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', sync);
+    };
+  }, [isRunning, ring]);
 
   const handleReset = useCallback(() => {
     setIsRunning(false);
@@ -91,17 +97,17 @@ const ClassroomTimer = () => {
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 pb-8 pt-5 sm:px-6 sm:pt-6">
         <div className="mb-4 flex items-center justify-between gap-3 sm:mb-8">
           <Link
-            to="/empower"
+            to={returnPath}
             className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/60 bg-white/60 px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm backdrop-blur-sm transition-colors hover:bg-white"
           >
             <ArrowLeft className="h-4 w-4" />
             返回列表
           </Link>
 
-          <div className="hidden items-center gap-2 text-sm font-bold uppercase tracking-[0.2em] text-slate-400 sm:flex">
+          <h1 className="flex items-center gap-2 text-sm font-bold text-slate-500">
             <Clock className="h-4 w-4" />
             课堂计时器
-          </div>
+          </h1>
         </div>
 
         <div className="flex flex-1 flex-col items-center justify-center py-2">
@@ -140,12 +146,9 @@ const ClassroomTimer = () => {
 
               <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
                 {isFinished ? (
-                  <>
-                    <span className="text-4xl sm:text-6xl">铃响</span>
-                    <p className="mt-3 text-2xl font-black text-emerald-600 sm:text-4xl">时间到</p>
-                  </>
+                  <p role="status" className="text-3xl font-black text-emerald-600 sm:text-5xl">时间到</p>
                 ) : (
-                  <div
+                  <div role="timer" aria-label="剩余时间"
                     className={clsx(
                       'font-mono font-black tabular-nums tracking-tighter transition-all duration-300',
                       isUrgent ? 'scale-105 text-5xl text-red-500 sm:text-7xl' : 'text-5xl text-slate-700 sm:text-7xl'
@@ -163,7 +166,10 @@ const ClassroomTimer = () => {
               {!isRunning ? (
                 <button
                   onClick={() => {
-                    if (timeLeft === 0) handleSetTime(totalTime);
+                    const duration = timeLeft === 0 ? totalTime : timeLeft;
+                    prepareAlarm();
+                    deadline.current = Date.now() + duration * 1000;
+                    setTimeLeft(duration);
                     setIsRunning(true);
                     setIsFinished(false);
                   }}
@@ -174,7 +180,12 @@ const ClassroomTimer = () => {
                 </button>
               ) : (
                 <button
-                  onClick={() => setIsRunning(false)}
+                  onClick={() => {
+                    const remaining = Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000));
+                    setTimeLeft(remaining);
+                    setIsRunning(false);
+                    if (remaining === 0) { setIsFinished(true); ring(); }
+                  }}
                   aria-label="暂停计时"
                   className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg transition-all duration-300 hover:bg-amber-400 hover:shadow-amber-500/30 sm:h-20 sm:w-20"
                 >
@@ -212,13 +223,14 @@ const ClassroomTimer = () => {
               onSubmit={handleCustomSubmit}
               className="flex w-full max-w-md flex-col gap-3 rounded-[1.75rem] border border-white/60 bg-white/70 p-3 shadow-sm sm:flex-row sm:items-center"
             >
-              <div className="grid flex-1 grid-cols-[1fr_auto_1fr] items-center gap-2">
+              <div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-2">
                 <input
                   type="number"
                   placeholder="分"
+                  aria-label="自定义分钟"
                   value={customMinutes}
                   onChange={(e) => setCustomMinutes(e.target.value)}
-                  className="h-12 rounded-xl bg-white px-3 text-center text-base font-bold text-slate-700 outline-none ring-1 ring-slate-100 transition focus:ring-2 focus:ring-blue-300"
+                  className="h-12 min-w-0 w-full rounded-xl bg-white px-3 text-center text-base font-bold text-slate-700 outline-none ring-1 ring-slate-100 transition focus:ring-2 focus:ring-blue-300"
                   min="0"
                   max="99"
                 />
@@ -226,9 +238,10 @@ const ClassroomTimer = () => {
                 <input
                   type="number"
                   placeholder="秒"
+                  aria-label="自定义秒数"
                   value={customSeconds}
                   onChange={(e) => setCustomSeconds(e.target.value)}
-                  className="h-12 rounded-xl bg-white px-3 text-center text-base font-bold text-slate-700 outline-none ring-1 ring-slate-100 transition focus:ring-2 focus:ring-blue-300"
+                  className="h-12 min-w-0 w-full rounded-xl bg-white px-3 text-center text-base font-bold text-slate-700 outline-none ring-1 ring-slate-100 transition focus:ring-2 focus:ring-blue-300"
                   min="0"
                   max="59"
                 />
