@@ -54,6 +54,9 @@ describe('classroom interaction', () => {
     await import('../../project-library/all-projects/工程源码/expression-merge/src/main.js');
   });
   it('merges by selection, supports undo/reset, and provides completion feedback', () => {
+    expect(document.querySelector('#steps')?.classList.contains('vertical-steps')).toBe(true);
+    expect(document.querySelectorAll('.math[data-drag-source]')).toHaveLength(2);
+    expect(document.querySelector('.final-step .math')?.hasAttribute('data-drag-source')).toBe(false);
     click('[data-source="0"]');
     click('[data-target="1"][data-path="L"]');
     expect(document.querySelectorAll('[data-target="1"]')).toHaveLength(0);
