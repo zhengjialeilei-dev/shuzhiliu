@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { FaceName, LayoutMode, PodiumBlockSpec, Transform, ViewMode } from "../core/types";
-import { flatTransform, interpolateTransform, separatedTransform, solidTransform } from "./layout";
+import { flatTransform, interpolateTransform, separatedTransform, solidTransform, unfoldingTransform } from "./layout";
 
 const faceNames: readonly FaceName[] = ["front", "back", "left", "right", "top", "bottom"];
 
@@ -14,14 +14,11 @@ interface FaceObject {
 interface ActiveAnimation {
   startedAt: number;
   duration: number;
-  entries: Array<{ group: THREE.Group; from: Transform; to: Transform }>;
+  fromOpen: number;
+  toOpen: number;
+  fromSeparate: number;
+  toSeparate: number;
 }
-
-const cameraViews: Record<ViewMode, { position: THREE.Vector3; target: THREE.Vector3 }> = {
-  front: { position: new THREE.Vector3(0, 2.45, 8.8), target: new THREE.Vector3(0, 1.15, 0) },
-  top: { position: new THREE.Vector3(0, 9.4, 0.01), target: new THREE.Vector3(0, 0, 0) },
-  perspective: { position: new THREE.Vector3(6.3, 4.7, 7.2), target: new THREE.Vector3(0, 1.05, 0) },
-};
 
 export class PodiumScene {
   private readonly scene = new THREE.Scene();
@@ -32,25 +29,31 @@ export class PodiumScene {
   private readonly clock = new THREE.Clock();
   private readonly faces: FaceObject[] = [];
   private animation?: ActiveAnimation;
+  private cameraAnimation?: { startedAt: number; from: THREE.Vector3; to: THREE.Vector3; fromTarget: THREE.Vector3; toTarget: THREE.Vector3 };
+  private mode: LayoutMode = "solid";
+  private view: ViewMode = "perspective";
+  private openness = 0;
+  private separation = 0;
+  private readonly reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   private frameId = 0;
 
   constructor(private readonly host: HTMLElement, blocks: readonly PodiumBlockSpec[]) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.domElement.setAttribute("aria-label", "可拖拽旋转的三维领奖台与展开图");
     this.host.append(this.renderer.domElement);
 
-    this.camera.position.copy(cameraViews.perspective.position);
+    this.camera.position.set(6.3, 4.7, 7.2);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.target.copy(cameraViews.perspective.target);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.075;
-    this.controls.minDistance = 4.6;
-    this.controls.maxDistance = 14;
+    this.controls.minDistance = 2;
+    this.controls.maxDistance = 80;
     this.controls.maxPolarAngle = Math.PI / 2.02;
+    this.controls.addEventListener("start", () => { this.cameraAnimation = undefined; });
 
     this.buildEnvironment();
     blocks.forEach((block) => this.buildBlock(block));
@@ -62,28 +65,19 @@ export class PodiumScene {
   }
 
   setLayout(mode: LayoutMode): void {
-    const entries = this.faces.map(({ block, face, group }) => ({
-      group,
-      from: { position: group.position.clone(), quaternion: group.quaternion.clone() },
-      to: this.targetFor(mode, block, face),
-    }));
-    this.animation = { startedAt: performance.now(), duration: 850, entries };
+    this.mode = mode;
+    this.animation = {
+      startedAt: performance.now(), duration: this.reducedMotion ? 1 : 1200,
+      fromOpen: this.openness, toOpen: mode === "solid" ? 0 : mode === "half" ? 0.65 : 1,
+      fromSeparate: this.separation, toSeparate: mode === "separated" ? 1 : 0,
+    };
     this.controls.maxPolarAngle = mode === "solid" ? Math.PI / 2.02 : Math.PI / 2;
+    this.fitView(true);
   }
 
   setView(mode: ViewMode): void {
-    const view = cameraViews[mode];
-    const cameraStart = this.camera.position.clone();
-    const targetStart = this.controls.target.clone();
-    const startedAt = performance.now();
-    const animateCamera = (now: number): void => {
-      const progress = Math.min((now - startedAt) / 650, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      this.camera.position.lerpVectors(cameraStart, view.position, eased);
-      this.controls.target.lerpVectors(targetStart, view.target, eased);
-      if (progress < 1) requestAnimationFrame(animateCamera);
-    };
-    requestAnimationFrame(animateCamera);
+    this.view = mode;
+    this.fitView(true);
   }
 
   reset(): void {
@@ -95,19 +89,30 @@ export class PodiumScene {
     cancelAnimationFrame(this.frameId);
     this.resizeObserver.disconnect();
     this.controls.dispose();
+    this.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
+        object.geometry.dispose();
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        materials.forEach((material) => {
+          if ("map" in material && material.map instanceof THREE.Texture) material.map.dispose();
+          material.dispose();
+        });
+      }
+    });
     this.renderer.dispose();
   }
 
   private buildEnvironment(): void {
     this.scene.background = null;
-    this.scene.fog = new THREE.Fog(0xeaf0f6, 10, 20);
 
     const hemisphere = new THREE.HemisphereLight(0xffffff, 0x8a9bb0, 2.2);
     this.scene.add(hemisphere);
 
-    const key = new THREE.DirectionalLight(0xffffff, 4.2);
+    const key = new THREE.DirectionalLight(0xffffff, 2.2);
     key.position.set(4, 8, 6);
     key.castShadow = true;
+    key.shadow.bias = -0.0005;
+    key.shadow.normalBias = 0.04;
     key.shadow.mapSize.set(1024, 1024);
     key.shadow.camera.left = -7;
     key.shadow.camera.right = 7;
@@ -140,7 +145,8 @@ export class PodiumScene {
       const material = new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.02, side: THREE.DoubleSide });
       const panel = new THREE.Mesh(geometry, material);
       panel.castShadow = true;
-      panel.receiveShadow = true;
+      // Thin, double-sided panels must not shadow themselves (visible stripes).
+      panel.receiveShadow = false;
       group.add(panel);
 
       const edge = new THREE.LineSegments(
@@ -186,7 +192,7 @@ export class PodiumScene {
     if (mode === "solid") return solidTransform(block, face);
     if (mode === "flat") return flatTransform(block, face);
     if (mode === "separated") return separatedTransform(block, face);
-    return interpolateTransform(solidTransform(block, face), flatTransform(block, face), 0.48);
+    return unfoldingTransform(block, face, 0.65);
   }
 
   private faceDimensions(block: PodiumBlockSpec, face: FaceName): { width: number; height: number } {
@@ -208,6 +214,41 @@ export class PodiumScene {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
+    this.fitView(false);
+  }
+
+  private fitView(animated: boolean): void {
+    const points: THREE.Vector3[] = [];
+    this.faces.forEach(({ block, face }) => {
+      const pose = this.targetFor(this.mode, block, face);
+      const { width, height } = this.faceDimensions(block, face);
+      for (const x of [-width / 2, width / 2]) for (const y of [-height / 2, height / 2]) {
+        points.push(new THREE.Vector3(x, y, 0).applyQuaternion(pose.quaternion).add(pose.position));
+      }
+    });
+    const target = new THREE.Box3().setFromPoints(points).getCenter(new THREE.Vector3());
+    // A flat net viewed exactly edge-on disappears: retain a small elevation.
+    const direction = (this.view === "top" ? new THREE.Vector3(0, 1, 0.001)
+      : this.view === "front" ? new THREE.Vector3(0, this.mode === "solid" ? 0.08 : 0.85, 1)
+      : new THREE.Vector3(0.65, 0.85, 1)).normalize();
+    const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), direction).normalize();
+    const up = new THREE.Vector3().crossVectors(direction, right).normalize();
+    const tanY = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
+    const tanX = tanY * this.camera.aspect;
+    let distance = 3;
+    points.forEach((point) => {
+      const relative = point.clone().sub(target);
+      distance = Math.max(distance, relative.dot(direction) + Math.max(Math.abs(relative.dot(right)) / tanX, Math.abs(relative.dot(up)) / tanY) * 1.25);
+    });
+    const position = target.clone().addScaledVector(direction, distance);
+    if (animated && !this.reducedMotion) {
+      this.cameraAnimation = { startedAt: performance.now(), from: this.camera.position.clone(), to: position, fromTarget: this.controls.target.clone(), toTarget: target };
+    } else {
+      this.cameraAnimation = undefined;
+      this.camera.position.copy(position);
+      this.controls.target.copy(target);
+      this.controls.update();
+    }
   }
 
   private render = (): void => {
@@ -215,11 +256,22 @@ export class PodiumScene {
     if (this.animation) {
       const progress = Math.min((performance.now() - this.animation.startedAt) / this.animation.duration, 1);
       const eased = progress < 0.5 ? 4 * progress ** 3 : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-      this.animation.entries.forEach(({ group, from, to }) => {
-        group.position.lerpVectors(from.position, to.position, eased);
-        group.quaternion.slerpQuaternions(from.quaternion, to.quaternion, eased);
+      this.openness = THREE.MathUtils.lerp(this.animation.fromOpen, this.animation.toOpen, eased);
+      this.separation = THREE.MathUtils.lerp(this.animation.fromSeparate, this.animation.toSeparate, eased);
+      this.faces.forEach(({ group, block, face }) => {
+        const pose = interpolateTransform(unfoldingTransform(block, face, this.openness), separatedTransform(block, face), this.separation);
+        group.position.copy(pose.position);
+        group.quaternion.copy(pose.quaternion);
       });
       if (progress >= 1) this.animation = undefined;
+    }
+    if (this.cameraAnimation) {
+      const camera = this.cameraAnimation;
+      const progress = Math.min((performance.now() - camera.startedAt) / 650, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      this.camera.position.lerpVectors(camera.from, camera.to, eased);
+      this.controls.target.lerpVectors(camera.fromTarget, camera.toTarget, eased);
+      if (progress >= 1) this.cameraAnimation = undefined;
     }
     this.controls.update(this.clock.getDelta());
     this.renderer.render(this.scene, this.camera);

@@ -16,7 +16,7 @@ export class WorkshopView {
           <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
           <div class="title-block">
             <p class="eyebrow">空间想象 · 展开与折叠</p>
-            <h1>领奖台展开工坊</h1>
+            <h1>领奖台展开图</h1>
           </div>
           <button class="quiet-button" type="button" data-action="reset" aria-label="复原领奖台与视角">
             <span aria-hidden="true">↻</span> 一键复原
@@ -89,8 +89,14 @@ export class WorkshopView {
       </main>`;
 
     const sceneHost = this.requireElement<HTMLElement>("#scene-host");
-    this.scene = new PodiumScene(sceneHost, podiumBlocks);
-    this.bindEvents();
+    try {
+      this.scene = new PodiumScene(sceneHost, podiumBlocks);
+      this.bindEvents();
+    } catch {
+      sceneHost.innerHTML = `<div class="scene-error" role="alert"><b>三维画面未能加载</b><p>请开启浏览器硬件加速，或使用支持 WebGL 的浏览器重新打开。</p><button type="button" data-action="retry">重新加载</button></div>`;
+      this.root.querySelectorAll<HTMLButtonElement>("button:not([data-action=retry])").forEach((button) => { button.disabled = true; });
+      this.requireElement('[data-action="retry"]').addEventListener("click", () => this.mount());
+    }
   }
 
   private bindEvents(): void {
@@ -103,7 +109,6 @@ export class WorkshopView {
     this.requireElement<HTMLButtonElement>('[data-action="reset"]').addEventListener("click", () => {
       this.selectLayout("solid");
       this.selectView("perspective");
-      this.scene?.reset();
     });
     this.requireElement<HTMLButtonElement>('[data-action="next"]').addEventListener("click", () => {
       const index = layoutOptions.findIndex((item) => item.mode === this.mode);
@@ -114,6 +119,7 @@ export class WorkshopView {
   private selectLayout(mode: LayoutMode): void {
     this.mode = mode;
     this.scene?.setLayout(mode);
+    this.selectView(mode === "flat" || mode === "separated" ? "top" : "perspective");
     const index = layoutOptions.findIndex((item) => item.mode === mode);
     const option = layoutOptions[index];
 

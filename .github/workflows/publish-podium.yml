@@ -1,0 +1,82 @@
+name: Publish Podium Project
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_version:
+        description: Current reviewed resource version (prevents overwriting newer edits)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-podium
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            /*
+            !/apps/web/public/files/
+            !/project-library/*
+            /project-library/all-projects/
+            !/project-library/all-projects/*
+            /project-library/all-projects/工程源码/
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Build and verify podium
+        run: |
+          npm ci
+          npm ci --prefix 'project-library/all-projects/工程源码/podium-unfolding'
+          npm run build --prefix 'project-library/all-projects/工程源码/podium-unfolding'
+          npm run test:teaching -- --run scripts/teaching/podium-layout.test.ts
+      - name: Publish reviewed resource through Tencent TAT
+        env:
+          Tencent_SecretId: ${{ secrets.TENCENT_SECRET_ID }}
+          Tencent_SecretKey: ${{ secrets.TENCENT_SECRET_KEY }}
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_VERSION" =~ ^[1-9][0-9]*$ ]]
+          BUILD='project-library/all-projects/工程源码/podium-unfolding/dist/index.html'
+          FILE_HASH=$(sha256sum "$BUILD" | cut -d ' ' -f 1)
+          {
+            printf "python3 - '%s' '%s' <<'PYTHON'\n" \
+              '/opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu/deploy/.env' \
+              "deployments/podium/$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.html"
+            cat .github/scripts/presign_cos_transfer.py
+            printf '\nPYTHON\n'
+          } > "$RUNNER_TEMP/podium-transfer.sh"
+          TRANSFER=$(python .github/scripts/run_tat_command.py --command-file "$RUNNER_TEMP/podium-transfer.sh" --name prepare-podium-transfer --timeout 120)
+          PUT_URL=$(printf '%s\n' "$TRANSFER" | sed -n 's/^PUT_URL=//p')
+          GET_URL=$(printf '%s\n' "$TRANSFER" | sed -n 's/^GET_URL=//p')
+          DELETE_URL=$(printf '%s\n' "$TRANSFER" | sed -n 's/^DELETE_URL=//p')
+          test -n "$PUT_URL" && test -n "$GET_URL" && test -n "$DELETE_URL"
+          echo "::add-mask::$PUT_URL"
+          echo "::add-mask::$GET_URL"
+          echo "::add-mask::$DELETE_URL"
+          trap 'curl --fail --silent --show-error --request DELETE "$DELETE_URL" >/dev/null 2>&1 || true' EXIT
+          curl --fail --silent --show-error --request PUT --upload-file "$BUILD" "$PUT_URL"
+          {
+            printf 'set -euo pipefail\nexec 9>/tmp/mathflow-deploy.lock\nflock --wait 600 9\n'
+            printf 'BACKUP=$(mktemp /opt/1panel/apps/mathflow-sparkaiedu/shuzhiliu/deploy/backups/podium-XXXXXXXX.dump)\n'
+            printf 'chmod 600 "$BACKUP"\n'
+            printf '%s\n' 'docker exec mathflow-postgres sh -c '\''pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc'\'' > "$BACKUP"'
+            printf 'test -s "$BACKUP"\n'
+            printf "docker exec -i -e PODIUM_SOURCE_URL='%s' -e PODIUM_SHA='%s' -e PODIUM_FILE_HASH='%s' -e PODIUM_EXPECTED_VERSION='%s' mathflow-api node --input-type=module <<'NODE'\n" "$GET_URL" "$GITHUB_SHA" "$FILE_HASH" "$EXPECTED_VERSION"
+            cat .github/scripts/publish_podium.mjs
+            printf '\nNODE\n'
+            printf 'echo "Podium release backup: $BACKUP"\n'
+          } > "$RUNNER_TEMP/publish-podium.sh"
+          python .github/scripts/run_tat_command.py --command-file "$RUNNER_TEMP/publish-podium.sh" --name publish-podium --timeout 900

@@ -37,12 +37,13 @@ button:focus-visible {
 
 .workshop-shell {
   width: min(1540px, 100%);
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 640px;
   margin: 0 auto;
-  padding: 24px clamp(20px, 3vw, 48px) 28px;
+  padding: 70px clamp(20px, 3vw, 48px) 16px;
   display: grid;
-  grid-template-rows: auto minmax(570px, 1fr) auto;
-  gap: 18px;
+  grid-template-rows: auto minmax(360px, 1fr) auto;
+  gap: 12px;
 }
 
 .topbar {
@@ -142,6 +143,7 @@ button:focus-visible {
 }
 
 .guide-panel {
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   border-right: 1px solid rgba(23, 50, 79, 0.09);
@@ -526,12 +528,12 @@ button:focus-visible {
 
 @media (max-width: 1100px) {
   .workshop-shell {
-    grid-template-rows: auto minmax(600px, 1fr) auto;
+    grid-template-rows: auto minmax(360px, 1fr) auto;
     padding-inline: 18px;
   }
 
   .workspace {
-    grid-template-columns: 190px minmax(420px, 1fr) 210px;
+    grid-template-columns: 170px minmax(0, 1fr) 200px;
   }
 
   .guide-panel,
@@ -543,7 +545,8 @@ button:focus-visible {
 @media (max-width: 840px) {
   .workshop-shell {
     display: block;
-    padding: 16px;
+    height: auto;
+    padding: 70px 16px 16px;
   }
 
   .topbar {
@@ -607,7 +610,7 @@ button:focus-visible {
 
 @media (max-width: 520px) {
   .workshop-shell {
-    padding: 10px;
+    padding: 70px 10px 10px;
   }
 
   .topbar {
@@ -693,4 +696,22 @@ button:focus-visible {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+}
+
+.scene-error {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+  line-height: 1.7;
+}
+
+.scene-error button {
+  padding: 12px;
+  color: white;
+  background: #17324f;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
 }
